@@ -1,0 +1,20 @@
+curl --location 'https://ai.anta.com/aimodels-server/private/llm/v1/chat/completions' \
+--header 'Authorization: Bearer d7d3c7896894a7e127b61fc1d676f217' \
+--header 'Cookie: HWWAFSESID=8accf735ab9968c90e; HWWAFSESTIME=1767271332342' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "qwen3-max",
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "你回答简洁：鲁迅故乡哪里？"
+                }
+            ]
+        }
+    ],
+    "enable_thinking": false,
+    "stream": false
+}'
