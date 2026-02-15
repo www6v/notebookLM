@@ -14,15 +14,18 @@ from sqlalchemy.orm import (
 
 from app.config import settings
 
-# SQLite needs connect_args for async
+# Database-specific connection arguments
 connect_args = {}
 if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
+# For MySQL, use pool_kwargs instead of connect_args for pool settings
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
     connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 async_session = sessionmaker(
@@ -76,9 +79,16 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables (for development only)."""
+    """Initialize all database tables."""
     # Import all models to register them with Base.metadata
+    # Import them here to avoid circular imports
     from app.models import user, notebook, source, chat, note, studio  # noqa: F401
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            # For MySQL, we use run_sync to execute synchronous DDL operations
+            await conn.run_sync(Base.metadata.create_all)
+        print("Database tables initialized successfully.")
+    except Exception as e:
+        print(f"Error initializing database tables: {e}")
+        raise

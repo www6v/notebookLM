@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-to-a-real-secret-key"
     access_token_expire_minutes: int = 60 * 24  # 24 hours
 
-    # Database (SQLite for local dev, PostgreSQL for production)
-    database_url: str = "sqlite+aiosqlite:///./notebooklm.db"
+    # Database (MySQL for production)
+    database_url: str = "mysql+aiomysql://abc123:A12345678b_@rm-uf689w29v133d5tuumo.mysql.rds.aliyuncs.com:3306/notebookLM"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
