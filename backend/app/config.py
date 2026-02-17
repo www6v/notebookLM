@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     llm_api_base: str = "https://ai.anta.com/aimodels-server/private/llm/v1"
     llm_api_key: str = "d7d3c7896894a7e127b61fc1d676f217"
     default_llm_model: str = "qwen3-max"
+    slide_content_model: str = "qwen3-max"
+    slide_image_model: str = "qwen-vl-max"
 
     # Embedding
     embedding_model: str = "text-embedding-3-small"

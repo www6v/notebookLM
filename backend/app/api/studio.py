@@ -8,7 +8,6 @@ from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.notebook import Notebook
 from app.models.studio import Infographic, MindMap, SlideDeck
-from app.services.mindmap_service import generate_mindmap_from_sources
 from app.models.user import User
 from app.schemas.studio import (
     InfographicCreate,
@@ -20,6 +19,9 @@ from app.schemas.studio import (
     SlideDeckResponse,
     SlideDeckUpdate,
 )
+
+from app.services.mindmap_service import generate_mindmap_from_sources
+from app.services.slide_service import generate_slide_deck
 
 router = APIRouter(tags=["studio"])
 
@@ -105,18 +107,16 @@ async def generate_slides(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Generate a slide deck from notebook sources."""
+    """Generate a slide deck from notebook sources (content -> PPT -> images -> PDF)."""
     await _verify_notebook_access(db, notebook_id, user.id)
-    slide_deck = SlideDeck(
+    slide_deck = await generate_slide_deck(
+        db=db,
         notebook_id=notebook_id,
         title=body.title,
         theme=body.theme,
-        slides_data={"slides": []},  # placeholder
-        status="pending",
+        source_ids=body.source_ids,
+        focus_topic=body.focus_topic,
     )
-    db.add(slide_deck)
-    await db.flush()
-    await db.refresh(slide_deck)
     return SlideDeckResponse.model_validate(slide_deck)
 
 
