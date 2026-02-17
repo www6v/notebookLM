@@ -67,6 +67,11 @@ export const studioApi = {
     return res.data
   },
 
+  getSlidePdfUrl: async (slideId: string): Promise<{ url: string }> => {
+    const res = await client.get(`/slides/${slideId}/pdf-url`)
+    return res.data
+  },
+
   updateSlide: async (slideId: string, data: Record<string, unknown>): Promise<SlideDeckData> => {
     const res = await client.put(`/slides/${slideId}`, data)
     return res.data

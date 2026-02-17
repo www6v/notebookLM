@@ -112,6 +112,8 @@
             v-for="deck of studioStore.slideDecks"
             :key="deck.id"
             class="slide-card"
+            :title="deck.file_path ? 'Double-click to open PDF' : ''"
+            @dblclick="openSlidePdf(deck)"
           >
             <el-icon size="24" color="#4285f4">
               <Monitor />
@@ -228,7 +230,8 @@ import { useStudioStore } from '@/stores/useStudioStore'
 import { useSourceStore } from '@/stores/useSourceStore'
 import { noteApi } from '@/api/note'
 import type { Note } from '@/api/note'
-import type { MindMapData } from '@/api/studio'
+import { studioApi } from '@/api/studio'
+import type { MindMapData, SlideDeckData } from '@/api/studio'
 import MindMapViewer from './MindMapViewer.vue'
 
 const props = defineProps<{ notebookId: string }>()
@@ -337,6 +340,19 @@ const generateSlides = () => {
     title: 'Generated Slides',
     theme: 'light',
   })
+}
+
+const openSlidePdf = async (deck: SlideDeckData) => {
+  if (!deck.file_path) {
+    ElMessage.warning('PDF is not ready yet for this slide deck')
+    return
+  }
+  try {
+    const { url } = await studioApi.getSlidePdfUrl(deck.id)
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch {
+    ElMessage.error('Failed to open PDF')
+  }
 }
 
 const generateInfographic = () => {
