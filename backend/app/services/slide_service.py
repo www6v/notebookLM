@@ -1,18 +1,18 @@
 """Slide deck generation service.
 
 Generates PPT content from notebook sources via qwen3-max, renders each slide
-to an image via qwen3-vl-max, then combines images into a single PDF for
+to an image via Qwen-Image API, then combines images into a single PDF for
 frontend display.
 """
 
-import asyncio
 import base64
 import json
 import logging
-import re
+import time
 import uuid
 from io import BytesIO
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,30 +28,15 @@ from app.services.obs_storage import (
 
 logger = logging.getLogger(__name__)
 
-
-def _decode_base64_image(data: str) -> bytes | None:
-    """Decode base64 image string, fixing common padding/length issues from VL output.
-
-    Base64 length must be a multiple of 4. Strip whitespace, then pad or truncate
-    as needed so b64decode does not raise.
-    """
-    if not data:
-        return None
-    s = re.sub(r"\s+", "", data)
-    if not s:
-        return None
-    n = len(s)
-    remainder = n % 4
-    if remainder == 1:
-        s = s[: n - 1]
-    elif remainder == 2:
-        s = s + "=="
-    elif remainder == 3:
-        s = s + "="
-    try:
-        return base64.b64decode(s)
-    except Exception:
-        return None
+# Ensure the logger has a handler for console output
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 
 async def _get_combined_content_from_sources(
@@ -105,10 +90,10 @@ async def _get_combined_content_from_sources(
 
 
 async def _render_slide_to_image(slide: dict) -> bytes | None:
-    """Ask VL model to render one slide as image; return PNG bytes or None.
+    """Call Qwen-Image API to generate one slide as image; return PNG bytes or None.
 
-    If the API returns base64 image data, decode and return. Otherwise
-    return None (caller may use a placeholder).
+    Uses synchronous multimodal-generation API: prompt -> image URL -> download.
+    Caller may use a placeholder when None is returned.
     """
     title = slide.get("title", "Slide")
     content = slide.get("content")
@@ -119,44 +104,91 @@ async def _render_slide_to_image(slide: dict) -> bytes | None:
 
     prompt = (
         f"Generate a single slide image for a presentation. "
-        f"Title: {title}\nContent: {content_text}\n"
-        "Use a clean, professional default style and layout. "
-        "Output only the slide as an image (e.g. base64 PNG)."
+        f"Title: {title}. Content: {content_text}. "
+        "Use a clean, professional style and layout, suitable for a slide."
     )
-    messages = [
-        {"role": "system", "content": "You are a slide designer. Output the slide as an image (base64-encoded PNG when possible)."},
-        {"role": "user", "content": prompt},
-    ]
+    if len(prompt) > 800:
+        prompt = prompt[:797] + "..."
+
+    api_key = settings.qwen_image_api_key or settings.llm_api_key
+    url = (
+        f"{settings.qwen_image_api_base.rstrip('/')}"
+        "/services/aigc/multimodal-generation/generation"
+    )
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": settings.slide_image_model,
+        "input": {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}],
+                }
+            ]
+        },
+        "parameters": {
+            "negative_prompt": (
+                "low resolution, low quality, deformed, oversaturated, "
+                "blurry text, distorted text."
+            ),
+            "prompt_extend": True,
+            "watermark": False,
+            "size": "1664*928",
+        },
+    }
 
     try:
-        response = await chat_completion(
-            messages,
-            model=settings.slide_image_model,
-            temperature=0.3,
-            max_tokens=4096,
-        )
-        text = (response.choices[0].message.content or "").strip()
+        start = time.perf_counter()
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
 
-        # Try to extract base64 image from response
-        match = re.search(
-            r"data:image/[^;]+;base64,([A-Za-z0-9+/=\s]+)",
-            text,
-        )
-        if match:
-            decoded = _decode_base64_image(match.group(1))
-            if decoded is not None:
-                return decoded
+        if data.get("code"):
+            elapsed = time.perf_counter() - start
+            logger.warning(
+                "Qwen-Image API error: %s %s (图像生成耗时: %.2f 秒)",
+                data.get("code"),
+                data.get("message", ""),
+                elapsed,
+            )
+            return None
 
-        # Plain base64 block
-        match = re.search(r"([A-Za-z0-9+/=]{100,})", text)
-        if match:
-            decoded = _decode_base64_image(match.group(1))
-            if decoded is not None:
-                return decoded
+        choices = (data.get("output") or {}).get("choices") or []
+        if not choices:
+            elapsed = time.perf_counter() - start
+            logger.warning("Qwen-Image 无 choices (图像生成耗时: %.2f 秒)", elapsed)
+            return None
+        content_list = (
+            choices[0].get("message") or {}
+        ).get("content") or []
+        if not content_list or "image" not in content_list[0]:
+            elapsed = time.perf_counter() - start
+            logger.warning("Qwen-Image 无 image 内容 (图像生成耗时: %.2f 秒)", elapsed)
+            return None
+        image_url = content_list[0]["image"]
+        if not image_url:
+            elapsed = time.perf_counter() - start
+            logger.warning("Qwen-Image 无 image_url (图像生成耗时: %.2f 秒)", elapsed)
+            return None
 
-        return None
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            img_resp = await client.get(image_url)
+            img_resp.raise_for_status()
+            elapsed = time.perf_counter() - start
+            logger.info("图像生成耗时: %.2f 秒 (slide: %s)", elapsed, title)
+            return img_resp.content
     except Exception as exc:
-        logger.warning("VL render failed for slide %s: %s", title, exc)
+        elapsed = time.perf_counter() - start
+        logger.warning(
+            "Qwen-Image render failed for slide %s: %s (图像生成耗时: %.2f 秒)",
+            title,
+            exc,
+            elapsed,
+        )
         return None
 
 
@@ -254,7 +286,7 @@ async def generate_slide_deck(
         focus_instruction = f"\nFocus specifically on: {focus_topic}"
 
     system_prompt = f"""Create a slide deck from the provided content. Return ONLY valid JSON.
-Content must be coherent across slides. Total number of slides must be 15 or fewer.
+Content must be coherent across slides. Total number of slides must be 3 or fewer.
 Use a default professional style and layout (title slide first, summary last).
 {focus_instruction}
 
@@ -312,13 +344,12 @@ Layout types: "title", "content", "two_column", "image_text".
     logger.info("slides: %s", slides)
 
     image_bytes_list = []
-    render_tasks = [_render_slide_to_image(slide) for slide in slides]
-    render_results = await asyncio.gather(*render_tasks)
-    for i, img_bytes in enumerate(render_results):
+    for i, slide in enumerate(slides):
+        img_bytes = await _render_slide_to_image(slide)
         if img_bytes is None:
             img_bytes = _placeholder_slide_image(
                 i + 1,
-                slides[i].get("title", "Slide"),
+                slide.get("title", "Slide"),
             )
         image_bytes_list.append(img_bytes)
 

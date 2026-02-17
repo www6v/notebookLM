@@ -21,6 +21,7 @@ from app.schemas.studio import (
 )
 
 from app.services.mindmap_service import generate_mindmap_from_sources
+from app.services.obs_storage import generate_presigned_url
 from app.services.slide_service import generate_slide_deck
 
 router = APIRouter(tags=["studio"])
@@ -151,6 +152,23 @@ async def get_slide(
     """Get a slide deck by ID."""
     slide = await _get_slide(db, slide_id, user.id)
     return SlideDeckResponse.model_validate(slide)
+
+
+@router.get("/api/slides/{slide_id}/pdf-url")
+async def get_slide_pdf_url(
+    slide_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get a presigned URL for the slide deck PDF stored in OBS."""
+    slide = await _get_slide(db, slide_id, user.id)
+    if not slide.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PDF not available for this slide deck",
+        )
+    url = generate_presigned_url(slide.file_path, expiration=3600)
+    return {"url": url}
 
 
 @router.put("/api/slides/{slide_id}", response_model=SlideDeckResponse)
