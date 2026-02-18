@@ -24,12 +24,13 @@
         <div
           class="source-info"
           :class="{ inactive: !source.is_active }"
-          @dblclick="handleViewContent(source.id)"
+          @dblclick="handleViewContent(source)"
         >
           <el-icon size="16" class="source-type-icon">
             <Document v-if="source.type === 'pdf'" />
             <Link v-else-if="source.type === 'web'" />
             <VideoPlay v-else-if="source.type === 'youtube'" />
+            <Picture v-else-if="source.type === 'image'" />
             <Document v-else />
           </el-icon>
           <span class="source-title" :title="source.title">
@@ -70,14 +71,33 @@
       width="700px"
       top="5vh"
       :close-on-click-modal="true"
-      @closed="sourceStore.clearContent()"
+      @closed="onContentDialogClosed()"
     >
       <div v-if="sourceStore.contentLoading" class="content-loading">
         <el-skeleton :rows="8" animated />
       </div>
       <div v-else-if="sourceStore.currentContent" class="content-viewer">
         <div
-          v-if="sourceStore.currentContent.raw_content"
+          v-if="sourceStore.currentContent.file_url"
+          class="content-image"
+        >
+          <div v-if="imageLoading" class="image-loading">
+            <el-icon class="is-loading" :size="32">
+              <Loading />
+            </el-icon>
+          </div>
+          <img
+            v-else-if="imageBlobUrl"
+            :src="imageBlobUrl"
+            :alt="sourceStore.currentContent.title"
+          />
+          <el-empty
+            v-else-if="imageError"
+            description="Failed to load image"
+          />
+        </div>
+        <div
+          v-else-if="sourceStore.currentContent.raw_content"
           class="content-text"
         >
           <pre>{{ sourceStore.currentContent.raw_content }}</pre>
@@ -91,14 +111,48 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Link, VideoPlay, Delete } from '@element-plus/icons-vue'
+import { Document, Link, VideoPlay, Picture, Delete, Loading } from '@element-plus/icons-vue'
 import { useSourceStore } from '@/stores/useSourceStore'
+import { sourceApi, type Source } from '@/api/source'
 
 defineProps<{ notebookId: string }>()
 defineEmits<{ addSource: [] }>()
 
 const sourceStore = useSourceStore()
 const showContentDialog = ref(false)
+const imageBlobUrl = ref<string | null>(null)
+const imageLoading = ref(false)
+const imageError = ref(false)
+
+function revokeImageBlobUrl() {
+  if (imageBlobUrl.value) {
+    URL.revokeObjectURL(imageBlobUrl.value)
+    imageBlobUrl.value = null
+  }
+  imageError.value = false
+}
+
+function onContentDialogClosed() {
+  revokeImageBlobUrl()
+  sourceStore.clearContent()
+}
+
+async function loadImageIfNeeded(content: { id: string; file_url: string | null } | null) {
+  revokeImageBlobUrl()
+  if (!content?.file_url) {
+    return
+  }
+  imageLoading.value = true
+  imageError.value = false
+  try {
+    const blob = await sourceApi.getFile(content.id)
+    imageBlobUrl.value = URL.createObjectURL(blob)
+  } catch {
+    imageError.value = true
+  } finally {
+    imageLoading.value = false
+  }
+}
 
 const handleDelete = async (sourceId: string) => {
   try {
@@ -113,10 +167,16 @@ const handleDelete = async (sourceId: string) => {
   }
 }
 
-const handleViewContent = async (sourceId: string) => {
+const handleViewContent = async (source: Source) => {
   showContentDialog.value = true
   try {
-    await sourceStore.getContent(sourceId)
+    if (source.type === 'image') {
+      sourceStore.setContentForImage(source)
+      await loadImageIfNeeded(sourceStore.currentContent)
+    } else {
+      const content = await sourceStore.getContent(source.id)
+      await loadImageIfNeeded(content ?? null)
+    }
   } catch {
     ElMessage.error('Failed to load source content')
   }
@@ -200,6 +260,30 @@ const handleViewContent = async (sourceId: string) => {
 .content-viewer {
   max-height: 70vh;
   overflow-y: auto;
+}
+
+.content-image {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e8eaed;
+}
+
+.content-image .image-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+  color: var(--el-color-primary);
+}
+
+.content-image img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
 }
 
 .content-text {

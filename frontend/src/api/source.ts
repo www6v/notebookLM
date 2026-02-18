@@ -47,4 +47,11 @@ export const sourceApi = {
     const res = await client.get(`/sources/${sourceId}/content`)
     return res.data
   },
+
+  getFile: async (sourceId: string): Promise<Blob> => {
+    const res = await client.get(`/sources/${sourceId}/file`, {
+      responseType: 'blob',
+    })
+    return res.data
+  },
 }

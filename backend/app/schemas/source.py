@@ -42,3 +42,4 @@ class SourceContentResponse(BaseModel):
     title: str
     raw_content: str | None = None
     chunk_count: int = 0
+    file_url: str | None = None  # For images: OBS URL to display

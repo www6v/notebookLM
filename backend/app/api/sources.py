@@ -3,6 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi.responses import Response
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,37 @@ from app.services.obs_storage import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sources"])
+
+# Allowed file extensions for upload (documents + images)
+ALLOWED_EXTENSIONS = frozenset({
+    "pdf", "docx", "doc", "txt", "md", "markdown",
+    "bmp", "gif", "png", "webp", "jpeg", "jpg",
+})
+
+FILE_TYPE_MAP = {
+    "pdf": "pdf",
+    "docx": "docx",
+    "doc": "docx",
+    "txt": "txt",
+    "md": "markdown",
+    "markdown": "markdown",
+    "bmp": "image",
+    "gif": "image",
+    "png": "image",
+    "webp": "image",
+    "jpeg": "image",
+    "jpg": "image",
+}
+
+# Content-Type for image file_url responses (extension -> media type)
+IMAGE_MEDIA_TYPES = {
+    "bmp": "image/bmp",
+    "gif": "image/gif",
+    "png": "image/png",
+    "webp": "image/webp",
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+}
 
 
 @router.post(
@@ -69,23 +101,23 @@ async def upload_source(
 ):
     """Upload a file as a source.
 
-    The file is stored in OBS (Object Storage Service) and
-    its object key is saved in the ``file_path`` field.
+    Supported types: pdf, docx, doc, txt, md, markdown (documents);
+    bmp, gif, png, webp, jpeg, jpg (images).
+    File content is stored in OBS; metadata is stored in the database.
     """
     await _verify_notebook_access(db, notebook_id, user.id)
 
-    # Determine file type from extension
     filename = file.filename or "unknown"
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt"
-    type_map = {
-        "pdf": "pdf",
-        "docx": "docx",
-        "doc": "docx",
-        "txt": "txt",
-        "md": "markdown",
-        "markdown": "markdown",
-    }
-    file_type = type_map.get(ext, "txt")
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"File type '.{ext}' not allowed. Allowed: "
+                f"{', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            ),
+        )
+    file_type = FILE_TYPE_MAP.get(ext, "txt")
 
     # Read file content
     content = await file.read()
@@ -199,10 +231,10 @@ async def get_source_content(
 ):
     """Get parsed content of a source.
 
-    If ``raw_content`` is already stored in the database it is returned
-    directly.  Otherwise the file is downloaded from OBS and text is
-    extracted based on file type (txt / markdown are decoded as UTF-8,
-    PDF uses PyPDF2, DOCX uses python-docx).
+    For images: returns ``file_url`` (presigned OBS URL) for frontend display.
+    For documents: if ``raw_content`` is in the database it is returned;
+    otherwise the file is downloaded from OBS and text is extracted
+    (txt/markdown, PDF, DOCX).
     """
     source = await _get_source(db, source_id, user.id)
     chunk_count_result = await db.execute(
@@ -212,9 +244,17 @@ async def get_source_content(
     )
 
     raw_content = source.raw_content
+    file_url = None
 
-    # If no cached content, try downloading from OBS and extracting text
-    if raw_content is None and source.file_path:
+    if source.type == "image" and source.file_path:
+        # Same-origin URL so frontend can fetch with auth and display the image
+        file_url = f"/api/sources/{source_id}/file"
+    elif (
+        raw_content is None
+        and source.file_path
+        and source.type != "image"
+    ):
+        # For non-image sources, download from OBS and extract text if needed
         try:
             file_bytes = download_file_from_obs(source.file_path)
             raw_content = _extract_text(file_bytes, source.type)
@@ -228,7 +268,46 @@ async def get_source_content(
         title=source.title,
         raw_content=raw_content,
         chunk_count=chunk_count_result.scalar_one(),
+        file_url=file_url,
     )
+
+
+@router.get("/api/sources/{source_id}/file")
+async def get_source_file(
+    source_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Stream image file from OBS for display. Only supports image sources."""
+    logger.info(
+        "get_source_file: source_id=%s, user_id=%s",
+        source_id,
+        user.id,
+    )
+    source = await _get_source(db, source_id, user.id)
+    logger.info("get_source_file: source.file_path=%s", source.file_path)
+    if source.type != "image" or not source.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source is not an image or has no file",
+        )
+    try:
+        file_bytes = download_file_from_obs(source.file_path)
+    except RuntimeError as exc:
+        logger.warning("Failed to download image from OBS: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to load image from storage",
+        ) from exc
+    ext = source.file_path.rsplit(".", 1)[-1].lower() if "." in source.file_path else ""
+    media_type = IMAGE_MEDIA_TYPES.get(ext, "application/octet-stream")
+    logger.info(
+        "get_source_file: success source_id=%s, size=%d, media_type=%s",
+        source_id,
+        len(file_bytes),
+        media_type,
+    )
+    return Response(content=file_bytes, media_type=media_type)
 
 
 def _extract_text(file_bytes: bytes, file_type: str) -> str:
@@ -236,11 +315,14 @@ def _extract_text(file_bytes: bytes, file_type: str) -> str:
 
     Args:
         file_bytes: Raw file content.
-        file_type: Source type (txt, markdown, pdf, docx).
+        file_type: Source type (txt, markdown, pdf, docx, image).
 
     Returns:
-        Extracted text content.
+        Extracted text content. For images, returns a placeholder.
     """
+    if file_type == "image":
+        return "[Image]"
+
     if file_type in ("txt", "markdown"):
         return file_bytes.decode("utf-8", errors="replace")
 

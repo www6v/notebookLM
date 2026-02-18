@@ -8,6 +8,7 @@ export interface SourceContent {
   title: string
   raw_content: string | null
   chunk_count: number
+  file_url: string | null  // For images: OBS URL to display
 }
 
 export const useSourceStore = defineStore('source', () => {
@@ -60,6 +61,17 @@ export const useSourceStore = defineStore('source', () => {
     }
   }
 
+  /** Set minimal content for image source (avoids extra GET /content for image). */
+  const setContentForImage = (source: Source) => {
+    currentContent.value = {
+      id: source.id,
+      title: source.title,
+      raw_content: null,
+      chunk_count: 0,
+      file_url: `/api/sources/${source.id}/file`,
+    }
+  }
+
   const clearContent = () => {
     currentContent.value = null
   }
@@ -80,6 +92,7 @@ export const useSourceStore = defineStore('source', () => {
     toggleSource,
     removeSource,
     getContent,
+    setContentForImage,
     clearContent,
   }
 })
