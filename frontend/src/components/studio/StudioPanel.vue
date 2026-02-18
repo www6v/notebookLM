@@ -47,7 +47,7 @@
             size="small"
             type="primary"
             :loading="studioStore.loading"
-            :disabled="sourceStore.activeSourceIds.length === 0"
+            :disabled="sourceStore.activeSourceIds.length === 0 || studioStore.loading"
             @click="handleGenerateMindMap"
           >
             Generate Mind Map
@@ -304,6 +304,7 @@ const deleteNote = async () => {
 }
 
 const handleGenerateMindMap = async () => {
+  if (studioStore.loading) return
   const ids = sourceStore.activeSourceIds
   if (ids.length === 0) {
     ElMessage.warning('Please check at least one source')
