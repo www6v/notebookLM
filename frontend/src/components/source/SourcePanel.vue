@@ -77,6 +77,7 @@
         <el-skeleton :rows="8" animated />
       </div>
       <div v-else-if="sourceStore.currentContent" class="content-viewer">
+        <!-- 图片类 source：请求 /api/sources/:id/file 获取 OBS 链接并直接展示 -->
         <div
           v-if="sourceStore.currentContent.file_url"
           class="content-image"
@@ -87,9 +88,11 @@
             </el-icon>
           </div>
           <img
-            v-else-if="imageBlobUrl"
-            :src="imageBlobUrl"
+            v-else-if="imageUrl"
+            :src="imageUrl"
             :alt="sourceStore.currentContent.title"
+            decoding="async"
+            @error="onImageError"
           />
           <el-empty
             v-else-if="imageError"
@@ -120,33 +123,55 @@ defineEmits<{ addSource: [] }>()
 
 const sourceStore = useSourceStore()
 const showContentDialog = ref(false)
-const imageBlobUrl = ref<string | null>(null)
+const imageUrl = ref<string | null>(null)
 const imageLoading = ref(false)
 const imageError = ref(false)
+const currentContentId = ref<string | null>(null)
 
-function revokeImageBlobUrl() {
-  if (imageBlobUrl.value) {
-    URL.revokeObjectURL(imageBlobUrl.value)
-    imageBlobUrl.value = null
+function clearImageUrl() {
+  if (imageUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(imageUrl.value)
   }
+  imageUrl.value = null
   imageError.value = false
 }
 
 function onContentDialogClosed() {
-  revokeImageBlobUrl()
+  clearImageUrl()
+  currentContentId.value = null
   sourceStore.clearContent()
 }
 
+/** OBS 链接加载失败时，改用后端流式接口拉取并展示 */
+async function onImageError() {
+  if (!currentContentId.value) return
+  if (imageUrl.value?.startsWith('blob:')) return
+  imageLoading.value = true
+  try {
+    const blob = await sourceApi.getFileStream(currentContentId.value)
+    if (imageUrl.value?.startsWith('blob:')) return
+    imageUrl.value = URL.createObjectURL(blob)
+    imageError.value = false
+  } catch {
+    imageError.value = true
+  } finally {
+    imageLoading.value = false
+  }
+}
+
+/** 请求接口获取 OBS 图片链接并供 img 直接展示；失败时可触发 onImageError 回退到流式接口 */
 async function loadImageIfNeeded(content: { id: string; file_url: string | null } | null) {
-  revokeImageBlobUrl()
+  clearImageUrl()
   if (!content?.file_url) {
+    currentContentId.value = null
     return
   }
+  currentContentId.value = content.id
   imageLoading.value = true
   imageError.value = false
   try {
-    const blob = await sourceApi.getFile(content.id)
-    imageBlobUrl.value = URL.createObjectURL(blob)
+    const { url } = await sourceApi.getFileUrl(content.id)
+    imageUrl.value = url
   } catch {
     imageError.value = true
   } finally {

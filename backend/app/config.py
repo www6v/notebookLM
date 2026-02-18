@@ -34,12 +34,15 @@ class Settings(BaseSettings):
     llm_api_base: str = "https://ai.anta.com/aimodels-server/private/llm/v1"
     llm_api_key: str = "d7d3c7896894a7e127b61fc1d676f217"
     default_llm_model: str = "qwen3-max"
+    vision_llm_model: str = "qwen3-vl-plus"
     slide_content_model: str = "qwen3-max"
     slide_image_model: str = "qwen-image-max"
 
     # Qwen-Image (text-to-image) API, e.g. DashScope
     qwen_image_api_base: str = "https://dashscope.aliyuncs.com/api/v1"
-    qwen_image_api_key: str = os.getenv("QWEN_IMAGE_API_KEY") # from env QWEN_IMAGE_API_KEY
+    qwen_image_api_key: str = os.getenv("QWEN_IMAGE_API_KEY")  # from env QWEN_IMAGE_API_KEY
+    # Qwen-VL (vision) uses OpenAI-compatible endpoint
+    qwen_vision_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
     # Embedding
     embedding_model: str = "text-embedding-3-small"

@@ -19,10 +19,11 @@ from app.schemas.source import (
     SourceUpdate,
 )
 from app.services.obs_storage import (
-    upload_file_to_obs,
-    get_file_url,
     delete_file_from_obs,
     download_file_from_obs,
+    generate_presigned_url,
+    get_file_url,
+    upload_file_to_obs,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ FILE_TYPE_MAP = {
     "jpg": "image",
 }
 
-# Content-Type for image file_url responses (extension -> media type)
+# Content-Type for image stream (extension -> media type)
 IMAGE_MEDIA_TYPES = {
     "bmp": "image/bmp",
     "gif": "image/gif",
@@ -278,14 +279,38 @@ async def get_source_file(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Stream image file from OBS for display. Only supports image sources."""
+    """Return OBS presigned URL for image source. Frontend uses this URL to display."""
     logger.info(
         "get_source_file: source_id=%s, user_id=%s",
         source_id,
         user.id,
     )
     source = await _get_source(db, source_id, user.id)
-    logger.info("get_source_file: source.file_path=%s", source.file_path)
+    if source.type != "image" or not source.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source is not an image or has no file",
+        )
+    try:
+        url = generate_presigned_url(source.file_path, expiration=3600)
+    except RuntimeError as exc:
+        logger.warning("Failed to generate presigned URL: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to get image URL from storage",
+        ) from exc
+    logger.info("get_source_file: success source_id=%s", source_id)
+    return {"url": url}
+
+
+@router.get("/api/sources/{source_id}/file/stream")
+async def get_source_file_stream(
+    source_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Stream image bytes from OBS. Used when presigned URL fails in browser (e.g. CORS)."""
+    source = await _get_source(db, source_id, user.id)
     if source.type != "image" or not source.file_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -299,14 +324,12 @@ async def get_source_file(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to load image from storage",
         ) from exc
-    ext = source.file_path.rsplit(".", 1)[-1].lower() if "." in source.file_path else ""
-    media_type = IMAGE_MEDIA_TYPES.get(ext, "application/octet-stream")
-    logger.info(
-        "get_source_file: success source_id=%s, size=%d, media_type=%s",
-        source_id,
-        len(file_bytes),
-        media_type,
+    ext = (
+        source.file_path.rsplit(".", 1)[-1].lower()
+        if "." in source.file_path
+        else ""
     )
+    media_type = IMAGE_MEDIA_TYPES.get(ext, "application/octet-stream")
     return Response(content=file_bytes, media_type=media_type)
 
 

@@ -48,8 +48,15 @@ export const sourceApi = {
     return res.data
   },
 
-  getFile: async (sourceId: string): Promise<Blob> => {
-    const res = await client.get(`/sources/${sourceId}/file`, {
+  /** 获取图片源在 OBS 中的展示链接，前端直接用该 URL 展示图片 */
+  getFileUrl: async (sourceId: string): Promise<{ url: string }> => {
+    const res = await client.get<{ url: string }>(`/sources/${sourceId}/file`)
+    return res.data
+  },
+
+  /** OBS 链接加载失败时，通过后端流式接口拉取图片（带鉴权） */
+  getFileStream: async (sourceId: string): Promise<Blob> => {
+    const res = await client.get(`/sources/${sourceId}/file/stream`, {
       responseType: 'blob',
     })
     return res.data

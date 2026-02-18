@@ -8,7 +8,7 @@ export interface SourceContent {
   title: string
   raw_content: string | null
   chunk_count: number
-  file_url: string | null  // For images: OBS URL to display
+  file_url: string | null  // 图片时为本源文件接口路径，前端用 getFile 取二进制流再显示
 }
 
 export const useSourceStore = defineStore('source', () => {
