@@ -10,16 +10,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Ensure the logger has a handler for console output
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -109,8 +99,8 @@ async def generate_mindmap_from_sources(
     result = await db.execute(stmt)
     sources = result.scalars().all()
 
-    logger.info(f"result:{result}")
-    logger.info(f"sources:{sources}")
+    # logger.info(f"result:{result}")
+    # logger.info(f"sources:{sources}")
 
     logger.info(f"Found {len(sources)} sources from OBS for mind map generation")
 

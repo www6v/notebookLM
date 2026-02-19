@@ -24,6 +24,11 @@ from app.services.mindmap_service import generate_mindmap_from_sources
 from app.services.obs_storage import generate_presigned_url
 from app.services.slide_service import generate_slide_deck
 
+import logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["studio"])
 
 
@@ -42,6 +47,7 @@ async def generate_mindmap(
 ):
     """Generate a mind map from notebook sources via LLM."""
     await _verify_notebook_access(db, notebook_id, user.id)
+    logger.info("generate_mindmap: notebook_id=%s, body=%s", notebook_id, body)
     mind_map = await generate_mindmap_from_sources(
         db=db,
         notebook_id=notebook_id,
@@ -49,6 +55,17 @@ async def generate_mindmap(
         source_ids=body.source_ids,
     )
     return MindMapResponse.model_validate(mind_map)
+
+    # mind_map = MindMap(
+    #     notebook_id=notebook_id,
+    #     title=" Mind Map 1",
+    #     graph_data={"nodes": [], "edges": []},
+    #     created_at=datetime.now(),
+    #     updated_at=datetime.now(),
+    #     id="1",
+    # )
+    # return MindMapResponse.model_validate(mind_map)
+
 
 
 @router.get(
