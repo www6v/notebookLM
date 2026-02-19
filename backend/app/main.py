@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, notebooks, notes, sources, studio
+from app.api import auth, chat, mindmaps, notebooks, notes, slide_deck, sources, studio
 from app.config import settings
 from app.database import init_db
 
@@ -44,6 +44,8 @@ app.include_router(notebooks.router)
 app.include_router(sources.router)
 app.include_router(chat.router)
 app.include_router(notes.router)
+app.include_router(mindmaps.router)
+app.include_router(slide_deck.router)
 app.include_router(studio.router)
 
 

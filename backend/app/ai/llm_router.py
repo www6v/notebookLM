@@ -111,7 +111,7 @@ def _call_qwen3_vl_sync(
     max_tokens: int,
 ) -> str:
     # mock image_url
-    data_url = "/Users/t-wangwei07/Downloads/myspace/www6vVisionHugo/content/docs/视觉理解/Connector/Connector/images/hr3jtz6a.bmp"
+    data_url = "https://s41.ax1x.com/2026/02/19/pZXVWXF.png"
 
     """Synchronous call to dashscope MultiModalConversation (qwen3-vl)."""
     dashscope.api_key = settings.qwen_image_api_key
@@ -124,8 +124,8 @@ def _call_qwen3_vl_sync(
             {
                 "role": "user",
                 "content": [
-                    # {"image": data_url},
-                    {'image': f'file://{data_url}'},                    
+                    {"image": data_url},
+                    # {'image': f'file://{data_url}'},                    
                     {"text": prompt},
                 ],
             },
