@@ -56,17 +56,6 @@ async def generate_mindmap(
     )
     return MindMapResponse.model_validate(mind_map)
 
-    # mind_map = MindMap(
-    #     notebook_id=notebook_id,
-    #     title=" Mind Map 1",
-    #     graph_data={"nodes": [], "edges": []},
-    #     created_at=datetime.now(),
-    #     updated_at=datetime.now(),
-    #     id="1",
-    # )
-    # return MindMapResponse.model_validate(mind_map)
-
-
 
 @router.get(
     "/api/notebooks/{notebook_id}/mindmaps",
