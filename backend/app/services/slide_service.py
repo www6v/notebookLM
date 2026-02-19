@@ -318,7 +318,7 @@ Layout types: "title", "content", "two_column", "image_text".
     try:
         response = await chat_completion(
             messages,
-            model=settings.slide_content_model,
+            model=settings.default_llm_model, # slide_content_model
             temperature=0.3,
             max_tokens=4096,
         )
