@@ -17,7 +17,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_router import chat_completion
-from app.api.sources import _extract_text
+# from app.api.sources import _extract_text
+from app.services.source_service import extract_text
+
 from app.config import settings
 from app.models.source import Source
 from app.models.studio import SlideDeck
@@ -62,7 +64,7 @@ async def _get_combined_content_from_sources(
             if raw_content is None and source.file_path:
                 try:
                     file_bytes = download_file_from_obs(source.file_path)
-                    raw_content = _extract_text(file_bytes, source.type)
+                    raw_content = extract_text(file_bytes, source.type)
                 except RuntimeError as exc:
                     logger.warning(
                         "Failed to download source %s: %s",
@@ -229,6 +231,111 @@ def _placeholder_slide_image(slide_number: int, title: str) -> bytes:
         return minimal_png
 
 
+def _build_slide_deck_messages(
+    combined_content: str,
+    title: str,
+    focus_topic: str | None,
+) -> list[dict]:
+    """Build system prompt and user message for slide deck LLM generation."""
+    focus_instruction = ""
+    if focus_topic:
+        focus_instruction = f"\nFocus specifically on: {focus_topic}"
+
+    system_prompt = f"""Create a slide deck from the provided content. Return ONLY valid JSON.
+Content must be coherent across slides. Total number of slides must be 3 or fewer.
+Use a default professional style and layout (title slide first, summary last).
+{focus_instruction}
+
+Format:
+{{
+  "slides": [
+    {{
+      "slide_number": 1,
+      "title": "Slide Title",
+      "content": ["Bullet point 1", "Bullet point 2"],
+      "speaker_notes": "Notes for the presenter",
+      "layout": "title"
+    }},
+    ...
+  ]
+}}
+
+Layout types: "title", "content", "two_column", "image_text".
+"""
+
+    return [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": combined_content or "No source content available.",
+        },
+    ]
+
+
+async def _generate_slides_data(
+    messages: list[dict],
+    fallback_title: str,
+) -> dict:
+    """Call LLM to generate slides JSON; return slides_data dict with fallback on error."""
+    try:
+        response = await chat_completion(
+            messages,
+            model=settings.default_llm_model,
+            temperature=0.3,
+            max_tokens=4096,
+        )
+        content = response.choices[0].message.content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1].rsplit("```", 1)[0]
+        return json.loads(content)
+    except Exception as exc:
+        logger.exception("Slide content generation failed: %s", exc)
+        return {
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "title": fallback_title,
+                    "content": ["Content generation failed. Please try again."],
+                    "speaker_notes": "",
+                    "layout": "title",
+                }
+            ],
+        }
+
+
+async def _render_slides_to_images(
+    slides: list[dict],
+    fallback_title: str,
+) -> list[bytes]:
+    """Render each slide to image bytes; use placeholder when API fails. Never empty."""
+    image_bytes_list = []
+    for i, slide in enumerate(slides):
+        img_bytes = await _render_slide_to_image(slide)
+        if img_bytes is None:
+            img_bytes = _placeholder_slide_image(
+                i + 1,
+                slide.get("title", "Slide"),
+            )
+        image_bytes_list.append(img_bytes)
+
+    if not image_bytes_list:
+        image_bytes_list.append(
+            _placeholder_slide_image(1, fallback_title or "Slide Deck")
+        )
+    return image_bytes_list
+
+
+def _upload_slide_deck_pdf(pdf_bytes: bytes) -> str:
+    """Upload PDF bytes to OBS and return object key."""
+    unique_id = uuid.uuid4().hex[:12]
+    pdf_filename = f"slides/deck_{unique_id}.pdf"
+    return upload_file_to_obs(
+        file_content=pdf_bytes,
+        filename=pdf_filename,
+        content_type="application/pdf",
+    )
+
+
 def _images_to_pdf(
     image_bytes_list: list[bytes],
     slide_titles: list[str] | None = None,
@@ -274,100 +381,22 @@ async def generate_slide_deck(
     source_ids: list[str] | None = None,
     focus_topic: str | None = None,
 ) -> SlideDeck:
-    """Generate a slide deck: document content -> qwen3-max -> slides JSON
-    -> qwen3-vl-max per slide image -> PDF -> OBS. Frontend shows the PDF.
+    """Generate a slide deck: document content -> LLM -> slides JSON
+    -> per-slide image -> PDF -> OBS. Frontend shows the PDF.
     """
     combined_content = await _get_combined_content_from_sources(
         db, notebook_id, source_ids
     )
-
-    focus_instruction = ""
-    if focus_topic:
-        focus_instruction = f"\nFocus specifically on: {focus_topic}"
-
-    system_prompt = f"""Create a slide deck from the provided content. Return ONLY valid JSON.
-Content must be coherent across slides. Total number of slides must be 3 or fewer.
-Use a default professional style and layout (title slide first, summary last).
-{focus_instruction}
-
-Format:
-{{
-  "slides": [
-    {{
-      "slide_number": 1,
-      "title": "Slide Title",
-      "content": ["Bullet point 1", "Bullet point 2"],
-      "speaker_notes": "Notes for the presenter",
-      "layout": "title"
-    }},
-    ...
-  ]
-}}
-
-Layout types: "title", "content", "two_column", "image_text".
-"""
-
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": combined_content or "No source content available.",
-        },
-    ]
-
-    try:
-        response = await chat_completion(
-            messages,
-            model=settings.default_llm_model, # slide_content_model
-            temperature=0.3,
-            max_tokens=4096,
-        )
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1].rsplit("```", 1)[0]
-        slides_data = json.loads(content)
-    except Exception as exc:
-        logger.exception("Slide content generation failed: %s", exc)
-        slides_data = {
-            "slides": [
-                {
-                    "slide_number": 1,
-                    "title": title,
-                    "content": ["Content generation failed. Please try again."],
-                    "speaker_notes": "",
-                    "layout": "title",
-                }
-            ],
-        }
+    messages = _build_slide_deck_messages(combined_content, title, focus_topic)
+    slides_data = await _generate_slides_data(messages, title)
 
     slides = slides_data.get("slides") or []
     logger.info("slides: %s", slides)
 
-    image_bytes_list = []
-    for i, slide in enumerate(slides):
-        img_bytes = await _render_slide_to_image(slide)
-        if img_bytes is None:
-            img_bytes = _placeholder_slide_image(
-                i + 1,
-                slide.get("title", "Slide"),
-            )
-        image_bytes_list.append(img_bytes)
-
-    if not image_bytes_list:
-        image_bytes_list.append(
-            _placeholder_slide_image(1, title or "Slide Deck")
-        )
-
+    image_bytes_list = await _render_slides_to_images(slides, title)
     slide_titles = [s.get("title", "Slide") for s in slides]
     pdf_bytes = _images_to_pdf(image_bytes_list, slide_titles=slide_titles)
-
-    unique_id = uuid.uuid4().hex[:12]
-    pdf_filename = f"slides/deck_{unique_id}.pdf"
-    object_key = upload_file_to_obs(
-        file_content=pdf_bytes,
-        filename=pdf_filename,
-        content_type="application/pdf",
-    )
+    object_key = _upload_slide_deck_pdf(pdf_bytes)
 
     slide_deck = SlideDeck(
         notebook_id=notebook_id,

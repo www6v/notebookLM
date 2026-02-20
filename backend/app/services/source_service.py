@@ -1,10 +1,16 @@
 """Service for processing source documents: parsing, chunking, embedding."""
 
+import logging
+
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings import embed_chunks
+from app.models.notebook import Notebook
 from app.models.source import Source, SourceChunk
+
+logger = logging.getLogger(__name__)
 
 
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list[str]:
@@ -74,3 +80,87 @@ async def process_source(db: AsyncSession, source_id: str):
         source.status = "error"
         await db.flush()
         raise
+
+
+def extract_text(file_bytes: bytes, file_type: str) -> str:
+    """Extract text content from file bytes based on file type.
+
+    Args:
+        file_bytes: Raw file content.
+        file_type: Source type (txt, markdown, pdf, docx, image).
+
+    Returns:
+        Extracted text content. For images, returns a placeholder.
+    """
+    if file_type == "image":
+        return "[Image]"
+
+    if file_type in ("txt", "markdown"):
+        return file_bytes.decode("utf-8", errors="replace")
+
+    if file_type == "pdf":
+        try:
+            from io import BytesIO
+
+            from pypdf import PdfReader
+
+            reader = PdfReader(BytesIO(file_bytes))
+            pages = []
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    pages.append(text)
+            return "\n\n".join(pages)
+        except Exception as exc:
+            logger.warning("PDF text extraction failed: %s", exc)
+            return "[Unable to extract PDF content]"
+
+    if file_type == "docx":
+        try:
+            from io import BytesIO
+
+            from docx import Document
+
+            doc = Document(BytesIO(file_bytes))
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            return "\n\n".join(paragraphs)
+        except Exception as exc:
+            logger.warning("DOCX text extraction failed: %s", exc)
+            return "[Unable to extract DOCX content]"
+
+    # Fallback: try decoding as text
+    return file_bytes.decode("utf-8", errors="replace")
+
+
+async def verify_notebook_access(
+    db: AsyncSession, notebook_id: str, user_id: str
+):
+    """Verify the user has access to the notebook."""
+    result = await db.execute(
+        select(Notebook).where(
+            Notebook.id == notebook_id, Notebook.user_id == user_id
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notebook not found",
+        )
+
+
+async def get_source(
+    db: AsyncSession, source_id: str, user_id: str
+) -> Source:
+    """Get a source and verify user access through its notebook."""
+    result = await db.execute(
+        select(Source)
+        .join(Notebook, Source.notebook_id == Notebook.id)
+        .where(Source.id == source_id, Notebook.user_id == user_id)
+    )
+    source = result.scalar_one_or_none()
+    if source is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source not found",
+        )
+    return source

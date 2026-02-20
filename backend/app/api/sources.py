@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.database import get_db
-from app.models.notebook import Notebook
 from app.models.source import Source, SourceChunk
 from app.models.user import User
 from app.schemas.source import (
@@ -24,6 +23,11 @@ from app.services.obs_storage import (
     generate_presigned_url,
     get_file_url,
     upload_file_to_obs,
+)
+from app.services.source_service import (
+    extract_text,
+    get_source,
+    verify_notebook_access,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,7 +78,7 @@ async def add_source(
     user: User = Depends(get_current_user),
 ):
     """Add a source to a notebook (via URL or metadata)."""
-    await _verify_notebook_access(db, notebook_id, user.id)
+    await verify_notebook_access(db, notebook_id, user.id)
     source = Source(
         notebook_id=notebook_id,
         title=body.title or body.url or "Untitled Source",
@@ -106,7 +110,7 @@ async def upload_source(
     bmp, gif, png, webp, jpeg, jpg (images).
     File content is stored in OBS; metadata is stored in the database.
     """
-    await _verify_notebook_access(db, notebook_id, user.id)
+    await verify_notebook_access(db, notebook_id, user.id)
 
     filename = file.filename or "unknown"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -172,7 +176,7 @@ async def list_sources(
     user: User = Depends(get_current_user),
 ):
     """List all sources in a notebook."""
-    await _verify_notebook_access(db, notebook_id, user.id)
+    await verify_notebook_access(db, notebook_id, user.id)
     result = await db.execute(
         select(Source)
         .where(Source.notebook_id == notebook_id)
@@ -189,7 +193,7 @@ async def update_source(
     user: User = Depends(get_current_user),
 ):
     """Update a source (toggle active, rename)."""
-    source = await _get_source(db, source_id, user.id)
+    source = await get_source(db, source_id, user.id)
     if body.title is not None:
         source.title = body.title
     if body.is_active is not None:
@@ -206,7 +210,7 @@ async def delete_source(
     user: User = Depends(get_current_user),
 ):
     """Delete a source and its file from OBS (if applicable)."""
-    source = await _get_source(db, source_id, user.id)
+    source = await get_source(db, source_id, user.id)
 
     # Delete file from OBS if it was uploaded there
     if source.file_path:
@@ -237,7 +241,7 @@ async def get_source_content(
     otherwise the file is downloaded from OBS and text is extracted
     (txt/markdown, PDF, DOCX).
     """
-    source = await _get_source(db, source_id, user.id)
+    source = await get_source(db, source_id, user.id)
     chunk_count_result = await db.execute(
         select(func.count(SourceChunk.id)).where(
             SourceChunk.source_id == source.id
@@ -258,7 +262,7 @@ async def get_source_content(
         # For non-image sources, download from OBS and extract text if needed
         try:
             file_bytes = download_file_from_obs(source.file_path)
-            raw_content = _extract_text(file_bytes, source.type)
+            raw_content = extract_text(file_bytes, source.type)
         except RuntimeError:
             logger.warning(
                 "Failed to download source %s from OBS", source.id
@@ -285,7 +289,7 @@ async def get_source_file(
         source_id,
         user.id,
     )
-    source = await _get_source(db, source_id, user.id)
+    source = await get_source(db, source_id, user.id)
     if source.type != "image" or not source.file_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -310,7 +314,7 @@ async def get_source_file_stream(
     user: User = Depends(get_current_user),
 ):
     """Stream image bytes from OBS. Used when presigned URL fails in browser (e.g. CORS)."""
-    source = await _get_source(db, source_id, user.id)
+    source = await get_source(db, source_id, user.id)
     if source.type != "image" or not source.file_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -331,85 +335,3 @@ async def get_source_file_stream(
     )
     media_type = IMAGE_MEDIA_TYPES.get(ext, "application/octet-stream")
     return Response(content=file_bytes, media_type=media_type)
-
-
-def _extract_text(file_bytes: bytes, file_type: str) -> str:
-    """Extract text content from file bytes based on file type.
-
-    Args:
-        file_bytes: Raw file content.
-        file_type: Source type (txt, markdown, pdf, docx, image).
-
-    Returns:
-        Extracted text content. For images, returns a placeholder.
-    """
-    if file_type == "image":
-        return "[Image]"
-
-    if file_type in ("txt", "markdown"):
-        return file_bytes.decode("utf-8", errors="replace")
-
-    if file_type == "pdf":
-        try:
-            from pypdf import PdfReader
-            from io import BytesIO
-
-            reader = PdfReader(BytesIO(file_bytes))
-            pages = []
-            for page in reader.pages:
-                text = page.extract_text()
-                if text:
-                    pages.append(text)
-            return "\n\n".join(pages)
-        except Exception as exc:
-            logger.warning("PDF text extraction failed: %s", exc)
-            return "[Unable to extract PDF content]"
-
-    if file_type == "docx":
-        try:
-            from docx import Document
-            from io import BytesIO
-
-            doc = Document(BytesIO(file_bytes))
-            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            return "\n\n".join(paragraphs)
-        except Exception as exc:
-            logger.warning("DOCX text extraction failed: %s", exc)
-            return "[Unable to extract DOCX content]"
-
-    # Fallback: try decoding as text
-    return file_bytes.decode("utf-8", errors="replace")
-
-
-async def _verify_notebook_access(
-    db: AsyncSession, notebook_id: str, user_id: str
-):
-    """Verify the user has access to the notebook."""
-    result = await db.execute(
-        select(Notebook).where(
-            Notebook.id == notebook_id, Notebook.user_id == user_id
-        )
-    )
-    if result.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notebook not found",
-        )
-
-
-async def _get_source(
-    db: AsyncSession, source_id: str, user_id: str
-) -> Source:
-    """Get a source and verify user access through its notebook."""
-    result = await db.execute(
-        select(Source)
-        .join(Notebook, Source.notebook_id == Notebook.id)
-        .where(Source.id == source_id, Notebook.user_id == user_id)
-    )
-    source = result.scalar_one_or_none()
-    if source is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Source not found",
-        )
-    return source

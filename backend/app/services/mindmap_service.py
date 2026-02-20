@@ -17,7 +17,134 @@ from app.ai.llm_router import chat_completion, vision_chat_completion_with_url
 from app.models.source import Source
 from app.models.studio import MindMap
 from app.services.obs_storage import download_file_from_obs, generate_presigned_url
-from app.api.sources import _extract_text
+# from app.api.sources import _extract_text
+from app.services.source_service import extract_text
+
+# Max characters per source to include in combined content for LLM.
+_MAX_CONTENT_PER_SOURCE = 3000
+
+
+async def _fetch_sources_for_mindmap(
+    db: AsyncSession,
+    notebook_id: str,
+    source_ids: list[str] | None = None,
+) -> list[Source]:
+    """Load active sources for a notebook, optionally filtered by source_ids."""
+    stmt = select(Source).where(
+        Source.notebook_id == notebook_id,
+        Source.is_active.is_(True),
+    )
+    if source_ids:
+        stmt = stmt.where(Source.id.in_(source_ids))
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def _get_single_source_content(source: Source) -> str | None:
+    """Get text content for one source from raw_content, OBS file, or vision API.
+
+    Returns content string (suitable for mind map), or None if unavailable.
+    """
+    raw_content = source.raw_content
+    if raw_content is not None:
+        return raw_content[:_MAX_CONTENT_PER_SOURCE] if raw_content else None
+
+    if not source.file_path:
+        return None
+
+    try:
+        if source.type == "image":
+            prompt = (
+                "请详细描述这张图片的内容，包括主要物体、文字、"
+                "布局和关键信息，输出纯文本便于后续生成思维导图。"
+            )
+            try:
+                image_url = generate_presigned_url(
+                    source.file_path, expiration=3600
+                )
+                logger.info("image_url: %s", image_url)
+                raw_content = await vision_chat_completion_with_url(
+                    image_url,
+                    prompt,
+                    temperature=0.3,
+                    max_tokens=2048,
+                )
+                if not raw_content:
+                    raw_content = "[Image description unavailable]"
+            except Exception as vision_err:
+                logger.warning(
+                    "Vision API failed for image '%s': %s",
+                    source.title,
+                    vision_err,
+                )
+                raw_content = "[Image description unavailable]"
+            return raw_content[:_MAX_CONTENT_PER_SOURCE]
+
+        file_bytes = download_file_from_obs(source.file_path)
+        raw_content = extract_text(file_bytes, source.type)
+        return raw_content[:_MAX_CONTENT_PER_SOURCE] if raw_content else None
+    except RuntimeError as e:
+        logger.error(
+            "Failed to download content from OBS for source '%s': %s",
+            source.title,
+            str(e),
+        )
+        return None
+    except Exception as e:
+        logger.error(
+            "Unexpected error getting content for source '%s': %s",
+            source.title,
+            str(e),
+        )
+        fallback = (source.raw_content or "")[:_MAX_CONTENT_PER_SOURCE]
+        if fallback:
+            logger.info("Using fallback content for source '%s'", source.title)
+        return fallback if fallback else None
+
+
+async def _build_combined_content_from_sources(
+    sources: list[Source],
+) -> str:
+    """Build a single combined text from multiple sources for mind map LLM."""
+    parts = []
+    for source in sources:
+        content = await _get_single_source_content(source)
+        if not content:
+            logger.warning(
+                "No content available for source '%s', skipping",
+                source.title,
+            )
+            continue
+        logger.info(
+            "Source '%s' content length: %s characters",
+            source.title,
+            len(content),
+        )
+        logger.info(
+            "Source '%s' content preview: %s",
+            source.title,
+            content[:500],
+        )
+        parts.append(f"[{source.title}]: {content}")
+    return "\n\n".join(parts)
+
+
+async def _create_and_persist_mindmap(
+    db: AsyncSession,
+    notebook_id: str,
+    title: str,
+    graph_data: dict,
+) -> MindMap:
+    """Create a MindMap entity, persist it, and return the refreshed instance."""
+    mind_map = MindMap(
+        notebook_id=notebook_id,
+        title=title,
+        graph_data=graph_data,
+    )
+    db.add(mind_map)
+    await db.flush()
+    await db.refresh(mind_map)
+    return mind_map
 
 
 async def _build_graph_data_from_content(
@@ -82,94 +209,23 @@ async def generate_mindmap_from_sources(
 ) -> MindMap:
     """Generate a mind map by asking the LLM to extract key concepts from selected sources.
 
-    Note: The original documents are stored in OBS (Object Storage Service), 
+    Note: The original documents are stored in OBS (Object Storage Service),
     while the mind map itself is stored in the database as structured graph data.
     """
-
-    logger.info(f"Starting mind map generation for notebook_id: {notebook_id}, title: {title}, source_ids: {source_ids}")
-
-    # Gather source content - these sources correspond to documents originally stored in OBS
-    stmt = select(Source).where(
-        Source.notebook_id == notebook_id,
-        Source.is_active.is_(True),
+    logger.info(
+        "Starting mind map generation for notebook_id: %s, title: %s, source_ids: %s",
+        notebook_id,
+        title,
+        source_ids,
     )
-    if source_ids:
-        stmt = stmt.where(Source.id.in_(source_ids))
 
-    result = await db.execute(stmt)
-    sources = result.scalars().all()
+    sources = await _fetch_sources_for_mindmap(db, notebook_id, source_ids)
+    logger.info(
+        "Found %s sources from OBS for mind map generation",
+        len(sources),
+    )
 
-    # logger.info(f"result:{result}")
-    # logger.info(f"sources:{sources}")
-
-    logger.info(f"Found {len(sources)} sources from OBS for mind map generation")
-
-    # Get content from each source using the same logic as get_source_content
-    combined_content_parts = []
-    for source in sources:
-        try:
-            raw_content = source.raw_content
-
-            if raw_content is None and source.file_path:
-                try:
-                    if source.type == "image":
-                        prompt = (
-                            "请详细描述这张图片的内容，包括主要物体、文字、"
-                            "布局和关键信息，输出纯文本便于后续生成思维导图。"
-                        )
-                        try:
-                            image_url = generate_presigned_url(
-                                source.file_path, expiration=3600
-                            )
-                            logger.info("image_url: %s", image_url)
-                            raw_content = await vision_chat_completion_with_url(
-                                image_url,
-                                prompt,
-                                temperature=0.3,
-                                max_tokens=2048,
-                            )
-                            if not raw_content:
-                                raw_content = "[Image description unavailable]"
-                        except Exception as vision_err:
-                            logger.warning(
-                                "Vision API failed for image '%s': %s",
-                                source.title,
-                                vision_err,
-                            )
-                            raw_content = "[Image description unavailable]"
-                    else:
-                        file_bytes = download_file_from_obs(source.file_path)
-                        raw_content = _extract_text(file_bytes, source.type)
-                except RuntimeError as e:
-                    logger.error(
-                        "Failed to download content from OBS for source "
-                        "'%s': %s",
-                        source.title,
-                        str(e),
-                    )
-                    continue
-
-            if raw_content:
-                content_length = len(raw_content)
-                logger.info(f"Source '{source.title}' content length: {content_length} characters")
-                # Log first 500 characters of each source for debugging (truncated if necessary)
-                content_preview = raw_content[:500]
-                logger.info(f"Source '{source.title}' content preview: {content_preview}")
-
-                # Add to combined content, limiting to first 3000 chars per source as before
-                combined_content_parts.append(f"[{source.title}]: {raw_content[:3000]}")
-            else:
-                logger.warning(f"No content available for source '{source.title}', skipping")
-        except Exception as e:
-            logger.error(f"Unexpected error getting content for source '{source.title}': {str(e)}")
-            # Fallback to raw_content if available, otherwise skip
-            fallback_content = (source.raw_content or '')[:3000]
-            if fallback_content:
-                logger.info(f"Using fallback content for source '{source.title}'")
-                combined_content_parts.append(f"[{source.title}]: {fallback_content}")
-            continue
-
-    combined_content = "\n\n".join(combined_content_parts)
+    combined_content = await _build_combined_content_from_sources(sources)
     graph_data = await _build_graph_data_from_content(combined_content, title)
 
     logger.info(
@@ -178,15 +234,11 @@ async def generate_mindmap_from_sources(
         len(graph_data["edges"]),
     )
 
-    mind_map = MindMap(
-        notebook_id=notebook_id,
-        title=title,
-        graph_data=graph_data,
+    mind_map = await _create_and_persist_mindmap(
+        db, notebook_id, title, graph_data
     )
-    db.add(mind_map)
-    await db.flush()
-    await db.refresh(mind_map)
-
-    logger.info(f"Mind map created successfully with ID: {mind_map.id} and stored in database")
-
+    logger.info(
+        "Mind map created successfully with ID: %s and stored in database",
+        mind_map.id,
+    )
     return mind_map
