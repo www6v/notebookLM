@@ -4,7 +4,6 @@ import { studioApi } from '@/api/studio'
 import type { MindMapData, SlideDeckData, InfographicData } from '@/api/studio'
 
 export const useStudioStore = defineStore('studio', () => {
-  const activeTab = ref<'notes' | 'mindmap' | 'slides' | 'infographic' | 'reports'>('notes')
   const mindMaps = ref<MindMapData[]>([])
   const slideDecks = ref<SlideDeckData[]>([])
   const infographics = ref<InfographicData[]>([])
@@ -64,7 +63,6 @@ export const useStudioStore = defineStore('studio', () => {
   }
 
   return {
-    activeTab,
     mindMaps,
     slideDecks,
     infographics,

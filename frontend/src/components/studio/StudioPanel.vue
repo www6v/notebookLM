@@ -1,177 +1,120 @@
 <template>
   <div class="studio-panel">
-    <el-tabs v-model="studioStore.activeTab" class="studio-tabs">
-      <!-- Notes Tab -->
-      <el-tab-pane label="Notes" name="notes">
-        <div class="tab-toolbar">
-          <el-button size="small" type="primary" @click="createNote">
-            <el-icon class="el-icon--left">
-              <Plus />
-            </el-icon>
-            New Note
-          </el-button>
+    <!-- Upper: 功能模块 -->
+    <section class="studio-modules">
+      <h4 class="section-title">功能模块</h4>
+      <div class="modules-grid">
+        <div
+          v-for="mod in moduleList"
+          :key="mod.id"
+          class="module-card"
+          @click="onModuleClick(mod)"
+        >
+          <el-icon class="module-icon" :size="20">
+            <component :is="mod.icon" />
+          </el-icon>
+          <span class="module-label">{{ mod.label }}</span>
+          <span v-if="mod.beta" class="module-beta">Beta</span>
         </div>
-        <div v-if="notes.length === 0" class="tab-empty">
-          <p>No notes yet. Create one or save from chat.</p>
-        </div>
-        <div v-else class="notes-list">
-          <div
-            v-for="note of notes"
-            :key="note.id"
-            class="note-card"
-            @click="editingNote = note"
-          >
-            <div class="note-header">
-              <el-icon
-                v-if="note.is_pinned"
-                size="14"
-                color="#f4b400"
-                class="pin-icon"
-              >
-                <Star />
-              </el-icon>
-              <span class="note-title">{{ note.title }}</span>
-            </div>
-            <p class="note-preview">{{ note.content.substring(0, 100) }}</p>
-            <div class="note-meta">
-              {{ formatDate(note.updated_at) }}
-            </div>
-          </div>
-        </div>
-      </el-tab-pane>
+      </div>
+    </section>
 
-      <!-- Mind Map Tab -->
-      <el-tab-pane label="Mind Map" name="mindmap">
-        <div class="tab-toolbar">
-          <el-button
-            size="small"
-            type="primary"
-            :loading="studioStore.loading"
-            :disabled="sourceStore.activeSourceIds.length === 0 || studioStore.loading"
-            @click="handleGenerateMindMap"
-          >
-            Generate Mind Map
-          </el-button>
-          <span v-if="sourceStore.activeSourceIds.length === 0" class="toolbar-hint">
-            Please check sources first
-          </span>
-          <span v-else class="toolbar-hint">
-            {{ sourceStore.activeSourceIds.length }} source(s) selected
-          </span>
-        </div>
-        <div v-if="studioStore.mindMaps.length === 0" class="tab-empty">
-          <p>
-            Generate a mind map from your sources to visualize key concepts and relationships.
-          </p>
-        </div>
-        <div v-else class="mindmap-list">
-          <div
-            v-for="mm of studioStore.mindMaps"
-            :key="mm.id"
-            class="mindmap-card"
-            @dblclick="openMindMapDialog(mm)"
-          >
-            <el-icon size="24" color="#4285f4">
-              <Share />
-            </el-icon>
-            <div class="mindmap-card-info">
-              <span class="mindmap-card-title">{{ mm.title }}</span>
-              <span class="mindmap-card-meta">{{ formatDate(mm.created_at) }}</span>
-            </div>
-            <el-button
-              text
-              size="small"
-              class="mindmap-delete"
-              @click.stop="handleDeleteMindMap(mm.id)"
-            >
-              <el-icon size="14">
-                <Delete />
+    <!-- Lower: 输出的内容 -->
+    <section class="studio-output">
+      <h4 class="section-title">输出的内容</h4>
+      <div v-if="studioStore.loading" class="output-loading">
+        <el-icon class="is-loading" :size="16">
+          <Loading />
+        </el-icon>
+        <span>正在生成笔记...</span>
+      </div>
+      <div v-if="outputList.length === 0 && !studioStore.loading" class="output-empty">
+        <p>暂无内容。使用上方功能模块生成笔记、思维导图或演示文稿。</p>
+      </div>
+      <div v-else class="output-list">
+        <div
+          v-for="item in outputList"
+          :key="item.id"
+          class="output-item"
+          @click="onOutputItemClick(item)"
+          @dblclick="onOutputItemDblClick(item)"
+        >
+          <el-icon class="output-item-icon" :size="20">
+            <component :is="item.icon" />
+          </el-icon>
+          <div class="output-item-body">
+            <span class="output-item-title">{{ item.title }}</span>
+            <span class="output-item-meta">{{ item.meta }}</span>
+          </div>
+          <el-dropdown trigger="click" @command="(cmd) => handleOutputCommand(cmd, item)">
+            <el-button text size="small" class="output-item-more">
+              <el-icon :size="14">
+                <MoreFilled />
               </el-icon>
             </el-button>
-          </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-if="item.type === 'note'"
+                  command="edit"
+                >
+                  编辑
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="item.type === 'mindmap'"
+                  command="open"
+                >
+                  打开
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="item.type === 'slide'"
+                  command="open"
+                >
+                  打开 PDF
+                </el-dropdown-item>
+                <el-dropdown-item command="delete">
+                  删除
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
-      </el-tab-pane>
+      </div>
+      <div class="output-add">
+        <el-button size="small" type="primary" class="add-note-btn" @click="createNote">
+          <el-icon class="el-icon--left">
+            <Plus />
+          </el-icon>
+          添加笔记
+        </el-button>
+      </div>
+    </section>
 
-      <!-- Slides Tab -->
-      <el-tab-pane label="Slides" name="slides">
-        <div class="tab-toolbar">
-          <el-button
-            size="small"
-            type="primary"
-            :loading="studioStore.loading"
-            @click="generateSlides"
-          >
-            Generate Slides
-          </el-button>
-        </div>
-        <div v-if="studioStore.slideDecks.length === 0" class="tab-empty">
-          <p>Generate a slide deck from your sources. Choose a theme and let AI create presentation slides.</p>
-        </div>
-        <div v-else class="slides-list">
-          <div
-            v-for="deck of studioStore.slideDecks"
-            :key="deck.id"
-            class="slide-card"
-            :title="deck.file_path ? 'Double-click to open PDF' : ''"
-            @dblclick="openSlidePdf(deck)"
-          >
-            <el-icon size="24" color="#4285f4">
-              <Monitor />
-            </el-icon>
-            <div class="slide-info">
-              <span class="slide-title">{{ deck.title }}</span>
-              <span class="slide-meta">Theme: {{ deck.theme }} | {{ deck.status }}</span>
-            </div>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <!-- Infographic Tab -->
-      <el-tab-pane label="Infographic" name="infographic">
-        <div class="tab-toolbar">
-          <el-select v-model="infographicTemplate" size="small" style="width: 140px; margin-right: 8px">
+    <!-- Infographic template dialog (when clicking Infographic card) -->
+    <el-dialog
+      v-model="showInfographicDialog"
+      title="生成信息图"
+      width="360px"
+      @close="showInfographicDialog = false"
+    >
+      <el-form label-position="top">
+        <el-form-item label="模板类型">
+          <el-select v-model="infographicTemplate" size="default" style="width: 100%">
             <el-option label="Timeline" value="timeline" />
             <el-option label="Comparison" value="comparison" />
             <el-option label="Process" value="process" />
             <el-option label="Statistics" value="statistics" />
             <el-option label="Hierarchy" value="hierarchy" />
           </el-select>
-          <el-button
-            size="small"
-            type="primary"
-            :loading="studioStore.loading"
-            @click="generateInfographic"
-          >
-            Generate
-          </el-button>
-        </div>
-        <div v-if="studioStore.infographics.length === 0" class="tab-empty">
-          <p>Generate infographics from your sources. Choose a template type to visualize key data.</p>
-        </div>
-        <div v-else class="infographic-list">
-          <div
-            v-for="info of studioStore.infographics"
-            :key="info.id"
-            class="infographic-card"
-          >
-            <el-icon size="24" color="#34a853">
-              <PictureFilled />
-            </el-icon>
-            <div class="infographic-info">
-              <span class="infographic-title">{{ info.title }}</span>
-              <span class="infographic-meta">{{ info.template_type }} | {{ info.status }}</span>
-            </div>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <!-- Reports Tab -->
-      <el-tab-pane label="Reports" name="reports">
-        <div class="tab-empty">
-          <p>Reports generation (FAQ, Study Guide, Briefing) coming in a future update.</p>
-        </div>
-      </el-tab-pane>
-    </el-tabs>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showInfographicDialog = false">取消</el-button>
+        <el-button type="primary" :loading="studioStore.loading" @click="confirmGenerateInfographic">
+          生成
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- Mind Map Preview Dialog -->
     <el-dialog
@@ -192,14 +135,14 @@
     <!-- Note Edit Dialog -->
     <el-dialog
       v-model="showNoteDialog"
-      :title="editingNote ? 'Edit Note' : 'New Note'"
+      :title="editingNote ? '编辑笔记' : '新建笔记'"
       width="560px"
     >
       <el-form label-position="top">
-        <el-form-item label="Title">
+        <el-form-item label="标题">
           <el-input v-model="noteForm.title" placeholder="Note title" />
         </el-form-item>
-        <el-form-item label="Content">
+        <el-form-item label="内容">
           <el-input
             v-model="noteForm.content"
             type="textarea"
@@ -208,31 +151,45 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-checkbox v-model="noteForm.is_pinned">Pin this note</el-checkbox>
+          <el-checkbox v-model="noteForm.is_pinned">置顶</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button v-if="editingNote" type="danger" text @click="deleteNote">Delete</el-button>
-        <el-button @click="showNoteDialog = false">Cancel</el-button>
-        <el-button type="primary" @click="saveNote">Save</el-button>
+        <el-button v-if="editingNote" type="danger" text @click="deleteNote">删除</el-button>
+        <el-button @click="showNoteDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveNote">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Plus, Star, Share, Monitor, PictureFilled, Delete,
+  Plus,
+  Share,
+  Monitor,
+  PictureFilled,
+  Loading,
+  MoreFilled,
+  Headset,
+  VideoCamera,
+  Document,
+  List,
+  Grid,
 } from '@element-plus/icons-vue'
 import { useStudioStore } from '@/stores/useStudioStore'
 import { useSourceStore } from '@/stores/useSourceStore'
 import { noteApi } from '@/api/note'
 import type { Note } from '@/api/note'
 import { studioApi } from '@/api/studio'
-import type { MindMapData, SlideDeckData } from '@/api/studio'
+import type { MindMapData, SlideDeckData, InfographicData } from '@/api/studio'
 import MindMapViewer from './MindMapViewer.vue'
+
+defineOptions({
+  name: 'StudioPanel',
+})
 
 const props = defineProps<{ notebookId: string }>()
 
@@ -243,8 +200,81 @@ const editingNote = ref<Note | null>(null)
 const showNoteDialog = ref(false)
 const showMindMapDialog = ref(false)
 const previewMindMap = ref<MindMapData | null>(null)
+const showInfographicDialog = ref(false)
 const infographicTemplate = ref('timeline')
 const noteForm = reactive({ title: '', content: '', is_pinned: false })
+
+type OutputItem = {
+  id: string
+  type: 'note' | 'mindmap' | 'slide' | 'infographic'
+  title: string
+  meta: string
+  date: string
+  icon: unknown
+  raw: Note | MindMapData | SlideDeckData | InfographicData
+}
+
+const moduleList = [
+  { id: 'audio', label: '音频概览', icon: Headset, beta: false, action: 'placeholder' as const },
+  { id: 'video', label: '视频概览', icon: VideoCamera, beta: false, action: 'placeholder' as const },
+  { id: 'mindmap', label: '思维导图', icon: Share, beta: false, action: 'mindmap' as const },
+  { id: 'report', label: '报告', icon: Document, beta: false, action: 'placeholder' as const },
+  { id: 'flashcard', label: '闪卡', icon: List, beta: false, action: 'placeholder' as const },
+  { id: 'quiz', label: '测验', icon: List, beta: false, action: 'placeholder' as const },
+  { id: 'infographic', label: '信息图', icon: PictureFilled, beta: true, action: 'infographic' as const },
+  { id: 'slides', label: '演示文稿', icon: Monitor, beta: true, action: 'slides' as const },
+  { id: 'table', label: '数据表格', icon: Grid, beta: false, action: 'placeholder' as const },
+]
+
+const outputList = computed<OutputItem[]>(() => {
+  const items: OutputItem[] = []
+  notes.value.forEach((n) => {
+    items.push({
+      id: `note-${n.id}`,
+      type: 'note',
+      title: n.title,
+      meta: formatDate(n.updated_at),
+      date: n.updated_at,
+      icon: Document,
+      raw: n,
+    })
+  })
+  studioStore.mindMaps.forEach((m) => {
+    items.push({
+      id: `mindmap-${m.id}`,
+      type: 'mindmap',
+      title: m.title,
+      meta: formatDate(m.created_at),
+      date: m.created_at,
+      icon: Share,
+      raw: m,
+    })
+  })
+  studioStore.slideDecks.forEach((d) => {
+    items.push({
+      id: `slide-${d.id}`,
+      type: 'slide',
+      title: d.title,
+      meta: `${d.theme} · ${d.status}`,
+      date: d.created_at,
+      icon: Monitor,
+      raw: d,
+    })
+  })
+  studioStore.infographics.forEach((i) => {
+    items.push({
+      id: `infographic-${i.id}`,
+      type: 'infographic',
+      title: i.title,
+      meta: `${i.template_type} · ${i.status}`,
+      date: i.created_at,
+      icon: PictureFilled,
+      raw: i,
+    })
+  })
+  items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  return items
+})
 
 onMounted(async () => {
   await fetchNotes()
@@ -261,6 +291,81 @@ watch(editingNote, (note) => {
     showNoteDialog.value = true
   }
 })
+
+function onModuleClick(mod: (typeof moduleList)[0]) {
+  if (mod.action === 'placeholder') {
+    ElMessage.info('敬请期待')
+    return
+  }
+  if (mod.action === 'note') {
+    createNote()
+    return
+  }
+  if (mod.action === 'mindmap') {
+    handleGenerateMindMap()
+    return
+  }
+  if (mod.action === 'slides') {
+    generateSlides()
+    return
+  }
+  if (mod.action === 'infographic') {
+    showInfographicDialog.value = true
+    return
+  }
+}
+
+function onOutputItemClick(item: OutputItem) {
+  if (item.type === 'note') {
+    editingNote.value = item.raw as Note
+  }
+}
+
+function onOutputItemDblClick(item: OutputItem) {
+  if (item.type === 'mindmap') {
+    openMindMapDialog(item.raw as MindMapData)
+  }
+  if (item.type === 'slide') {
+    openSlidePdf(item.raw as SlideDeckData)
+  }
+}
+
+function handleOutputCommand(command: string, item: OutputItem) {
+  if (command === 'edit' && item.type === 'note') {
+    editingNote.value = item.raw as Note
+  }
+  if (command === 'open' && item.type === 'mindmap') {
+    openMindMapDialog(item.raw as MindMapData)
+  }
+  if (command === 'open' && item.type === 'slide') {
+    openSlidePdf(item.raw as SlideDeckData)
+  }
+  if (command === 'delete') {
+    handleDeleteOutputItem(item)
+  }
+}
+
+async function handleDeleteOutputItem(item: OutputItem) {
+  if (item.type === 'note') {
+    try {
+      await ElMessageBox.confirm('删除这条笔记？', '删除笔记', {
+        confirmButtonText: '删除',
+        type: 'warning',
+      })
+      await noteApi.remove((item.raw as Note).id)
+      await fetchNotes()
+      ElMessage.success('已删除')
+    } catch {
+      // cancelled
+    }
+    return
+  }
+  if (item.type === 'mindmap') {
+    await handleDeleteMindMap(item.raw.id)
+    return
+  }
+  ElMessage.info('该类型暂不支持在此删除')
+}
 
 const fetchNotes = async () => {
   notes.value = await noteApi.list(props.notebookId)
@@ -284,9 +389,9 @@ const saveNote = async () => {
     showNoteDialog.value = false
     editingNote.value = null
     await fetchNotes()
-    ElMessage.success('Note saved')
+    ElMessage.success('已保存')
   } catch {
-    ElMessage.error('Failed to save note')
+    ElMessage.error('保存失败')
   }
 }
 
@@ -297,9 +402,9 @@ const deleteNote = async () => {
     showNoteDialog.value = false
     editingNote.value = null
     await fetchNotes()
-    ElMessage.success('Note deleted')
+    ElMessage.success('已删除')
   } catch {
-    ElMessage.error('Failed to delete note')
+    ElMessage.error('删除失败')
   }
 }
 
@@ -307,14 +412,14 @@ const handleGenerateMindMap = async () => {
   if (studioStore.loading) return
   const ids = sourceStore.activeSourceIds
   if (ids.length === 0) {
-    ElMessage.warning('Please check at least one source')
+    ElMessage.warning('请先勾选至少一个来源')
     return
   }
   try {
     await studioStore.generateMindMap(props.notebookId, ids)
-    ElMessage.success('Mind map generated')
+    ElMessage.success('思维导图已生成')
   } catch {
-    ElMessage.error('Failed to generate mind map')
+    ElMessage.error('生成失败')
   }
 }
 
@@ -325,12 +430,12 @@ const openMindMapDialog = (mm: MindMapData) => {
 
 const handleDeleteMindMap = async (mindmapId: string) => {
   try {
-    await ElMessageBox.confirm('Delete this mind map?', 'Delete Mind Map', {
-      confirmButtonText: 'Delete',
+    await ElMessageBox.confirm('删除此思维导图？', '删除思维导图', {
+      confirmButtonText: '删除',
       type: 'warning',
     })
     await studioStore.removeMindMap(mindmapId)
-    ElMessage.success('Mind map deleted')
+    ElMessage.success('已删除')
   } catch {
     // cancelled
   }
@@ -345,26 +450,32 @@ const generateSlides = () => {
 
 const openSlidePdf = async (deck: SlideDeckData) => {
   if (!deck.file_path) {
-    ElMessage.warning('PDF is not ready yet for this slide deck')
+    ElMessage.warning('该演示文稿的 PDF 尚未就绪')
     return
   }
   try {
     const { url } = await studioApi.getSlidePdfUrl(deck.id)
     window.open(url, '_blank', 'noopener,noreferrer')
   } catch {
-    ElMessage.error('Failed to open PDF')
+    ElMessage.error('打开 PDF 失败')
   }
 }
 
-const generateInfographic = () => {
-  studioStore.generateInfographic(props.notebookId, {
-    title: 'Generated Infographic',
-    template_type: infographicTemplate.value,
-  })
+const confirmGenerateInfographic = async () => {
+  try {
+    await studioStore.generateInfographic(props.notebookId, {
+      title: 'Generated Infographic',
+      template_type: infographicTemplate.value,
+    })
+    showInfographicDialog.value = false
+    ElMessage.success('信息图已生成')
+  } catch {
+    ElMessage.error('生成失败')
+  }
 }
 
 const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr).toLocaleDateString('zh-CN', {
     month: 'short',
     day: 'numeric',
   })
@@ -376,171 +487,157 @@ const formatDate = (dateStr: string) => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-.studio-tabs {
-  height: 100%;
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.studio-tabs :deep(.el-tabs__header) {
-  margin: 0;
-  padding: 0 8px;
+/* Upper: 功能模块 */
+.studio-modules {
+  flex-shrink: 0;
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.studio-tabs :deep(.el-tabs__content) {
-  padding: 0;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.studio-tabs :deep(.el-tab-pane) {
-  padding: 8px 12px;
-}
-
-.tab-toolbar {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.toolbar-hint {
-  font-size: 12px;
+.module-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  position: relative;
+}
+
+.module-card:hover {
+  border-color: var(--primary-color);
+}
+
+.module-icon {
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.module-label {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-beta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Lower: 输出的内容 */
+.studio-output {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.output-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 
-.tab-empty {
+.output-empty {
+  flex: 1;
   text-align: center;
-  padding: 32px 16px;
+  padding: 24px 12px;
   color: var(--text-secondary);
   font-size: 13px;
 }
 
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.note-card {
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-
-.note-card:hover {
-  border-color: var(--primary-color);
-}
-
-.note-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.note-title {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.note-preview {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin-bottom: 6px;
-}
-
-.note-meta {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.mindmap-list,
-.slides-list,
-.infographic-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mindmap-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-
-.mindmap-card:hover {
-  border-color: var(--primary-color);
-}
-
-.mindmap-card-info {
+.output-list {
   flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  gap: 6px;
 }
 
-.mindmap-card-title {
-  font-size: 14px;
+.output-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.output-item:hover {
+  border-color: var(--primary-color);
+}
+
+.output-item-icon {
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.output-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.output-item-title {
+  font-size: 13px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mindmap-card-meta {
-  font-size: 12px;
+.output-item-meta {
+  font-size: 11px;
   color: var(--text-secondary);
+  margin-top: 2px;
 }
 
-.mindmap-delete {
-  opacity: 0;
-  transition: opacity 0.15s;
+.output-item-more {
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
-.mindmap-card:hover .mindmap-delete {
-  opacity: 1;
+.output-add {
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 8px;
 }
 
-.slide-card,
-.infographic-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.slide-card:hover,
-.infographic-card:hover {
-  border-color: var(--primary-color);
-}
-
-.slide-info,
-.infographic-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.slide-title,
-.infographic-title {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.slide-meta,
-.infographic-meta {
-  font-size: 12px;
-  color: var(--text-secondary);
+.add-note-btn {
+  width: 100%;
 }
 </style>
