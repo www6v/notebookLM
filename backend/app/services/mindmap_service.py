@@ -10,100 +10,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_router import chat_completion
-from app.models.source import Source
 from app.models.studio import MindMap
-from app.commons.util import get_image_source_content
-from app.services.obs_storage import download_file_from_obs, generate_presigned_url
-# from app.api.sources import _extract_text
-from app.services.source_service import extract_text
-
-# Max characters per source to include in combined content for LLM.
-_MAX_CONTENT_PER_SOURCE = 3000
-
-
-async def _fetch_sources_for_mindmap(
-    db: AsyncSession,
-    notebook_id: str,
-    source_ids: list[str] | None = None,
-) -> list[Source]:
-    """Load active sources for a notebook, optionally filtered by source_ids."""
-    stmt = select(Source).where(
-        Source.notebook_id == notebook_id,
-        Source.is_active.is_(True),
-    )
-    if source_ids:
-        stmt = stmt.where(Source.id.in_(source_ids))
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def _get_single_source_content(source: Source) -> str | None:
-    """Get text content for one source from raw_content, OBS file, or vision API.
-
-    Returns content string (suitable for mind map), or None if unavailable.
-    """
-    raw_content = source.raw_content
-    if raw_content is not None:
-        return raw_content[:_MAX_CONTENT_PER_SOURCE] if raw_content else None
-
-    if not source.file_path:
-        return None
-
-    try:
-        if source.type == "image":
-            return await get_image_source_content(source, _MAX_CONTENT_PER_SOURCE)
-
-        file_bytes = download_file_from_obs(source.file_path)
-        raw_content = extract_text(file_bytes, source.type)
-        return raw_content[:_MAX_CONTENT_PER_SOURCE] if raw_content else None
-    except RuntimeError as e:
-        logger.error(
-            "Failed to download content from OBS for source '%s': %s",
-            source.title,
-            str(e),
-        )
-        return None
-    except Exception as e:
-        logger.error(
-            "Unexpected error getting content for source '%s': %s",
-            source.title,
-            str(e),
-        )
-        fallback = (source.raw_content or "")[:_MAX_CONTENT_PER_SOURCE]
-        if fallback:
-            logger.info("Using fallback content for source '%s'", source.title)
-        return fallback if fallback else None
-
-
-async def _build_combined_content_from_sources(
-    sources: list[Source],
-) -> str:
-    """Build a single combined text from multiple sources for mind map LLM."""
-    parts = []
-    for source in sources:
-        content = await _get_single_source_content(source)
-        if not content:
-            logger.warning(
-                "No content available for source '%s', skipping",
-                source.title,
-            )
-            continue
-        logger.info(
-            "Source '%s' content length: %s characters",
-            source.title,
-            len(content),
-        )
-        logger.info(
-            "Source '%s' content preview: %s",
-            source.title,
-            content[:500],
-        )
-        parts.append(f"[{source.title}]: {content}")
-    return "\n\n".join(parts)
+from app.services.source_service import (
+    build_combined_content_from_sources,
+    fetch_sources,
+)
 
 
 async def _create_and_persist_mindmap(
@@ -196,13 +110,13 @@ async def generate_mindmap_from_sources(
         source_ids,
     )
 
-    sources = await _fetch_sources_for_mindmap(db, notebook_id, source_ids)
+    sources = await fetch_sources(db, notebook_id, source_ids)
     logger.info(
         "Found %s sources from OBS for mind map generation",
         len(sources),
     )
 
-    combined_content = await _build_combined_content_from_sources(sources)
+    combined_content = await build_combined_content_from_sources(sources)
     graph_data = await _build_graph_data_from_content(combined_content, title)
 
     logger.info(
