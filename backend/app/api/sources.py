@@ -34,10 +34,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sources"])
 
-# Allowed file extensions for upload (documents + images)
+# Allowed file extensions for upload (documents + images + video)
 ALLOWED_EXTENSIONS = frozenset({
     "pdf", "docx", "doc", "txt", "md", "markdown",
     "bmp", "gif", "png", "webp", "jpeg", "jpg",
+    "avi", "mp4", "mpeg",
 })
 
 FILE_TYPE_MAP = {
@@ -53,6 +54,9 @@ FILE_TYPE_MAP = {
     "webp": "image",
     "jpeg": "image",
     "jpg": "image",
+    "avi": "video",
+    "mp4": "video",
+    "mpeg": "video",
 }
 
 # Content-Type for image stream (extension -> media type)
@@ -63,6 +67,13 @@ IMAGE_MEDIA_TYPES = {
     "webp": "image/webp",
     "jpeg": "image/jpeg",
     "jpg": "image/jpeg",
+}
+
+# Content-Type for video stream (extension -> media type)
+VIDEO_MEDIA_TYPES = {
+    "avi": "video/x-msvideo",
+    "mp4": "video/mp4",
+    "mpeg": "video/mpeg",
 }
 
 
@@ -107,7 +118,8 @@ async def upload_source(
     """Upload a file as a source.
 
     Supported types: pdf, docx, doc, txt, md, markdown (documents);
-    bmp, gif, png, webp, jpeg, jpg (images).
+    bmp, gif, png, webp, jpeg, jpg (images);
+    avi, mp4, mpeg (video).
     File content is stored in OBS; metadata is stored in the database.
     """
     await verify_notebook_access(db, notebook_id, user.id)
@@ -251,13 +263,13 @@ async def get_source_content(
     raw_content = source.raw_content
     file_url = None
 
-    if source.type == "image" and source.file_path:
-        # Same-origin URL so frontend can fetch with auth and display the image
+    if source.type in ("image", "video") and source.file_path:
+        # Same-origin URL so frontend can fetch with auth and display/play
         file_url = f"/api/sources/{source_id}/file"
     elif (
         raw_content is None
         and source.file_path
-        and source.type != "image"
+        and source.type not in ("image", "video")
     ):
         # For non-image sources, download from OBS and extract text if needed
         try:
@@ -290,10 +302,10 @@ async def get_source_file(
         user.id,
     )
     source = await get_source(db, source_id, user.id)
-    if source.type != "image" or not source.file_path:
+    if source.type not in ("image", "video") or not source.file_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Source is not an image or has no file",
+            detail="Source is not an image/video or has no file",
         )
     try:
         url = generate_presigned_url(source.file_path, expiration=3600)
@@ -313,25 +325,29 @@ async def get_source_file_stream(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Stream image bytes from OBS. Used when presigned URL fails in browser (e.g. CORS)."""
+    """Stream image/video bytes from OBS. Used when presigned URL fails in browser (e.g. CORS)."""
     source = await get_source(db, source_id, user.id)
-    if source.type != "image" or not source.file_path:
+    if source.type not in ("image", "video") or not source.file_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Source is not an image or has no file",
+            detail="Source is not an image/video or has no file",
         )
     try:
         file_bytes = download_file_from_obs(source.file_path)
     except RuntimeError as exc:
-        logger.warning("Failed to download image from OBS: %s", exc)
+        logger.warning("Failed to download file from OBS: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to load image from storage",
+            detail="Failed to load file from storage",
         ) from exc
     ext = (
         source.file_path.rsplit(".", 1)[-1].lower()
         if "." in source.file_path
         else ""
     )
-    media_type = IMAGE_MEDIA_TYPES.get(ext, "application/octet-stream")
+    media_type = (
+        VIDEO_MEDIA_TYPES.get(ext)
+        or IMAGE_MEDIA_TYPES.get(ext)
+        or "application/octet-stream"
+    )
     return Response(content=file_bytes, media_type=media_type)
