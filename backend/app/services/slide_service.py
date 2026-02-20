@@ -20,6 +20,7 @@ from app.ai.llm_router import chat_completion
 # from app.api.sources import _extract_text
 from app.services.source_service import extract_text
 
+from app.commons.util import get_image_source_content
 from app.config import settings
 from app.models.source import Source
 from app.models.studio import SlideDeck
@@ -41,52 +42,83 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
 
 
-async def _get_combined_content_from_sources(
+async def _query_notebook_sources(
     db: AsyncSession,
     notebook_id: str,
     source_ids: list[str] | None,
-) -> str:
-    """Fetch and combine document content from notebook sources (OBS + extract)."""
+) -> list[Source]:
+    """Query active sources for a notebook, optionally filtered by source_ids."""
     stmt = select(Source).where(
         Source.notebook_id == notebook_id,
         Source.is_active.is_(True),
     )
     if source_ids:
         stmt = stmt.where(Source.id.in_(source_ids))
-
     result = await db.execute(stmt)
-    sources = result.scalars().all()
+    return list(result.scalars().all())
 
+
+async def _fetch_raw_content_for_source(source: Source) -> str | None:
+    """Get raw text for a single source: use cached raw_content or download and extract."""
+    if source.raw_content:
+        return source.raw_content
+    if not source.file_path:
+        return None
+    if source.type == "image":
+        try:
+            return await get_image_source_content(source)
+        except Exception as exc:
+            logger.warning(
+                "Failed to get image content for source %s: %s",
+                source.title,
+                exc,
+            )
+            return None
+    try:
+        file_bytes = download_file_from_obs(source.file_path)
+        return extract_text(file_bytes, source.type)
+    except RuntimeError as exc:
+        logger.warning(
+            "Failed to download source %s: %s",
+            source.title,
+            exc,
+        )
+        return None
+
+
+def _format_source_part(title: str, content: str, max_length: int = 3000) -> str:
+    """Format one source as a combined-content part: '[title]: content[:max_length]'."""
+    return f"[{title}]: {content[:max_length]}"
+
+
+async def _get_combined_content_from_sources(
+    db: AsyncSession,
+    notebook_id: str,
+    source_ids: list[str] | None,
+) -> str:
+    """Fetch and combine document content from notebook sources (OBS + extract)."""
+    sources = await _query_notebook_sources(db, notebook_id, source_ids)
     combined_parts = []
+
     for source in sources:
         try:
-            raw_content = source.raw_content
-            if raw_content is None and source.file_path:
-                try:
-                    file_bytes = download_file_from_obs(source.file_path)
-                    raw_content = extract_text(file_bytes, source.type)
-                except RuntimeError as exc:
-                    logger.warning(
-                        "Failed to download source %s: %s",
-                        source.title,
-                        exc,
-                    )
-                    continue
-
+            raw_content = await _fetch_raw_content_for_source(source)
             if raw_content:
                 combined_parts.append(
-                    f"[{source.title}]: {raw_content[:3000]}"
+                    _format_source_part(source.title, raw_content)
                 )
             else:
                 logger.warning(
                     "No content for source %s, skipping",
                     source.title,
                 )
-        except Exception as exc:
+        except Exception:
             logger.exception("Error getting content for %s", source.title)
             fallback = (source.raw_content or "")[:3000]
             if fallback:
-                combined_parts.append(f"[{source.title}]: {fallback}")
+                combined_parts.append(
+                    _format_source_part(source.title, fallback)
+                )
 
     return "\n\n".join(combined_parts)
 

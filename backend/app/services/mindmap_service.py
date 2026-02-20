@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.llm_router import chat_completion, vision_chat_completion_with_url
+from app.ai.llm_router import chat_completion
 from app.models.source import Source
 from app.models.studio import MindMap
+from app.commons.util import get_image_source_content
 from app.services.obs_storage import download_file_from_obs, generate_presigned_url
 # from app.api.sources import _extract_text
 from app.services.source_service import extract_text
@@ -54,31 +55,7 @@ async def _get_single_source_content(source: Source) -> str | None:
 
     try:
         if source.type == "image":
-            prompt = (
-                "请详细描述这张图片的内容，包括主要物体、文字、"
-                "布局和关键信息，输出纯文本便于后续生成思维导图。"
-            )
-            try:
-                image_url = generate_presigned_url(
-                    source.file_path, expiration=3600
-                )
-                logger.info("image_url: %s", image_url)
-                raw_content = await vision_chat_completion_with_url(
-                    image_url,
-                    prompt,
-                    temperature=0.3,
-                    max_tokens=2048,
-                )
-                if not raw_content:
-                    raw_content = "[Image description unavailable]"
-            except Exception as vision_err:
-                logger.warning(
-                    "Vision API failed for image '%s': %s",
-                    source.title,
-                    vision_err,
-                )
-                raw_content = "[Image description unavailable]"
-            return raw_content[:_MAX_CONTENT_PER_SOURCE]
+            return await get_image_source_content(source, _MAX_CONTENT_PER_SOURCE)
 
         file_bytes = download_file_from_obs(source.file_path)
         raw_content = extract_text(file_bytes, source.type)
