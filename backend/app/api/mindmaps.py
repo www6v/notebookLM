@@ -67,12 +67,18 @@ async def generate_mindmap(
     """Generate a mind map from notebook sources via LLM."""
     await _verify_notebook_access(db, notebook_id, user.id)
     logger.info("generate_mindmap: notebook_id=%s, body=%s", notebook_id, body)
-    mind_map = await generate_mindmap_from_sources(
-        db=db,
-        notebook_id=notebook_id,
-        title=body.title,
-        source_ids=body.source_ids,
-    )
+    try:
+        mind_map = await generate_mindmap_from_sources(
+            db=db,
+            notebook_id=notebook_id,
+            title=body.title,
+            source_ids=body.source_ids,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     return MindMapResponse.model_validate(mind_map)
 
 

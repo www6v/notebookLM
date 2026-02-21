@@ -117,6 +117,11 @@ async def generate_mindmap_from_sources(
     )
 
     combined_content = await build_combined_content_from_sources(sources)
+    if not combined_content.strip():
+        raise ValueError(
+            "No usable content from selected sources for mind map. "
+            "Ensure documents have content or retry after video understanding is available."
+        )
     graph_data = await _build_graph_data_from_content(combined_content, title)
 
     logger.info(

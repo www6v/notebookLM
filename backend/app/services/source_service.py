@@ -7,10 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings import embed_chunks
+from app.ai.qwen3_vl_video import understand_video
 from app.commons.util import get_image_source_content
 from app.models.notebook import Notebook
 from app.models.source import Source, SourceChunk
-from app.services.obs_storage import download_file_from_obs
+from app.services.obs_storage import download_file_from_obs, generate_presigned_url
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,30 @@ async def _get_single_source_content(source: Source) -> str | None:
         if source.type == "image":
             return await get_image_source_content(
                 source, _MAX_CONTENT_PER_SOURCE
+            )
+
+        if source.type == "video" and source.file_path:
+            video_url = generate_presigned_url(
+                source.file_path, expiration=3600
+            )
+            logger.info("video_url: %s", video_url)
+            logger.info(
+                "Getting video content via qwen3-vl for source '%s'",
+                source.title,
+            )
+            try:
+                raw_content = await understand_video(video_url)
+            except Exception as video_err:
+                logger.warning(
+                    "Video understanding failed for '%s': %s",
+                    source.title,
+                    video_err,
+                )
+                return None
+            return (
+                raw_content[:_MAX_CONTENT_PER_SOURCE]
+                if raw_content
+                else None
             )
 
         file_bytes = download_file_from_obs(source.file_path)
