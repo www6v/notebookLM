@@ -1,8 +1,9 @@
 """Application configuration loaded from environment variables."""
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
-import os
 
+import os
 
 class Settings(BaseSettings):
     """Global application settings."""
@@ -42,6 +43,13 @@ class Settings(BaseSettings):
     qwen_image_api_base: str = "https://dashscope.aliyuncs.com/api/v1"
     qwen_image_api_key: str = os.getenv("QWEN_IMAGE_API_KEY")  # from env QWEN_IMAGE_API_KEY
     # Qwen-VL (vision) uses OpenAI-compatible endpoint
+
+    @field_validator("qwen_image_api_key", mode="before")
+    @classmethod
+    def coerce_qwen_image_api_key(cls, v):
+        """From env QWEN_IMAGE_API_KEY; allow missing/None as empty string."""
+        return v if isinstance(v, str) else ""
+
     # qwen_vision_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
     # Embedding
