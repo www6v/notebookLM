@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page home-page--dark">
+  <div class="home-page">
     <header class="home-header">
       <div class="header-left">
         <h1 class="logo">NotebookLM</h1>
@@ -405,18 +405,6 @@ const formatDateCn = (dateStr: string) => {
 <style scoped>
 .home-page {
   min-height: 100vh;
-}
-
-.home-page--dark {
-  --home-bg: #1f1f1f;
-  --home-surface: #2d2d2d;
-  --home-border: #3d3d3d;
-  --home-text: #e8e8e8;
-  --home-text-secondary: #9aa0a6;
-  --home-primary: #8ab4f8;
-}
-
-.home-page--dark {
   background: var(--home-bg);
   color: var(--home-text);
 }

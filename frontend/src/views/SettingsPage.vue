@@ -6,10 +6,28 @@
           <ArrowLeft />
         </el-icon>
       </el-button>
-      <h1>Settings</h1>
+      <h1>设置</h1>
     </header>
 
     <main class="settings-main">
+      <el-card class="settings-card">
+        <template #header>
+          <h3>外观</h3>
+        </template>
+        <el-form label-position="top">
+          <el-form-item label="网站模式">
+            <el-select
+              :model-value="themeStore.theme"
+              style="width: 100%"
+              @update:model-value="onThemeChange"
+            >
+              <el-option label="浅色模式" value="light" />
+              <el-option label="深色模式" value="dark" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
       <el-card class="settings-card">
         <template #header>
           <h3>LLM Provider Configuration</h3>
@@ -69,17 +87,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
+import { useThemeStore } from '@/stores/useThemeStore'
+import type { ThemeMode } from '@/stores/useThemeStore'
 
 const router = useRouter()
+const themeStore = useThemeStore()
 const llmProvider = ref('openai')
 const llmModel = ref('gpt-4o')
 const apiKey = ref('')
 const chatStyle = ref('default')
 const responseLength = ref('default')
+
+function onThemeChange(value: ThemeMode) {
+  themeStore.setTheme(value)
+  ElMessage.success(value === 'dark' ? '已切换为深色模式' : '已切换为浅色模式')
+}
+
+onMounted(() => {
+  const raw = localStorage.getItem('llm_settings')
+  if (raw) {
+    try {
+      const data = JSON.parse(raw)
+      if (data.provider) llmProvider.value = data.provider
+      if (data.model) llmModel.value = data.model
+      if (data.chatStyle) chatStyle.value = data.chatStyle
+      if (data.responseLength) responseLength.value = data.responseLength
+    } catch {
+      /* ignore */
+    }
+  }
+})
 
 const saveSettings = () => {
   // Settings would be persisted to backend in a real implementation
