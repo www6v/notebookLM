@@ -8,8 +8,7 @@ in the database as structured graph data.
 import json
 import logging
 
-logger = logging.getLogger(__name__)
-
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_router import chat_completion
@@ -18,6 +17,8 @@ from app.services.source_service import (
     build_combined_content_from_sources,
     fetch_sources,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def _create_and_persist_mindmap(
@@ -138,3 +139,56 @@ async def generate_mindmap_from_sources(
         mind_map.id,
     )
     return mind_map
+
+
+async def run_mindmap_generation_for_existing(
+    db: AsyncSession,
+    mindmap_id: str,
+    source_ids: list[str] | None = None,
+) -> MindMap:
+    """Run mind map generation for an existing pending MindMap record.
+
+    Fetches sources, builds content, generates graph data via LLM, then updates
+    the MindMap with graph_data and status=ready. On error sets status=error.
+    """
+    result = await db.execute(select(MindMap).where(MindMap.id == mindmap_id))
+    mind_map = result.scalar_one_or_none()
+    if mind_map is None:
+        raise ValueError(f"MindMap not found: {mindmap_id}")
+
+    mind_map.status = "processing"
+    await db.flush()
+
+    try:
+        sources = await fetch_sources(
+            db, mind_map.notebook_id, source_ids
+        )
+        logger.info(
+            "Found %s sources for mind map %s",
+            len(sources),
+            mindmap_id,
+        )
+        combined_content = await build_combined_content_from_sources(sources)
+        if not combined_content.strip():
+            mind_map.status = "error"
+            await db.flush()
+            raise ValueError(
+                "No usable content from selected sources for mind map."
+            )
+        graph_data = await _build_graph_data_from_content(
+            combined_content, mind_map.title
+        )
+        mind_map.graph_data = graph_data
+        mind_map.status = "ready"
+        await db.flush()
+        logger.info(
+            "Mind map %s updated with %s nodes, %s edges",
+            mindmap_id,
+            len(graph_data.get("nodes", [])),
+            len(graph_data.get("edges", [])),
+        )
+        return mind_map
+    except Exception:
+        mind_map.status = "error"
+        await db.flush()
+        raise

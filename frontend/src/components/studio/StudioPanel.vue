@@ -53,7 +53,7 @@
               </el-icon>
             </el-button>
             <template #dropdown>
-              <el-dropdown-menu>
+                <el-dropdown-menu>
                 <el-dropdown-item
                   v-if="item.type === 'note'"
                   command="edit"
@@ -61,13 +61,13 @@
                   编辑
                 </el-dropdown-item>
                 <el-dropdown-item
-                  v-if="item.type === 'mindmap'"
+                  v-if="item.type === 'mindmap' && !isOutputItemPending(item)"
                   command="open"
                 >
                   打开
                 </el-dropdown-item>
                 <el-dropdown-item
-                  v-if="item.type === 'slide'"
+                  v-if="item.type === 'slide' && !isOutputItemPending(item)"
                   command="open"
                 >
                   打开 PDF
@@ -221,8 +221,8 @@ const moduleList = [
   { id: 'report', label: '报告', icon: Document, beta: false, action: 'placeholder' as const },
   { id: 'flashcard', label: '闪卡', icon: List, beta: false, action: 'placeholder' as const },
   { id: 'quiz', label: '测验', icon: List, beta: false, action: 'placeholder' as const },
-  { id: 'infographic', label: '信息图', icon: PictureFilled, beta: true, action: 'infographic' as const },
-  { id: 'slides', label: '演示文稿', icon: Monitor, beta: true, action: 'slides' as const },
+  { id: 'infographic', label: '信息图', icon: PictureFilled, beta: false, action: 'infographic' as const },
+  { id: 'slides', label: '演示文稿', icon: Monitor, beta: false, action: 'slides' as const },
   { id: 'table', label: '数据表格', icon: Grid, beta: false, action: 'placeholder' as const },
 ]
 
@@ -240,22 +240,24 @@ const outputList = computed<OutputItem[]>(() => {
     })
   })
   studioStore.mindMaps.forEach((m) => {
+    const isPending = m.status === 'pending' || m.status === 'processing'
     items.push({
       id: `mindmap-${m.id}`,
       type: 'mindmap',
       title: m.title,
-      meta: formatDate(m.created_at),
+      meta: isPending ? '生成中…' : formatDate(m.created_at),
       date: m.created_at,
       icon: Share,
       raw: m,
     })
   })
   studioStore.slideDecks.forEach((d) => {
+    const isPending = d.status === 'pending' || d.status === 'processing'
     items.push({
       id: `slide-${d.id}`,
       type: 'slide',
       title: d.title,
-      meta: `${d.theme} · ${d.status}`,
+      meta: isPending ? '生成中…' : `${d.theme} · ${d.status}`,
       date: d.created_at,
       icon: Monitor,
       raw: d,
@@ -321,7 +323,20 @@ function onOutputItemClick(item: OutputItem) {
   }
 }
 
+function isOutputItemPending(item: OutputItem): boolean {
+  if (item.type === 'mindmap') {
+    const s = (item.raw as MindMapData).status
+    return s === 'pending' || s === 'processing'
+  }
+  if (item.type === 'slide') {
+    const s = (item.raw as SlideDeckData).status
+    return s === 'pending' || s === 'processing'
+  }
+  return false
+}
+
 function onOutputItemDblClick(item: OutputItem) {
+  if (isOutputItemPending(item)) return
   if (item.type === 'mindmap') {
     openMindMapDialog(item.raw as MindMapData)
   }
@@ -334,10 +349,10 @@ function handleOutputCommand(command: string, item: OutputItem) {
   if (command === 'edit' && item.type === 'note') {
     editingNote.value = item.raw as Note
   }
-  if (command === 'open' && item.type === 'mindmap') {
+  if (command === 'open' && item.type === 'mindmap' && !isOutputItemPending(item)) {
     openMindMapDialog(item.raw as MindMapData)
   }
-  if (command === 'open' && item.type === 'slide') {
+  if (command === 'open' && item.type === 'slide' && !isOutputItemPending(item)) {
     openSlidePdf(item.raw as SlideDeckData)
   }
   if (command === 'delete') {
@@ -441,11 +456,17 @@ const handleDeleteMindMap = async (mindmapId: string) => {
   }
 }
 
-const generateSlides = () => {
-  studioStore.generateSlides(props.notebookId, {
-    title: 'Generated Slides',
-    theme: 'light',
-  })
+const generateSlides = async () => {
+  if (studioStore.loading) return
+  try {
+    await studioStore.generateSlides(props.notebookId, {
+      title: 'Generated Slides',
+      theme: 'light',
+    })
+    ElMessage.success('演示文稿已生成')
+  } catch {
+    ElMessage.error('生成失败')
+  }
 }
 
 const openSlidePdf = async (deck: SlideDeckData) => {

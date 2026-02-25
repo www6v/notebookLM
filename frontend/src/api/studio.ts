@@ -5,6 +5,7 @@ export interface MindMapData {
   notebook_id: string
   title: string
   graph_data: Record<string, unknown> | null
+  status?: string
   created_at: string
 }
 

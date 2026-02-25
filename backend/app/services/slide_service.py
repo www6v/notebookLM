@@ -367,3 +367,60 @@ async def generate_slide_deck(
     await db.flush()
     await db.refresh(slide_deck)
     return slide_deck
+
+
+async def run_slide_deck_generation_for_existing(
+    db: AsyncSession,
+    slide_deck_id: str,
+    source_ids: list[str] | None = None,
+    focus_topic: str | None = None,
+) -> SlideDeck:
+    """Run slide deck generation for an existing pending SlideDeck record.
+
+    Fetches sources, builds content, generates slides via LLM, renders to
+    images, builds PDF, uploads to OBS, then updates the SlideDeck.
+    On error sets status=error.
+    """
+    result = await db.execute(
+        select(SlideDeck).where(SlideDeck.id == slide_deck_id)
+    )
+    slide_deck = result.scalar_one_or_none()
+    if slide_deck is None:
+        raise ValueError(f"SlideDeck not found: {slide_deck_id}")
+
+    slide_deck.status = "processing"
+    await db.flush()
+
+    try:
+        sources = await fetch_sources(
+            db, slide_deck.notebook_id, source_ids
+        )
+        combined_content = await build_combined_content_from_sources(sources)
+        messages = _build_slide_deck_messages(
+            combined_content, slide_deck.title, focus_topic
+        )
+        slides_data = await _generate_slides_data(
+            messages, slide_deck.title
+        )
+        slides = slides_data.get("slides") or []
+        logger.info("slides: %s", slides)
+
+        image_bytes_list = await _render_slides_to_images(
+            slides, slide_deck.title
+        )
+        slide_titles = [s.get("title", "Slide") for s in slides]
+        pdf_bytes = _images_to_pdf(
+            image_bytes_list, slide_titles=slide_titles
+        )
+        object_key = _upload_slide_deck_pdf(pdf_bytes)
+
+        slide_deck.slides_data = slides_data
+        slide_deck.file_path = object_key
+        slide_deck.status = "ready"
+        await db.flush()
+        logger.info("Slide deck %s ready, file_path=%s", slide_deck_id, object_key)
+        return slide_deck
+    except Exception:
+        slide_deck.status = "error"
+        await db.flush()
+        raise

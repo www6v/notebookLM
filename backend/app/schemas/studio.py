@@ -21,6 +21,7 @@ class MindMapResponse(BaseModel):
     notebook_id: str
     title: str
     graph_data: dict | None = None
+    status: str = "ready"
     created_at: datetime
 
     model_config = {"from_attributes": True}

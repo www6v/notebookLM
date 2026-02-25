@@ -16,6 +16,9 @@ class MindMap(Base, UUIDMixin, TimestampMixin):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     graph_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50), default="ready", nullable=False
+    )
 
     # Relationships
     notebook = relationship("Notebook", back_populates="mind_maps")

@@ -1,6 +1,9 @@
 """Slide Deck API routes."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +18,10 @@ from app.schemas.studio import (
     SlideDeckUpdate,
 )
 from app.services.obs_storage import generate_presigned_url
-from app.services.slide_service import generate_slide_deck
+from app.services.slide_service import run_slide_deck_generation_for_existing
+from app.tasks.studio_tasks import generate_slide_deck_task
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["studio"])
 
 
@@ -57,7 +62,7 @@ async def _get_slide(
 @router.post(
     "/api/notebooks/{notebook_id}/slides",
     response_model=SlideDeckResponse,
-    status_code=201,
+    status_code=202,
 )
 async def generate_slides(
     notebook_id: str,
@@ -65,16 +70,46 @@ async def generate_slides(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Generate a slide deck from notebook sources (content -> PPT -> images -> PDF)."""
+    """Create a pending slide deck and enqueue async generation. Returns 202."""
     await _verify_notebook_access(db, notebook_id, user.id)
-    slide_deck = await generate_slide_deck(
-        db=db,
+
+    slide_deck = SlideDeck(
         notebook_id=notebook_id,
         title=body.title,
         theme=body.theme,
-        source_ids=body.source_ids,
-        focus_topic=body.focus_topic,
+        slides_data=None,
+        status="pending",
+        file_path=None,
     )
+    db.add(slide_deck)
+    await db.flush()
+    await db.refresh(slide_deck)
+
+    try:
+        generate_slide_deck_task.delay(
+            slide_deck_id=slide_deck.id,
+            source_ids=body.source_ids,
+            focus_topic=body.focus_topic,
+        )
+    except Exception as e:
+        logger.warning("Celery enqueue failed, running sync: %s", e)
+        try:
+            await run_slide_deck_generation_for_existing(
+                db,
+                slide_deck.id,
+                source_ids=body.source_ids,
+                focus_topic=body.focus_topic,
+            )
+        except Exception:
+            raise
+        await db.refresh(slide_deck)
+        return JSONResponse(
+            status_code=201,
+            content=SlideDeckResponse.model_validate(
+                slide_deck
+            ).model_dump(mode="json"),
+        )
+
     return SlideDeckResponse.model_validate(slide_deck)
 
 
