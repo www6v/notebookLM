@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models.notebook import Notebook
 from app.models.studio import MindMap
 from app.models.user import User
-from app.schemas.studio import MindMapCreate, MindMapResponse
+from app.schemas.studio import MindMapCreate, MindMapResponse, MindMapStatus
 from app.services.mindmap_service import run_mindmap_generation_for_existing
 from app.tasks.studio_tasks import generate_mindmap_task
 
@@ -74,11 +74,12 @@ async def generate_mindmap(
         notebook_id=notebook_id,
         title=body.title,
         graph_data=None,
-        status="pending",
+        status=MindMapStatus.PENDING.value,
     )
     db.add(mind_map)
     await db.flush()
     await db.refresh(mind_map)
+    await db.commit()
 
     try:
         generate_mindmap_task.delay(

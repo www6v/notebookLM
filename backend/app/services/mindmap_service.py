@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_router import chat_completion
 from app.models.studio import MindMap
+from app.schemas.studio import MindMapStatus
 from app.services.source_service import (
     build_combined_content_from_sources,
     fetch_sources,
@@ -156,7 +157,7 @@ async def run_mindmap_generation_for_existing(
     if mind_map is None:
         raise ValueError(f"MindMap not found: {mindmap_id}")
 
-    mind_map.status = "processing"
+    mind_map.status = MindMapStatus.PROCESSING.value
     await db.flush()
 
     try:
@@ -170,7 +171,7 @@ async def run_mindmap_generation_for_existing(
         )
         combined_content = await build_combined_content_from_sources(sources)
         if not combined_content.strip():
-            mind_map.status = "error"
+            mind_map.status = MindMapStatus.ERROR.value
             await db.flush()
             raise ValueError(
                 "No usable content from selected sources for mind map."
@@ -179,7 +180,7 @@ async def run_mindmap_generation_for_existing(
             combined_content, mind_map.title
         )
         mind_map.graph_data = graph_data
-        mind_map.status = "ready"
+        mind_map.status = MindMapStatus.READY.value
         await db.flush()
         logger.info(
             "Mind map %s updated with %s nodes, %s edges",
@@ -189,6 +190,6 @@ async def run_mindmap_generation_for_existing(
         )
         return mind_map
     except Exception:
-        mind_map.status = "error"
+        mind_map.status = MindMapStatus.ERROR.value
         await db.flush()
         raise

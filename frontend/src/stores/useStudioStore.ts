@@ -14,6 +14,8 @@ export const useStudioStore = defineStore('studio', () => {
   }
 
   const POLL_INTERVAL_MS = 2500
+  const FIRST_POLL_DELAY_MS = 500
+
   const pollMindMapUntilReady = (mindmapId: string): Promise<MindMapData> => {
     return new Promise((resolve, reject) => {
       const tick = async () => {
@@ -34,7 +36,7 @@ export const useStudioStore = defineStore('studio', () => {
           reject(e)
         }
       }
-      tick()
+      setTimeout(tick, FIRST_POLL_DELAY_MS)
     })
   }
 

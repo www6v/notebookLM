@@ -1,11 +1,21 @@
 """Pydantic schemas for studio features: MindMap, SlideDeck, Infographic."""
 
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel
 
 
 # --- Mind Map ---
+
+
+class MindMapStatus(str, Enum):
+    """Mind map generation status."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    ERROR = "error"
 
 class MindMapCreate(BaseModel):
     """Schema for generating a mind map."""
@@ -21,7 +31,7 @@ class MindMapResponse(BaseModel):
     notebook_id: str
     title: str
     graph_data: dict | None = None
-    status: str = "ready"
+    status: MindMapStatus = MindMapStatus.READY
     created_at: datetime
 
     model_config = {"from_attributes": True}
