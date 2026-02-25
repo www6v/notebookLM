@@ -5,7 +5,16 @@
         <h1 class="logo">NotebookLM</h1>
       </div>
       <div class="header-right">
-        <el-button text @click="router.push('/settings')">
+        <el-button
+          text
+          @click="router.push('/pricing')"
+        >
+          <span class="header-btn-label">定价</span>
+        </el-button>
+        <el-button
+          text
+          @click="router.push('/settings')"
+        >
           <el-icon size="20">
             <Setting />
           </el-icon>

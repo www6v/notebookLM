@@ -4,6 +4,12 @@
       <div class="login-header">
         <h1 class="logo-text">NotebookLM</h1>
         <p class="login-subtitle">AI-powered research assistant</p>
+        <router-link
+          to="/pricing"
+          class="login-pricing-link"
+        >
+          查看定价
+        </router-link>
       </div>
 
       <el-tabs v-model="activeTab" class="login-tabs">
@@ -183,6 +189,17 @@ const handleRegister = async () => {
   color: var(--text-secondary);
   margin-top: 4px;
   font-size: 14px;
+}
+
+.login-pricing-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--primary-color);
+}
+
+.login-pricing-link:hover {
+  text-decoration: underline;
 }
 
 .login-btn {
