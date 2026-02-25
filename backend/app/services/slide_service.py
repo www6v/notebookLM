@@ -28,6 +28,7 @@ from app.commons.util import get_image_source_content
 from app.config import settings
 from app.models.source import Source
 from app.models.studio import SlideDeck
+from app.schemas.studio import SlideDeckStatus
 from app.services.obs_storage import (
     download_file_from_obs,
     upload_file_to_obs,
@@ -360,7 +361,7 @@ async def generate_slide_deck(
         title=title,
         theme=theme,
         slides_data=slides_data,
-        status="ready",
+        status=SlideDeckStatus.READY.value,
         file_path=object_key,
     )
     db.add(slide_deck)
@@ -388,7 +389,7 @@ async def run_slide_deck_generation_for_existing(
     if slide_deck is None:
         raise ValueError(f"SlideDeck not found: {slide_deck_id}")
 
-    slide_deck.status = "processing"
+    slide_deck.status = SlideDeckStatus.PROCESSING.value
     await db.flush()
 
     try:
@@ -416,11 +417,11 @@ async def run_slide_deck_generation_for_existing(
 
         slide_deck.slides_data = slides_data
         slide_deck.file_path = object_key
-        slide_deck.status = "ready"
+        slide_deck.status = SlideDeckStatus.READY.value
         await db.flush()
         logger.info("Slide deck %s ready, file_path=%s", slide_deck_id, object_key)
         return slide_deck
     except Exception:
-        slide_deck.status = "error"
+        slide_deck.status = SlideDeckStatus.ERROR.value
         await db.flush()
         raise

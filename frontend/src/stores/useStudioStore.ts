@@ -15,28 +15,54 @@ export const useStudioStore = defineStore('studio', () => {
 
   const POLL_INTERVAL_MS = 2500
   const FIRST_POLL_DELAY_MS = 500
+  const MAX_CONSECUTIVE_POLL_ERRORS = 5
 
-  const pollMindMapUntilReady = (mindmapId: string): Promise<MindMapData> => {
+  type PollableData = { id: string; status?: string }
+
+  const pollUntilReady = <T extends PollableData>(options: {
+    fetch: () => Promise<T>
+    onUpdate?: (data: T) => void
+    errorMessage: string
+    maxConsecutiveErrors?: number
+  }): Promise<T> => {
+    const { fetch: doFetch, onUpdate, errorMessage, maxConsecutiveErrors = Infinity } = options
     return new Promise((resolve, reject) => {
+      let consecutiveErrors = 0
       const tick = async () => {
         try {
-          const updated = await studioApi.getMindMap(mindmapId)
+          const updated = await doFetch()
+          consecutiveErrors = 0
           if (updated.status === 'ready') {
             resolve(updated)
             return
           }
           if (updated.status === 'error') {
-            reject(new Error('Mind map generation failed'))
+            reject(new Error(errorMessage))
             return
           }
-          const idx = mindMaps.value.findIndex((m) => m.id === mindmapId)
-          if (idx !== -1) mindMaps.value[idx] = updated
+          onUpdate?.(updated)
           setTimeout(tick, POLL_INTERVAL_MS)
         } catch (e) {
-          reject(e)
+          consecutiveErrors += 1
+          if (consecutiveErrors >= maxConsecutiveErrors) {
+            reject(e)
+            return
+          }
+          setTimeout(tick, POLL_INTERVAL_MS)
         }
       }
       setTimeout(tick, FIRST_POLL_DELAY_MS)
+    })
+  }
+
+  const pollMindMapUntilReady = (mindmapId: string): Promise<MindMapData> => {
+    return pollUntilReady<MindMapData>({
+      fetch: () => studioApi.getMindMap(mindmapId),
+      onUpdate: (updated) => {
+        const idx = mindMaps.value.findIndex((m) => m.id === mindmapId)
+        if (idx !== -1) mindMaps.value[idx] = updated
+      },
+      errorMessage: 'Mind map generation failed',
     })
   }
 
@@ -70,26 +96,14 @@ export const useStudioStore = defineStore('studio', () => {
   }
 
   const pollSlideDeckUntilReady = (slideId: string): Promise<SlideDeckData> => {
-    return new Promise((resolve, reject) => {
-      const tick = async () => {
-        try {
-          const updated = await studioApi.getSlide(slideId)
-          if (updated.status === 'ready') {
-            resolve(updated)
-            return
-          }
-          if (updated.status === 'error') {
-            reject(new Error('Slide deck generation failed'))
-            return
-          }
-          const idx = slideDecks.value.findIndex((d) => d.id === slideId)
-          if (idx !== -1) slideDecks.value[idx] = updated
-          setTimeout(tick, POLL_INTERVAL_MS)
-        } catch (e) {
-          reject(e)
-        }
-      }
-      tick()
+    return pollUntilReady<SlideDeckData>({
+      fetch: () => studioApi.getSlide(slideId),
+      onUpdate: (updated) => {
+        const idx = slideDecks.value.findIndex((d) => d.id === slideId)
+        if (idx !== -1) slideDecks.value[idx] = updated
+      },
+      errorMessage: 'Slide deck generation failed',
+      maxConsecutiveErrors: MAX_CONSECUTIVE_POLL_ERRORS,
     })
   }
 

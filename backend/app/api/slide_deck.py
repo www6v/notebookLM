@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.studio import (
     SlideDeckCreate,
     SlideDeckResponse,
+    SlideDeckStatus,
     SlideDeckUpdate,
 )
 from app.services.obs_storage import generate_presigned_url
@@ -78,12 +79,13 @@ async def generate_slides(
         title=body.title,
         theme=body.theme,
         slides_data=None,
-        status="pending",
+        status=SlideDeckStatus.PENDING.value,
         file_path=None,
     )
     db.add(slide_deck)
     await db.flush()
     await db.refresh(slide_deck)
+    await db.commit()
 
     try:
         generate_slide_deck_task.delay(

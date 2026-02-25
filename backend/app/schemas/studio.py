@@ -39,6 +39,16 @@ class MindMapResponse(BaseModel):
 
 # --- Slide Deck ---
 
+
+class SlideDeckStatus(str, Enum):
+    """Slide deck generation status."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    ERROR = "error"
+
+
 class SlideDeckCreate(BaseModel):
     """Schema for generating a slide deck."""
 
@@ -64,7 +74,7 @@ class SlideDeckResponse(BaseModel):
     title: str
     theme: str
     slides_data: dict | None = None
-    status: str
+    status: SlideDeckStatus = SlideDeckStatus.PENDING
     file_path: str | None = None
     created_at: datetime
 
