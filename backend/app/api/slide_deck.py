@@ -2,13 +2,12 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
+from app.database import async_session, get_db
 from app.models.notebook import Notebook
 from app.models.studio import SlideDeck
 from app.models.user import User
@@ -20,10 +19,29 @@ from app.schemas.studio import (
 )
 from app.services.obs_storage import generate_presigned_url
 from app.services.slide_service import run_slide_deck_generation_for_existing
-from app.tasks.studio_tasks import generate_slide_deck_task
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["studio"])
+
+
+async def _run_slide_deck_generation_background(
+    slide_deck_id: str,
+    source_ids: list[str] | None = None,
+    focus_topic: str | None = None,
+):
+    """Run slide deck generation in background with its own DB session."""
+    async with async_session() as session:
+        try:
+            await run_slide_deck_generation_for_existing(
+                session,
+                slide_deck_id,
+                source_ids=source_ids,
+                focus_topic=focus_topic,
+            )
+            await session.commit()
+        except Exception as e:
+            logger.exception("Slide deck background generation failed: %s", e)
+            await session.rollback()
 
 
 async def _verify_notebook_access(
@@ -68,10 +86,11 @@ async def _get_slide(
 async def generate_slides(
     notebook_id: str,
     body: SlideDeckCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Create a pending slide deck and enqueue async generation. Returns 202."""
+    """Create a pending slide deck and run generation in background. Returns 202."""
     await _verify_notebook_access(db, notebook_id, user.id)
 
     slide_deck = SlideDeck(
@@ -87,31 +106,12 @@ async def generate_slides(
     await db.refresh(slide_deck)
     await db.commit()
 
-    try:
-        generate_slide_deck_task.delay(
-            slide_deck_id=slide_deck.id,
-            source_ids=body.source_ids,
-            focus_topic=body.focus_topic,
-        )
-    except Exception as e:
-        logger.warning("Celery enqueue failed, running sync: %s", e)
-        try:
-            await run_slide_deck_generation_for_existing(
-                db,
-                slide_deck.id,
-                source_ids=body.source_ids,
-                focus_topic=body.focus_topic,
-            )
-        except Exception:
-            raise
-        await db.refresh(slide_deck)
-        return JSONResponse(
-            status_code=201,
-            content=SlideDeckResponse.model_validate(
-                slide_deck
-            ).model_dump(mode="json"),
-        )
-
+    background_tasks.add_task(
+        _run_slide_deck_generation_background,
+        slide_deck.id,
+        body.source_ids,
+        body.focus_topic,
+    )
     return SlideDeckResponse.model_validate(slide_deck)
 
 

@@ -2,23 +2,39 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
+from app.database import get_db, async_session
 from app.models.notebook import Notebook
 from app.models.studio import MindMap
 from app.models.user import User
 from app.schemas.studio import MindMapCreate, MindMapResponse, MindMapStatus
 from app.services.mindmap_service import run_mindmap_generation_for_existing
-from app.tasks.studio_tasks import generate_mindmap_task
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["mindmaps"])
+
+
+async def _run_mindmap_generation_background(
+    mindmap_id: str,
+    source_ids: list[str] | None = None,
+):
+    """Run mind map generation in background with its own DB session."""
+    async with async_session() as session:
+        try:
+            await run_mindmap_generation_for_existing(
+                session,
+                mindmap_id,
+                source_ids=source_ids,
+            )
+            await session.commit()
+        except Exception as e:
+            logger.exception("Mind map background generation failed: %s", e)
+            await session.rollback()
 
 
 async def _verify_notebook_access(
@@ -63,10 +79,11 @@ async def _get_mindmap(
 async def generate_mindmap(
     notebook_id: str,
     body: MindMapCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Create a pending mind map and enqueue async generation. Returns 202."""
+    """Create a pending mind map and run generation in background. Returns 202."""
     await _verify_notebook_access(db, notebook_id, user.id)
     logger.info("generate_mindmap: notebook_id=%s, body=%s", notebook_id, body)
 
@@ -81,30 +98,11 @@ async def generate_mindmap(
     await db.refresh(mind_map)
     await db.commit()
 
-    try:
-        generate_mindmap_task.delay(
-            mindmap_id=mind_map.id,
-            notebook_id=notebook_id,
-            title=body.title,
-            source_ids=body.source_ids,
-        )
-    except Exception as e:
-        logger.warning("Celery enqueue failed, running sync: %s", e)
-        try:
-            await run_mindmap_generation_for_existing(
-                db, mind_map.id, source_ids=body.source_ids
-            )
-        except ValueError as val_err:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(val_err),
-            ) from val_err
-        await db.refresh(mind_map)
-        return JSONResponse(
-            status_code=201,
-            content=MindMapResponse.model_validate(mind_map).model_dump(mode="json"),
-        )
-
+    background_tasks.add_task(
+        _run_mindmap_generation_background,
+        mind_map.id,
+        body.source_ids,
+    )
     return MindMapResponse.model_validate(mind_map)
 
 
