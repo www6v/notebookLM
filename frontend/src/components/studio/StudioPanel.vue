@@ -8,7 +8,8 @@
           v-for="mod in moduleList"
           :key="mod.id"
           class="module-card"
-          @click="onModuleClick(mod)"
+          :class="{ 'module-card--disabled': mod.disabled }"
+          @click="mod.disabled ? undefined : onModuleClick(mod)"
         >
           <el-icon class="module-icon" :size="20">
             <component :is="mod.icon" />
@@ -215,15 +216,15 @@ type OutputItem = {
 }
 
 const moduleList = [
-  { id: 'audio', label: '音频概览', icon: Headset, beta: false, action: 'placeholder' as const },
-  { id: 'video', label: '视频概览', icon: VideoCamera, beta: false, action: 'placeholder' as const },
-  { id: 'mindmap', label: '思维导图', icon: Share, beta: false, action: 'mindmap' as const },
-  { id: 'report', label: '报告', icon: Document, beta: false, action: 'placeholder' as const },
-  { id: 'flashcard', label: '闪卡', icon: List, beta: false, action: 'placeholder' as const },
-  { id: 'quiz', label: '测验', icon: List, beta: false, action: 'placeholder' as const },
-  { id: 'infographic', label: '信息图', icon: PictureFilled, beta: false, action: 'infographic' as const },
-  { id: 'slides', label: '演示文稿', icon: Monitor, beta: false, action: 'slides' as const },
-  { id: 'table', label: '数据表格', icon: Grid, beta: false, action: 'placeholder' as const },
+  { id: 'audio', label: '音频概览', icon: Headset, beta: false, action: 'placeholder' as const, disabled: true },
+  { id: 'video', label: '视频概览', icon: VideoCamera, beta: false, action: 'placeholder' as const, disabled: true },
+  { id: 'mindmap', label: '思维导图', icon: Share, beta: false, action: 'mindmap' as const, disabled: false },
+  { id: 'report', label: '报告', icon: Document, beta: false, action: 'placeholder' as const, disabled: false },
+  { id: 'flashcard', label: '闪卡', icon: List, beta: false, action: 'placeholder' as const, disabled: true },
+  { id: 'quiz', label: '测验', icon: List, beta: false, action: 'placeholder' as const, disabled: true },
+  { id: 'infographic', label: '信息图', icon: PictureFilled, beta: false, action: 'infographic' as const, disabled: false },
+  { id: 'slides', label: '演示文稿', icon: Monitor, beta: false, action: 'slides' as const, disabled: false },
+  { id: 'table', label: '数据表格', icon: Grid, beta: false, action: 'placeholder' as const, disabled: true },
 ]
 
 const outputList = computed<OutputItem[]>(() => {
@@ -547,6 +548,34 @@ const formatDate = (dateStr: string) => {
 
 .module-card:hover {
   border-color: var(--primary-color);
+}
+
+.module-card--disabled {
+  position: relative;
+  cursor: not-allowed;
+  background: var(--el-fill-color-light);
+  pointer-events: none;
+}
+
+.module-card--disabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.module-card--disabled .module-icon {
+  position: relative;
+  z-index: 1;
+  color: var(--el-text-color-secondary);
+}
+
+.module-card--disabled .module-label {
+  position: relative;
+  z-index: 1;
+  color: var(--el-text-color-regular);
 }
 
 .module-icon {
