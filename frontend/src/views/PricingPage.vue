@@ -18,7 +18,7 @@
             <el-icon size="20">
               <Setting />
             </el-icon>
-            <span class="header-btn-label">设置</span>
+            <span class="header-btn-label">{{ t('pricing.settings') }}</span>
           </el-button>
           <el-button
             text
@@ -34,16 +34,16 @@
           type="primary"
           @click="router.push('/login')"
         >
-          登录
+          {{ t('pricing.login') }}
         </el-button>
       </div>
     </header>
 
     <main class="pricing-main">
       <div class="pricing-hero">
-        <h2 class="pricing-title">定价</h2>
+        <h2 class="pricing-title">{{ t('pricing.title') }}</h2>
         <p class="pricing-subtitle">
-          面向个人创作者、团队与企业的方案，按需选择
+          {{ t('pricing.subtitle') }}
         </p>
         <div class="pricing-actions">
           <el-button
@@ -51,14 +51,14 @@
             size="large"
             @click="router.push('/')"
           >
-            立即开始
+            {{ t('pricing.getStarted') }}
           </el-button>
           <el-button
             size="large"
             class="btn-outline"
             @click="handleTalkToSales"
           >
-            联系销售
+            {{ t('pricing.contactSales') }}
           </el-button>
         </div>
       </div>
@@ -68,9 +68,9 @@
           <thead>
             <tr>
               <th class="th-feature" />
-              <th class="th-plan">免费版</th>
-              <th class="th-plan th-plan--highlight">NotebookLM Plus</th>
-              <th class="th-plan">企业版</th>
+              <th class="th-plan">{{ t('pricing.free') }}</th>
+              <th class="th-plan th-plan--highlight">{{ t('pricing.plus') }}</th>
+              <th class="th-plan">{{ t('pricing.enterprise') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -178,6 +178,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Setting, SwitchButton, Check, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/useUserStore'
@@ -187,6 +188,7 @@ defineOptions({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 const userStore = useUserStore()
 
 function handleLogout() {

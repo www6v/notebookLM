@@ -19,7 +19,8 @@
     "highlight.js": "^11.11.1",
     "@tiptap/vue-3": "^2.11.2",
     "@tiptap/starter-kit": "^2.11.2",
-    "@tiptap/extension-placeholder": "^2.11.2"
+    "@tiptap/extension-placeholder": "^2.11.2",
+    "vue-i18n": "^9.14.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
