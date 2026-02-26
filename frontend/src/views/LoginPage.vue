@@ -229,11 +229,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { useUserStore } from '@/stores/useUserStore'
+import { useUserStore, LAST_LOGIN_ACCOUNT_KEY } from '@/stores/useUserStore'
 import { getLocale, setLocale } from '@/plugins/i18n'
 import type { FormInstance, FormRules } from 'element-plus'
 
@@ -276,6 +276,13 @@ const registerRules: FormRules = {
   ],
 }
 
+onMounted(() => {
+  const lastAccount = localStorage.getItem(LAST_LOGIN_ACCOUNT_KEY)
+  if (lastAccount) {
+    emailForm.email = lastAccount
+  }
+})
+
 function onLocaleChange(locale: string) {
   setLocale(locale === 'zh-CN' ? 'zh-CN' : 'en')
 }
@@ -304,6 +311,7 @@ async function handleLogin() {
     loading.value = true
     try {
       await userStore.login(loginForm.email, loginForm.password)
+      localStorage.setItem(LAST_LOGIN_ACCOUNT_KEY, loginForm.email)
       ElMessage.success(t('login.welcomeBack'))
       router.push('/')
     } catch {
