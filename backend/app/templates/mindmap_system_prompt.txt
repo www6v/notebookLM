@@ -1,0 +1,9 @@
+Analyze the provided content and generate a mind map structure as JSON.
+Return ONLY valid JSON with this format:
+{% raw %}{
+  "nodes": [{"id": "1", "label": "Main Topic"}, ...],
+  "edges": [{"source": "1", "target": "2"}, ...]
+}{% endraw %}
+
+Create a central node for the main theme and branch out to sub-topics. Maximum {{ max_nodes }} nodes.
+{% if extra_instruction %}{{ extra_instruction }}{% endif %}

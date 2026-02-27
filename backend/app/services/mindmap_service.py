@@ -7,7 +7,9 @@ in the database as structured graph data.
 
 import json
 import logging
+from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +22,23 @@ from app.services.source_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _render_mindmap_system_prompt(
+    max_nodes: int = 20,
+    extra_instruction: str = "",
+) -> str:
+    """Render mind map system prompt from template with Jinja2 variables."""
+    template_dir = Path(__file__).resolve().parent.parent / "templates"
+    env = Environment(
+        autoescape=select_autoescape(default_for_string=False),
+        loader=FileSystemLoader(template_dir),
+    )
+    template = env.get_template("mindmap_system_prompt.txt")
+    return template.render(
+        max_nodes=max_nodes,
+        extra_instruction=extra_instruction,
+    )
 
 
 async def _create_and_persist_mindmap(
@@ -59,17 +78,9 @@ async def _build_graph_data_from_content(
     )
     logger.info("Combined content preview: %s", combined_content[:1000])
 
+    system_prompt = _render_mindmap_system_prompt(max_nodes=20)
     messages = [
-        {
-            "role": "system",
-            "content": """Analyze the provided content and generate a mind map structure as JSON.
-Return ONLY valid JSON with this format:
-{
-  "nodes": [{"id": "1", "label": "Main Topic"}, ...],
-  "edges": [{"source": "1", "target": "2"}, ...]
-}
-Create a central node for the main theme and branch out to sub-topics. Maximum 20 nodes.""",
-        },
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": combined_content},
     ]
 
@@ -93,53 +104,53 @@ Create a central node for the main theme and branch out to sub-topics. Maximum 2
             "edges": [],
         }
 
+#  老接口
+# async def generate_mindmap_from_sources(
+#     db: AsyncSession,
+#     notebook_id: str,
+#     title: str = "Mind Map",
+#     source_ids: list[str] | None = None,
+# ) -> MindMap:
+#     """Generate a mind map by asking the LLM to extract key concepts from selected sources.
 
-async def generate_mindmap_from_sources(
-    db: AsyncSession,
-    notebook_id: str,
-    title: str = "Mind Map",
-    source_ids: list[str] | None = None,
-) -> MindMap:
-    """Generate a mind map by asking the LLM to extract key concepts from selected sources.
+#     Note: The original documents are stored in OBS (Object Storage Service),
+#     while the mind map itself is stored in the database as structured graph data.
+#     """
+#     logger.info(
+#         "Starting mind map generation for notebook_id: %s, title: %s, source_ids: %s",
+#         notebook_id,
+#         title,
+#         source_ids,
+#     )
 
-    Note: The original documents are stored in OBS (Object Storage Service),
-    while the mind map itself is stored in the database as structured graph data.
-    """
-    logger.info(
-        "Starting mind map generation for notebook_id: %s, title: %s, source_ids: %s",
-        notebook_id,
-        title,
-        source_ids,
-    )
+#     sources = await fetch_sources(db, notebook_id, source_ids)
+#     logger.info(
+#         "Found %s sources from OBS for mind map generation",
+#         len(sources),
+#     )
 
-    sources = await fetch_sources(db, notebook_id, source_ids)
-    logger.info(
-        "Found %s sources from OBS for mind map generation",
-        len(sources),
-    )
+#     combined_content = await build_combined_content_from_sources(sources)
+#     if not combined_content.strip():
+#         raise ValueError(
+#             "No usable content from selected sources for mind map. "
+#             "Ensure documents have content or retry after video understanding is available."
+#         )
+#     graph_data = await _build_graph_data_from_content(combined_content, title)
 
-    combined_content = await build_combined_content_from_sources(sources)
-    if not combined_content.strip():
-        raise ValueError(
-            "No usable content from selected sources for mind map. "
-            "Ensure documents have content or retry after video understanding is available."
-        )
-    graph_data = await _build_graph_data_from_content(combined_content, title)
+#     logger.info(
+#         "Creating mind map with %s nodes and %s edges",
+#         len(graph_data["nodes"]),
+#         len(graph_data["edges"]),
+#     )
 
-    logger.info(
-        "Creating mind map with %s nodes and %s edges",
-        len(graph_data["nodes"]),
-        len(graph_data["edges"]),
-    )
-
-    mind_map = await _create_and_persist_mindmap(
-        db, notebook_id, title, graph_data
-    )
-    logger.info(
-        "Mind map created successfully with ID: %s and stored in database",
-        mind_map.id,
-    )
-    return mind_map
+#     mind_map = await _create_and_persist_mindmap(
+#         db, notebook_id, title, graph_data
+#     )
+#     logger.info(
+#         "Mind map created successfully with ID: %s and stored in database",
+#         mind_map.id,
+#     )
+#     return mind_map
 
 
 async def run_mindmap_generation_for_existing(

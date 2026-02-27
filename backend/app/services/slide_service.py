@@ -11,8 +11,10 @@ import logging
 import time
 import uuid
 from io import BytesIO
+from pathlib import Path
 
 import httpx
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -187,38 +189,28 @@ def _placeholder_slide_image(slide_number: int, title: str) -> bytes:
         return minimal_png
 
 
+def _render_slide_deck_system_prompt(focus_topic: str | None) -> str:
+    """Render slide deck system prompt from template with optional focus topic."""
+    focus_instruction = ""
+    if focus_topic:
+        focus_instruction = f"\nFocus specifically on: {focus_topic}"
+
+    template_dir = Path(__file__).resolve().parent.parent / "templates"
+    env = Environment(
+        autoescape=select_autoescape(default_for_string=False),
+        loader=FileSystemLoader(template_dir),
+    )
+    template = env.get_template("slide_deck_system_prompt.txt")
+    return template.render(focus_instruction=focus_instruction)
+
+
 def _build_slide_deck_messages(
     combined_content: str,
     title: str,
     focus_topic: str | None,
 ) -> list[dict]:
     """Build system prompt and user message for slide deck LLM generation."""
-    focus_instruction = ""
-    if focus_topic:
-        focus_instruction = f"\nFocus specifically on: {focus_topic}"
-
-    system_prompt = f"""Create a slide deck from the provided content. Return ONLY valid JSON.
-Content must be coherent across slides. Total number of slides must be 3 or fewer.
-Use a default professional style and layout (title slide first, summary last).
-{focus_instruction}
-
-Format:
-{{
-  "slides": [
-    {{
-      "slide_number": 1,
-      "title": "Slide Title",
-      "content": ["Bullet point 1", "Bullet point 2"],
-      "speaker_notes": "Notes for the presenter",
-      "layout": "title"
-    }},
-    ...
-  ]
-}}
-
-Layout types: "title", "content", "two_column", "image_text".
-"""
-
+    system_prompt = _render_slide_deck_system_prompt(focus_topic)
     return [
         {"role": "system", "content": system_prompt},
         {
@@ -328,46 +320,46 @@ def _images_to_pdf(
     images[0].save(buf, format="PDF", save_all=True, append_images=images[1:])
     return buf.getvalue()
 
-
-async def generate_slide_deck(
-    db: AsyncSession,
-    notebook_id: str,
-    title: str = "Slide Deck",
-    theme: str = "light",
-    source_ids: list[str] | None = None,
-    focus_topic: str | None = None,
-) -> SlideDeck:
-    """Generate a slide deck: document content -> LLM -> slides JSON
-    -> per-slide image -> PDF -> OBS. Frontend shows the PDF.
-    """
+# 同步接口
+# async def generate_slide_deck(
+#     db: AsyncSession,
+#     notebook_id: str,
+#     title: str = "Slide Deck",
+#     theme: str = "light",
+#     source_ids: list[str] | None = None,
+#     focus_topic: str | None = None,
+# ) -> SlideDeck:
+#     """Generate a slide deck: document content -> LLM -> slides JSON
+#     -> per-slide image -> PDF -> OBS. Frontend shows the PDF.
+#     """
     
-    sources = await fetch_sources(db, notebook_id, source_ids)
-    combined_content = await build_combined_content_from_sources(sources)        
+#     sources = await fetch_sources(db, notebook_id, source_ids)
+#     combined_content = await build_combined_content_from_sources(sources)        
 
 
-    messages = _build_slide_deck_messages(combined_content, title, focus_topic)
-    slides_data = await _generate_slides_data(messages, title)
+#     messages = _build_slide_deck_messages(combined_content, title, focus_topic)
+#     slides_data = await _generate_slides_data(messages, title)
 
-    slides = slides_data.get("slides") or []
-    logger.info("slides: %s", slides)
+#     slides = slides_data.get("slides") or []
+#     logger.info("slides: %s", slides)
 
-    image_bytes_list = await _render_slides_to_images(slides, title)
-    slide_titles = [s.get("title", "Slide") for s in slides]
-    pdf_bytes = _images_to_pdf(image_bytes_list, slide_titles=slide_titles)
-    object_key = _upload_slide_deck_pdf(pdf_bytes)
+#     image_bytes_list = await _render_slides_to_images(slides, title)
+#     slide_titles = [s.get("title", "Slide") for s in slides]
+#     pdf_bytes = _images_to_pdf(image_bytes_list, slide_titles=slide_titles)
+#     object_key = _upload_slide_deck_pdf(pdf_bytes)
 
-    slide_deck = SlideDeck(
-        notebook_id=notebook_id,
-        title=title,
-        theme=theme,
-        slides_data=slides_data,
-        status=SlideDeckStatus.READY.value,
-        file_path=object_key,
-    )
-    db.add(slide_deck)
-    await db.flush()
-    await db.refresh(slide_deck)
-    return slide_deck
+#     slide_deck = SlideDeck(
+#         notebook_id=notebook_id,
+#         title=title,
+#         theme=theme,
+#         slides_data=slides_data,
+#         status=SlideDeckStatus.READY.value,
+#         file_path=object_key,
+#     )
+#     db.add(slide_deck)
+#     await db.flush()
+#     await db.refresh(slide_deck)
+#     return slide_deck
 
 
 async def run_slide_deck_generation_for_existing(
