@@ -192,6 +192,7 @@ def _placeholder_slide_image(slide_number: int, title: str) -> bytes:
 def _render_slide_deck_system_prompt(
     focus_topic: str | None,
     num_of_page: int = 3,
+    slide_style: str = "",
 ) -> str:
     """Render slide deck system prompt from template with optional focus topic."""
     focus_instruction = ""
@@ -207,6 +208,7 @@ def _render_slide_deck_system_prompt(
     return template.render(
         focus_instruction=focus_instruction,
         num_of_page=num_of_page,
+        slide_style=slide_style,
     )
 
 
@@ -215,10 +217,11 @@ def _build_slide_deck_messages(
     title: str,
     focus_topic: str | None,
     num_of_page: int = 3,
+    slide_style: str = "",
 ) -> list[dict]:
     """Build system prompt and user message for slide deck LLM generation."""
     system_prompt = _render_slide_deck_system_prompt(
-        focus_topic, num_of_page=num_of_page
+        focus_topic, num_of_page=num_of_page, slide_style=slide_style
     )
     return [
         {"role": "system", "content": system_prompt},
@@ -399,7 +402,7 @@ async def run_slide_deck_generation_for_existing(
         )
         combined_content = await build_combined_content_from_sources(sources)
         messages = _build_slide_deck_messages(
-            combined_content, slide_deck.title, focus_topic
+            combined_content, slide_deck.title, focus_topic, num_of_page=3, slide_style=slide_deck.slide_style
         )
         slides_data = await _generate_slides_data(
             messages, slide_deck.title

@@ -3,6 +3,8 @@ Content must be coherent across slides. Total number of slides must be {{ num_of
 Use a default professional style and layout (title slide first, summary last).
 {{ focus_instruction }}
 
+{{ slide_style }}
+
 Format:
 {% raw %}{
   "slides": [
