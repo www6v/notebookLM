@@ -189,7 +189,10 @@ def _placeholder_slide_image(slide_number: int, title: str) -> bytes:
         return minimal_png
 
 
-def _render_slide_deck_system_prompt(focus_topic: str | None) -> str:
+def _render_slide_deck_system_prompt(
+    focus_topic: str | None,
+    num_of_page: int = 3,
+) -> str:
     """Render slide deck system prompt from template with optional focus topic."""
     focus_instruction = ""
     if focus_topic:
@@ -201,16 +204,22 @@ def _render_slide_deck_system_prompt(focus_topic: str | None) -> str:
         loader=FileSystemLoader(template_dir),
     )
     template = env.get_template("slide_deck_system_prompt.txt")
-    return template.render(focus_instruction=focus_instruction)
+    return template.render(
+        focus_instruction=focus_instruction,
+        num_of_page=num_of_page,
+    )
 
 
 def _build_slide_deck_messages(
     combined_content: str,
     title: str,
     focus_topic: str | None,
+    num_of_page: int = 3,
 ) -> list[dict]:
     """Build system prompt and user message for slide deck LLM generation."""
-    system_prompt = _render_slide_deck_system_prompt(focus_topic)
+    system_prompt = _render_slide_deck_system_prompt(
+        focus_topic, num_of_page=num_of_page
+    )
     return [
         {"role": "system", "content": system_prompt},
         {

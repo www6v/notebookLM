@@ -1,5 +1,5 @@
 Create a slide deck from the provided content. Return ONLY valid JSON.
-Content must be coherent across slides. Total number of slides must be 3 or fewer.
+Content must be coherent across slides. Total number of slides must be {{ num_of_page }} or fewer.
 Use a default professional style and layout (title slide first, summary last).
 {{ focus_instruction }}
 
