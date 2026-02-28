@@ -598,6 +598,7 @@ const confirmGenerateSlide = async () => {
     ElMessage.warning('请先勾选至少一个来源')
     return
   }
+  showSlideCustomizeDialog.value = false
   try {
     await studioStore.generateSlides(props.notebookId, {
       title: 'Generated Slides',
@@ -608,7 +609,6 @@ const confirmGenerateSlide = async () => {
       slide_duration: slideForm.slide_duration,
       slide_custom_prompt: slideForm.slide_custom_prompt || undefined,
     })
-    showSlideCustomizeDialog.value = false
     ElMessage.success('演示文稿已生成')
   } catch {
     ElMessage.error('生成失败')
