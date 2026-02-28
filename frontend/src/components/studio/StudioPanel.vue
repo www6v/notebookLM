@@ -69,6 +69,12 @@
                 </el-dropdown-item>
                 <el-dropdown-item
                   v-if="item.type === 'slide' && !isOutputItemPending(item)"
+                  command="editSlide"
+                >
+                  编辑
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="item.type === 'slide' && !isOutputItemPending(item)"
                   command="open"
                 >
                   打开 PDF
@@ -133,6 +139,78 @@
       />
     </el-dialog>
 
+    <!-- 自定义演示文稿 Dialog -->
+    <el-dialog
+      v-model="showSlideCustomizeDialog"
+      title="自定义演示文稿"
+      width="560px"
+      class="slide-customize-dialog"
+      @close="closeSlideCustomizeDialog"
+    >
+      <el-form label-position="top" :model="slideForm">
+        <el-form-item label="格式">
+          <div class="slide-style-options">
+            <div
+              v-for="opt in slideStyleOptions"
+              :key="opt.value"
+              class="slide-style-card"
+              :class="{ 'is-selected': slideForm.slide_style === opt.value }"
+              @click="slideForm.slide_style = opt.value"
+            >
+              <el-icon v-if="slideForm.slide_style === opt.value" class="slide-style-check">
+                <Check />
+              </el-icon>
+              <div class="slide-style-label">{{ opt.label }}</div>
+              <div class="slide-style-desc">{{ opt.desc }}</div>
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="选择语言">
+          <el-select
+            v-model="slideForm.slide_language"
+            size="default"
+            style="width: 100%"
+            placeholder="选择语言"
+          >
+            <el-option
+              v-for="lang in slideLanguageOptions"
+              :key="lang.value"
+              :label="lang.label"
+              :value="lang.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="时长">
+          <el-radio-group v-model="slideForm.slide_duration">
+            <el-radio value="short">短</el-radio>
+            <el-radio value="default">默认</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="请描述您要创建的演示文稿">
+          <el-input
+            v-model="slideForm.slide_custom_prompt"
+            type="textarea"
+            :rows="4"
+            placeholder="添加一份概略提纲，或指定受众、风格和重点：「为新手用户创建一套演示文稿，采用大胆活泼的风格，注重分步说明。」"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSlideCustomizeDialog = false">取消</el-button>
+        <template v-if="editingSlideDeck">
+          <el-button @click="saveSlideOptions">保存</el-button>
+          <el-button type="primary" :loading="studioStore.loading" @click="regenerateSlideDeck">
+            重新生成
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button type="primary" :loading="studioStore.loading" @click="confirmGenerateSlide">
+            生成
+          </el-button>
+        </template>
+      </template>
+    </el-dialog>
+
     <!-- Note Edit Dialog -->
     <el-dialog
       v-model="showNoteDialog"
@@ -179,6 +257,7 @@ import {
   Document,
   List,
   Grid,
+  Check,
 } from '@element-plus/icons-vue'
 import { useStudioStore } from '@/stores/useStudioStore'
 import { useSourceStore } from '@/stores/useSourceStore'
@@ -203,7 +282,39 @@ const showMindMapDialog = ref(false)
 const previewMindMap = ref<MindMapData | null>(null)
 const showInfographicDialog = ref(false)
 const infographicTemplate = ref('timeline')
+const showSlideCustomizeDialog = ref(false)
+const editingSlideDeck = ref<SlideDeckData | null>(null)
+const slideForm = reactive({
+  slide_style: 'detailed',
+  slide_language: '简体中文',
+  slide_duration: 'default',
+  slide_custom_prompt: '',
+})
 const noteForm = reactive({ title: '', content: '', is_pinned: false })
+
+const slideStyleOptions = [
+  {
+    value: 'detailed',
+    label: '详细演示文稿',
+    desc: '一整套包含全文和详情的演示文稿，非常适合通过邮件发送或单独阅读。',
+  },
+  {
+    value: 'presentation',
+    label: '演示用幻灯片',
+    desc: '简洁直观的幻灯片，附带要介绍的重点，为您的演讲提供全程支持。',
+  },
+]
+
+const slideLanguageOptions = [
+  { value: '简体中文', label: '简体中文' },
+  { value: 'English', label: 'English' },
+  { value: '日本語', label: '日本語' },
+  { value: '繁體中文', label: '繁體中文' },
+  { value: 'Español', label: 'Español' },
+  { value: 'Français', label: 'Français' },
+  { value: 'Deutsch', label: 'Deutsch' },
+  { value: '한국어', label: '한국어' },
+]
 
 type OutputItem = {
   id: string
@@ -309,7 +420,7 @@ function onModuleClick(mod: (typeof moduleList)[0]) {
     return
   }
   if (mod.action === 'slides') {
-    generateSlides()
+    openSlideCustomizeDialog()
     return
   }
   if (mod.action === 'infographic') {
@@ -349,6 +460,9 @@ function onOutputItemDblClick(item: OutputItem) {
 function handleOutputCommand(command: string, item: OutputItem) {
   if (command === 'edit' && item.type === 'note') {
     editingNote.value = item.raw as Note
+  }
+  if (command === 'editSlide' && item.type === 'slide' && !isOutputItemPending(item)) {
+    openSlideCustomizeDialog(item.raw as SlideDeckData)
   }
   if (command === 'open' && item.type === 'mindmap' && !isOutputItemPending(item)) {
     openMindMapDialog(item.raw as MindMapData)
@@ -457,16 +571,79 @@ const handleDeleteMindMap = async (mindmapId: string) => {
   }
 }
 
-const generateSlides = async () => {
+function openSlideCustomizeDialog(deck?: SlideDeckData | null) {
+  editingSlideDeck.value = deck ?? null
+  if (deck) {
+    slideForm.slide_style = deck.slide_style ?? 'detailed'
+    slideForm.slide_language = deck.slide_language ?? '简体中文'
+    slideForm.slide_duration = deck.slide_duration ?? 'default'
+    slideForm.slide_custom_prompt = deck.slide_custom_prompt ?? ''
+  } else {
+    slideForm.slide_style = 'detailed'
+    slideForm.slide_language = '简体中文'
+    slideForm.slide_duration = 'default'
+    slideForm.slide_custom_prompt = ''
+  }
+  showSlideCustomizeDialog.value = true
+}
+
+function closeSlideCustomizeDialog() {
+  editingSlideDeck.value = null
+}
+
+const confirmGenerateSlide = async () => {
   if (studioStore.loading) return
+  const ids = sourceStore.activeSourceIds
+  if (ids.length === 0) {
+    ElMessage.warning('请先勾选至少一个来源')
+    return
+  }
   try {
     await studioStore.generateSlides(props.notebookId, {
       title: 'Generated Slides',
       theme: 'light',
+      source_ids: ids.length > 0 ? ids : undefined,
+      slide_style: slideForm.slide_style,
+      slide_language: slideForm.slide_language,
+      slide_duration: slideForm.slide_duration,
+      slide_custom_prompt: slideForm.slide_custom_prompt || undefined,
     })
+    showSlideCustomizeDialog.value = false
     ElMessage.success('演示文稿已生成')
   } catch {
     ElMessage.error('生成失败')
+  }
+}
+
+const saveSlideOptions = async () => {
+  if (!editingSlideDeck.value) return
+  try {
+    await studioStore.updateSlideDeck(editingSlideDeck.value.id, {
+      slide_style: slideForm.slide_style,
+      slide_language: slideForm.slide_language,
+      slide_duration: slideForm.slide_duration,
+      slide_custom_prompt: slideForm.slide_custom_prompt || undefined,
+    })
+    showSlideCustomizeDialog.value = false
+    ElMessage.success('已保存')
+  } catch {
+    ElMessage.error('保存失败')
+  }
+}
+
+const regenerateSlideDeck = async () => {
+  if (!editingSlideDeck.value || studioStore.loading) return
+  try {
+    await studioStore.regenerateSlideDeck(editingSlideDeck.value.id, {
+      slide_style: slideForm.slide_style,
+      slide_language: slideForm.slide_language,
+      slide_duration: slideForm.slide_duration,
+      slide_custom_prompt: slideForm.slide_custom_prompt || undefined,
+    })
+    showSlideCustomizeDialog.value = false
+    ElMessage.success('正在重新生成演示文稿')
+  } catch {
+    ElMessage.error('重新生成失败')
   }
 }
 
@@ -689,5 +866,50 @@ const formatDate = (dateStr: string) => {
 
 .add-note-btn {
   width: 100%;
+}
+
+/* 自定义演示文稿 */
+.slide-style-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slide-style-card {
+  position: relative;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.slide-style-card:hover {
+  border-color: var(--primary-color);
+}
+
+.slide-style-card.is-selected {
+  border-color: var(--primary-color);
+  background: var(--el-color-primary-light-9);
+}
+
+.slide-style-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--primary-color);
+  font-size: 16px;
+}
+
+.slide-style-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.slide-style-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
 }
 </style>

@@ -17,7 +17,31 @@ export interface SlideDeckData {
   slides_data: Record<string, unknown> | null
   status: string
   file_path: string | null
+  slide_style?: string
+  slide_language?: string
+  slide_duration?: string
+  slide_custom_prompt?: string | null
   created_at: string
+}
+
+export interface SlideDeckCreateOptions {
+  title?: string
+  theme?: string
+  source_ids?: string[]
+  focus_topic?: string | null
+  slide_style?: string
+  slide_language?: string
+  slide_duration?: string
+  slide_custom_prompt?: string | null
+}
+
+export interface SlideDeckUpdateOptions {
+  title?: string
+  theme?: string
+  slide_style?: string
+  slide_language?: string
+  slide_duration?: string
+  slide_custom_prompt?: string | null
 }
 
 export interface InfographicData {
@@ -53,8 +77,13 @@ export const studioApi = {
   },
 
   // Slides
-  generateSlides: async (notebookId: string, data: { title?: string; theme?: string }): Promise<SlideDeckData> => {
+  generateSlides: async (notebookId: string, data: SlideDeckCreateOptions): Promise<SlideDeckData> => {
     const res = await client.post(`/notebooks/${notebookId}/slides`, data)
+    return res.data
+  },
+
+  regenerateSlide: async (slideId: string, data: SlideDeckUpdateOptions): Promise<SlideDeckData> => {
+    const res = await client.post(`/slides/${slideId}/regenerate`, data)
     return res.data
   },
 

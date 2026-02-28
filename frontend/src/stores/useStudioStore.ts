@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { studioApi } from '@/api/studio'
-import type { MindMapData, SlideDeckData, InfographicData } from '@/api/studio'
+import type {
+  MindMapData,
+  SlideDeckData,
+  InfographicData,
+  SlideDeckCreateOptions,
+  SlideDeckUpdateOptions,
+} from '@/api/studio'
 
 export const useStudioStore = defineStore('studio', () => {
   const mindMaps = ref<MindMapData[]>([])
@@ -107,7 +113,7 @@ export const useStudioStore = defineStore('studio', () => {
     })
   }
 
-  const generateSlides = async (notebookId: string, data: { title?: string; theme?: string }) => {
+  const generateSlides = async (notebookId: string, data: SlideDeckCreateOptions) => {
     loading.value = true
     try {
       const deck = await studioApi.generateSlides(notebookId, data)
@@ -116,6 +122,31 @@ export const useStudioStore = defineStore('studio', () => {
         const updated = await pollSlideDeckUntilReady(deck.id)
         const idx = slideDecks.value.findIndex((d) => d.id === deck.id)
         if (idx !== -1) slideDecks.value[idx] = updated
+        return updated
+      }
+      return deck
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updateSlideDeck = async (slideId: string, data: SlideDeckUpdateOptions) => {
+    const deck = await studioApi.updateSlide(slideId, data)
+    const idx = slideDecks.value.findIndex((d) => d.id === slideId)
+    if (idx !== -1) slideDecks.value[idx] = deck
+    return deck
+  }
+
+  const regenerateSlideDeck = async (slideId: string, data: SlideDeckUpdateOptions) => {
+    loading.value = true
+    try {
+      const deck = await studioApi.regenerateSlide(slideId, data)
+      const idx = slideDecks.value.findIndex((d) => d.id === slideId)
+      if (idx !== -1) slideDecks.value[idx] = deck
+      if (deck.status === 'pending' || deck.status === 'processing') {
+        const updated = await pollSlideDeckUntilReady(deck.id)
+        const i = slideDecks.value.findIndex((d) => d.id === deck.id)
+        if (i !== -1) slideDecks.value[i] = updated
         return updated
       }
       return deck
@@ -149,6 +180,8 @@ export const useStudioStore = defineStore('studio', () => {
     removeMindMap,
     fetchSlideDecks,
     generateSlides,
+    updateSlideDeck,
+    regenerateSlideDeck,
     fetchInfographics,
     generateInfographic,
   }

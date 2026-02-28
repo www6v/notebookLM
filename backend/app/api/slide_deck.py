@@ -100,6 +100,10 @@ async def generate_slides(
         slides_data=None,
         status=SlideDeckStatus.PENDING.value,
         file_path=None,
+        slide_style=body.slide_style or "detailed",
+        slide_language=body.slide_language or "简体中文",
+        slide_duration=body.slide_duration or "default",
+        slide_custom_prompt=body.slide_custom_prompt,
     )
     db.add(slide_deck)
     await db.flush()
@@ -180,8 +184,52 @@ async def update_slide(
         slide.theme = body.theme
     if body.slides_data is not None:
         slide.slides_data = body.slides_data
+    if body.slide_style is not None:
+        slide.slide_style = body.slide_style
+    if body.slide_language is not None:
+        slide.slide_language = body.slide_language
+    if body.slide_duration is not None:
+        slide.slide_duration = body.slide_duration
+    if body.slide_custom_prompt is not None:
+        slide.slide_custom_prompt = body.slide_custom_prompt
     await db.flush()
     await db.refresh(slide)
+    return SlideDeckResponse.model_validate(slide)
+
+
+@router.post(
+    "/api/slides/{slide_id}/regenerate",
+    response_model=SlideDeckResponse,
+    status_code=202,
+)
+async def regenerate_slide(
+    slide_id: str,
+    body: SlideDeckUpdate,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Update slide options and re-run generation in background. Returns 202."""
+    slide = await _get_slide(db, slide_id, user.id)
+    if body.title is not None:
+        slide.title = body.title
+    if body.theme is not None:
+        slide.theme = body.theme
+    if body.slide_style is not None:
+        slide.slide_style = body.slide_style
+    if body.slide_language is not None:
+        slide.slide_language = body.slide_language
+    if body.slide_duration is not None:
+        slide.slide_duration = body.slide_duration
+    if body.slide_custom_prompt is not None:
+        slide.slide_custom_prompt = body.slide_custom_prompt
+    slide.status = SlideDeckStatus.PENDING.value
+    slide.slides_data = None
+    slide.file_path = None
+    await db.flush()
+    await db.refresh(slide)
+    await db.commit()
+    background_tasks.add_task(_run_slide_deck_generation_background, slide.id)
     return SlideDeckResponse.model_validate(slide)
 
 

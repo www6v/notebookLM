@@ -189,10 +189,31 @@ def _placeholder_slide_image(slide_number: int, title: str) -> bytes:
         return minimal_png
 
 
+def _duration_to_num_pages(slide_duration: str) -> int:
+    """Map slide_duration to number of slides (e.g. short=3, default=5)."""
+    if slide_duration == "short":
+        return 3
+    return 5
+
+
+def _slide_style_instruction(slide_style: str) -> str:
+    """Map slide_style key to prompt instruction text."""
+    if slide_style == "presentation":
+        return (
+            "Keep each slide concise with only key points and minimal text. "
+            "Include speaker_notes for the presenter. Style: suitable for live presentation."
+        )
+    return (
+        "Include full text and detailed content on each slide. "
+        "Suitable for reading independently or sending by email."
+    )
+
+
 def _render_slide_deck_system_prompt(
     focus_topic: str | None,
     num_of_page: int = 3,
     slide_style: str = "",
+    slide_language: str = "简体中文",
 ) -> str:
     """Render slide deck system prompt from template with optional focus topic."""
     focus_instruction = ""
@@ -205,10 +226,12 @@ def _render_slide_deck_system_prompt(
         loader=FileSystemLoader(template_dir),
     )
     template = env.get_template("slide_deck_system_prompt.txt")
+    style_instruction = _slide_style_instruction(slide_style or "detailed")
     return template.render(
         focus_instruction=focus_instruction,
         num_of_page=num_of_page,
-        slide_style=slide_style,
+        slide_style=style_instruction,
+        slide_language=slide_language,
     )
 
 
@@ -218,17 +241,25 @@ def _build_slide_deck_messages(
     focus_topic: str | None,
     num_of_page: int = 3,
     slide_style: str = "",
+    slide_language: str = "简体中文",
+    slide_custom_prompt: str | None = None,
 ) -> list[dict]:
     """Build system prompt and user message for slide deck LLM generation."""
     system_prompt = _render_slide_deck_system_prompt(
-        focus_topic, num_of_page=num_of_page, slide_style=slide_style
+        focus_topic,
+        num_of_page=num_of_page,
+        slide_style=slide_style,
+        slide_language=slide_language,
     )
+    user_content = combined_content or "No source content available."
+    if slide_custom_prompt and slide_custom_prompt.strip():
+        user_content = (
+            f"{user_content}\n\n"
+            f"Additional instructions from the user: {slide_custom_prompt.strip()}"
+        )
     return [
         {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": combined_content or "No source content available.",
-        },
+        {"role": "user", "content": user_content},
     ]
 
 
@@ -401,8 +432,20 @@ async def run_slide_deck_generation_for_existing(
             db, slide_deck.notebook_id, source_ids
         )
         combined_content = await build_combined_content_from_sources(sources)
+        num_of_page = _duration_to_num_pages(
+            getattr(slide_deck, "slide_duration", "default") or "default"
+        )
+        slide_style = getattr(slide_deck, "slide_style", "") or ""
+        slide_language = getattr(slide_deck, "slide_language", "简体中文") or "简体中文"
+        slide_custom_prompt = getattr(slide_deck, "slide_custom_prompt", None)
         messages = _build_slide_deck_messages(
-            combined_content, slide_deck.title, focus_topic, num_of_page=3, slide_style=slide_deck.slide_style
+            combined_content,
+            slide_deck.title,
+            focus_topic,
+            num_of_page=num_of_page,
+            slide_style=slide_style,
+            slide_language=slide_language,
+            slide_custom_prompt=slide_custom_prompt,
         )
         slides_data = await _generate_slides_data(
             messages, slide_deck.title

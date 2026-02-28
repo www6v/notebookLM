@@ -41,6 +41,16 @@ class SlideDeck(Base, UUIDMixin, TimestampMixin):
         String(50), default="pending", nullable=False
     )
     file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    slide_style: Mapped[str] = mapped_column(
+        String(100), default="detailed", nullable=False
+    )
+    slide_language: Mapped[str] = mapped_column(
+        String(50), default="简体中文", nullable=False
+    )
+    slide_duration: Mapped[str] = mapped_column(
+        String(50), default="default", nullable=False
+    )
+    slide_custom_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     notebook = relationship("Notebook", back_populates="slide_decks")

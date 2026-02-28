@@ -56,6 +56,10 @@ class SlideDeckCreate(BaseModel):
     theme: str = "light"
     source_ids: list[str] | None = None
     focus_topic: str | None = None
+    slide_style: str = "detailed"
+    slide_language: str = "简体中文"
+    slide_duration: str = "default"
+    slide_custom_prompt: str | None = None
 
 
 class SlideDeckUpdate(BaseModel):
@@ -64,6 +68,10 @@ class SlideDeckUpdate(BaseModel):
     title: str | None = None
     theme: str | None = None
     slides_data: dict | None = None
+    slide_style: str | None = None
+    slide_language: str | None = None
+    slide_duration: str | None = None
+    slide_custom_prompt: str | None = None
 
 
 class SlideDeckResponse(BaseModel):
@@ -76,6 +84,10 @@ class SlideDeckResponse(BaseModel):
     slides_data: dict | None = None
     status: SlideDeckStatus = SlideDeckStatus.PENDING
     file_path: str | None = None
+    slide_style: str = "detailed"
+    slide_language: str = "简体中文"
+    slide_duration: str = "default"
+    slide_custom_prompt: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
