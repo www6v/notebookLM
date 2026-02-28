@@ -62,7 +62,10 @@
         </template>
         <el-form label-position="top">
           <el-form-item label="Default Provider">
-            <el-select v-model="llmProvider" style="width: 100%">
+            <el-select
+              v-model="settingsStore.settings.llmProvider"
+              style="width: 100%"
+            >
               <el-option label="OpenAI" value="openai" />
               <el-option label="Anthropic (Claude)" value="anthropic" />
               <el-option label="Google Gemini" value="google" />
@@ -71,18 +74,17 @@
             </el-select>
           </el-form-item>
           <el-form-item label="Model">
-            <el-input v-model="llmModel" placeholder="gpt-4o" />
-          </el-form-item>
-          <el-form-item label="API Key">
             <el-input
-              v-model="apiKey"
-              type="password"
-              show-password
-              placeholder="sk-..."
+              v-model="settingsStore.settings.llmModel"
+              placeholder="gpt-4o"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="saveSettings">
+            <el-button
+              type="primary"
+              :loading="saving"
+              @click="saveSettings"
+            >
               Save Settings
             </el-button>
           </el-form-item>
@@ -105,39 +107,33 @@ const router = useRouter()
 const themeStore = useThemeStore()
 const settingsStore = useSettingsStore()
 const languageOptions = OUTPUT_LANGUAGE_OPTIONS
-const llmProvider = ref('openai')
-const llmModel = ref('gpt-4o')
-const apiKey = ref('')
+const saving = ref(false)
+
 function onThemeChange(value: ThemeMode) {
   themeStore.setTheme(value)
   ElMessage.success(value === 'dark' ? '已切换为深色模式' : '已切换为浅色模式')
 }
 
-function onOutputLanguageChange(value: string) {
-  settingsStore.setOutputLanguage(value)
+async function onOutputLanguageChange(value: string) {
+  await settingsStore.setOutputLanguage(value)
   ElMessage.success(`输出语言已设置为 ${value}`)
 }
 
-onMounted(() => {
-  const raw = localStorage.getItem('llm_settings')
-  if (raw) {
-    try {
-      const data = JSON.parse(raw)
-      if (data.provider) llmProvider.value = data.provider
-      if (data.model) llmModel.value = data.model
-    } catch {
-      /* ignore */
-    }
-  }
+onMounted(async () => {
+  await settingsStore.fetchSettings()
 })
 
-const saveSettings = () => {
-  // Settings would be persisted to backend in a real implementation
-  localStorage.setItem('llm_settings', JSON.stringify({
-    provider: llmProvider.value,
-    model: llmModel.value,
-  }))
-  ElMessage.success('Settings saved')
+const saveSettings = async () => {
+  saving.value = true
+  try {
+    await settingsStore.saveAllSettings()
+    ElMessage.success('设置已保存')
+    router.push('/')
+  } catch {
+    ElMessage.error('保存失败，请重试')
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 

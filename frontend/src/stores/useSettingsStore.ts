@@ -1,30 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-
-const SETTINGS_KEY = 'app-global-settings'
+import { settingsApi } from '@/api/settings'
 
 export interface GlobalSettings {
   outputLanguage: string
+  llmProvider: string
+  llmModel: string
 }
 
 const DEFAULT_SETTINGS: GlobalSettings = {
   outputLanguage: '简体中文',
-}
-
-function loadSettings(): GlobalSettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    if (raw) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
-    }
-  } catch {
-    /* ignore */
-  }
-  return { ...DEFAULT_SETTINGS }
-}
-
-function persistSettings(settings: GlobalSettings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+  llmProvider: 'openai',
+  llmModel: 'gpt-4o',
 }
 
 export const OUTPUT_LANGUAGE_OPTIONS = [
@@ -42,15 +29,66 @@ export const OUTPUT_LANGUAGE_OPTIONS = [
 ]
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = ref<GlobalSettings>(loadSettings())
+  const settings = ref<GlobalSettings>({ ...DEFAULT_SETTINGS })
+  const loaded = ref(false)
 
-  const setOutputLanguage = (language: string) => {
+  const fetchSettings = async () => {
+    try {
+      const data = await settingsApi.get()
+      settings.value = {
+        outputLanguage: data.output_language,
+        llmProvider: data.llm_provider,
+        llmModel: data.llm_model,
+      }
+    } catch {
+      /* keep defaults when unauthenticated or network fails */
+    } finally {
+      loaded.value = true
+    }
+  }
+
+  const setOutputLanguage = async (language: string) => {
     settings.value.outputLanguage = language
-    persistSettings(settings.value)
+    try {
+      await settingsApi.patch({ output_language: language })
+    } catch {
+      /* ignore – value is already updated in memory */
+    }
+  }
+
+  const setLlmProvider = async (provider: string) => {
+    settings.value.llmProvider = provider
+    try {
+      await settingsApi.patch({ llm_provider: provider })
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const setLlmModel = async (model: string) => {
+    settings.value.llmModel = model
+    try {
+      await settingsApi.patch({ llm_model: model })
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const saveAllSettings = async () => {
+    await settingsApi.patch({
+      output_language: settings.value.outputLanguage,
+      llm_provider: settings.value.llmProvider,
+      llm_model: settings.value.llmModel,
+    })
   }
 
   return {
     settings,
+    loaded,
+    fetchSettings,
     setOutputLanguage,
+    setLlmProvider,
+    setLlmModel,
+    saveAllSettings,
   }
 })

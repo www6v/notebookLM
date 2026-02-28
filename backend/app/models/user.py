@@ -23,3 +23,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     notebooks = relationship(
         "Notebook", back_populates="owner", cascade="all, delete-orphan"
     )
+    settings = relationship(
+        "UserSettings",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
