@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 def _render_mindmap_system_prompt(
     max_nodes: int = 20,
     extra_instruction: str = "",
+    output_language: str = "简体中文",
 ) -> str:
     """Render mind map system prompt from template with Jinja2 variables."""
     template_dir = Path(__file__).resolve().parent.parent / "templates"
@@ -38,6 +39,7 @@ def _render_mindmap_system_prompt(
     return template.render(
         max_nodes=max_nodes,
         extra_instruction=extra_instruction,
+        output_language=output_language,
     )
 
 
@@ -62,6 +64,7 @@ async def _create_and_persist_mindmap(
 async def _build_graph_data_from_content(
     combined_content: str,
     title: str,
+    output_language: str = "简体中文",
 ) -> dict:
     """Build mind map graph data (nodes/edges) from combined text via LLM.
 
@@ -78,7 +81,9 @@ async def _build_graph_data_from_content(
     )
     logger.info("Combined content preview: %s", combined_content[:1000])
 
-    system_prompt = _render_mindmap_system_prompt(max_nodes=20)
+    system_prompt = _render_mindmap_system_prompt(
+        max_nodes=20, output_language=output_language
+    )
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": combined_content},
@@ -187,8 +192,11 @@ async def run_mindmap_generation_for_existing(
             raise ValueError(
                 "No usable content from selected sources for mind map."
             )
+        output_language = (
+            getattr(mind_map, "output_language", None) or "简体中文"
+        )
         graph_data = await _build_graph_data_from_content(
-            combined_content, mind_map.title
+            combined_content, mind_map.title, output_language=output_language
         )
         mind_map.graph_data = graph_data
         mind_map.status = MindMapStatus.READY.value

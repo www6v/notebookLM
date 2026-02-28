@@ -39,6 +39,7 @@ async def generate_infographic(
         template_type=body.template_type,
         layout_data={"sections": []},  # placeholder
         status="pending",
+        output_language=body.output_language,
     )
     db.add(infographic)
     await db.flush()

@@ -6,4 +6,5 @@ Return ONLY valid JSON with this format:
 }{% endraw %}
 
 Create a central node for the main theme and branch out to sub-topics. Maximum {{ max_nodes }} nodes.
+Write all node labels in this language: {{ output_language }}.
 {% if extra_instruction %}{{ extra_instruction }}{% endif %}

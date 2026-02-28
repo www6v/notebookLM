@@ -19,6 +19,9 @@ class MindMap(Base, UUIDMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(
         String(50), default="ready", nullable=False
     )
+    output_language: Mapped[str] = mapped_column(
+        String(50), default="简体中文", nullable=False
+    )
 
     # Relationships
     notebook = relationship("Notebook", back_populates="mind_maps")
@@ -72,6 +75,9 @@ class Infographic(Base, UUIDMixin, TimestampMixin):
     file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(
         String(50), default="pending", nullable=False
+    )
+    output_language: Mapped[str] = mapped_column(
+        String(50), default="简体中文", nullable=False
     )
 
     # Relationships

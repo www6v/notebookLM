@@ -57,7 +57,7 @@ export interface InfographicData {
 
 export const studioApi = {
   // Mind Map
-  generateMindMap: async (notebookId: string, data: { title?: string; source_ids?: string[] }): Promise<MindMapData> => {
+  generateMindMap: async (notebookId: string, data: { title?: string; source_ids?: string[]; output_language?: string }): Promise<MindMapData> => {
     const res = await client.post(`/notebooks/${notebookId}/mindmap`, data)
     return res.data
   },
@@ -112,7 +112,7 @@ export const studioApi = {
   },
 
   // Infographic
-  generateInfographic: async (notebookId: string, data: { title?: string; template_type?: string }): Promise<InfographicData> => {
+  generateInfographic: async (notebookId: string, data: { title?: string; template_type?: string; output_language?: string }): Promise<InfographicData> => {
     const res = await client.post(`/notebooks/${notebookId}/infographics`, data)
     return res.data
   },

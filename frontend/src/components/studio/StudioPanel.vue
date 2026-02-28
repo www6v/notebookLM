@@ -15,7 +15,15 @@
             <component :is="mod.icon" />
           </el-icon>
           <span class="module-label">{{ mod.label }}</span>
-          <span v-if="mod.beta" class="module-beta">Beta</span>
+          <span v-if="mod.beta" class="module-beta">Beta 版</span>
+          <el-icon
+            v-if="mod.action === 'slides' && !mod.disabled"
+            class="module-edit-btn"
+            :size="14"
+            @click.stop="openSlideCustomizeDialog()"
+          >
+            <Edit />
+          </el-icon>
         </div>
       </div>
     </section>
@@ -258,9 +266,11 @@ import {
   List,
   Grid,
   Check,
+  Edit,
 } from '@element-plus/icons-vue'
 import { useStudioStore } from '@/stores/useStudioStore'
 import { useSourceStore } from '@/stores/useSourceStore'
+import { useSettingsStore, OUTPUT_LANGUAGE_OPTIONS } from '@/stores/useSettingsStore'
 import { noteApi } from '@/api/note'
 import type { Note } from '@/api/note'
 import { studioApi } from '@/api/studio'
@@ -275,6 +285,7 @@ const props = defineProps<{ notebookId: string }>()
 
 const studioStore = useStudioStore()
 const sourceStore = useSourceStore()
+const settingsStore = useSettingsStore()
 const notes = ref<Note[]>([])
 const editingNote = ref<Note | null>(null)
 const showNoteDialog = ref(false)
@@ -286,7 +297,7 @@ const showSlideCustomizeDialog = ref(false)
 const editingSlideDeck = ref<SlideDeckData | null>(null)
 const slideForm = reactive({
   slide_style: 'detailed',
-  slide_language: '简体中文',
+  slide_language: settingsStore.settings.outputLanguage,
   slide_duration: 'default',
   slide_custom_prompt: '',
 })
@@ -305,16 +316,7 @@ const slideStyleOptions = [
   },
 ]
 
-const slideLanguageOptions = [
-  { value: '简体中文', label: '简体中文' },
-  { value: 'English', label: 'English' },
-  { value: '日本語', label: '日本語' },
-  { value: '繁體中文', label: '繁體中文' },
-  { value: 'Español', label: 'Español' },
-  { value: 'Français', label: 'Français' },
-  { value: 'Deutsch', label: 'Deutsch' },
-  { value: '한국어', label: '한국어' },
-]
+const slideLanguageOptions = OUTPUT_LANGUAGE_OPTIONS
 
 type OutputItem = {
   id: string
@@ -334,7 +336,7 @@ const moduleList = [
   { id: 'flashcard', label: '闪卡', icon: List, beta: false, action: 'placeholder' as const, disabled: true },
   { id: 'quiz', label: '测验', icon: List, beta: false, action: 'placeholder' as const, disabled: true },
   { id: 'infographic', label: '信息图', icon: PictureFilled, beta: false, action: 'infographic' as const, disabled: false },
-  { id: 'slides', label: '演示文稿', icon: Monitor, beta: false, action: 'slides' as const, disabled: false },
+  { id: 'slides', label: '演示文稿', icon: Monitor, beta: true, action: 'slides' as const, disabled: false },
   { id: 'table', label: '数据表格', icon: Grid, beta: false, action: 'placeholder' as const, disabled: true },
 ]
 
@@ -420,7 +422,7 @@ function onModuleClick(mod: (typeof moduleList)[0]) {
     return
   }
   if (mod.action === 'slides') {
-    openSlideCustomizeDialog()
+    quickGenerateSlides()
     return
   }
   if (mod.action === 'infographic') {
@@ -546,7 +548,12 @@ const handleGenerateMindMap = async () => {
     return
   }
   try {
-    await studioStore.generateMindMap(props.notebookId, ids)
+    await studioStore.generateMindMap(
+      props.notebookId,
+      ids,
+      'Mind Map',
+      settingsStore.settings.outputLanguage,
+    )
     ElMessage.success('思维导图已生成')
   } catch {
     ElMessage.error('生成失败')
@@ -571,16 +578,39 @@ const handleDeleteMindMap = async (mindmapId: string) => {
   }
 }
 
+const quickGenerateSlides = async () => {
+  if (studioStore.loading) return
+  const ids = sourceStore.activeSourceIds
+  if (ids.length === 0) {
+    ElMessage.warning('请先勾选至少一个来源')
+    return
+  }
+  try {
+    await studioStore.generateSlides(props.notebookId, {
+      title: 'Generated Slides',
+      theme: 'light',
+      source_ids: ids.length > 0 ? ids : undefined,
+      slide_style: 'detailed',
+      slide_language: settingsStore.settings.outputLanguage,
+      slide_duration: 'default',
+      slide_custom_prompt: undefined,
+    })
+    ElMessage.success('演示文稿已生成')
+  } catch {
+    ElMessage.error('生成失败')
+  }
+}
+
 function openSlideCustomizeDialog(deck?: SlideDeckData | null) {
   editingSlideDeck.value = deck ?? null
   if (deck) {
     slideForm.slide_style = deck.slide_style ?? 'detailed'
-    slideForm.slide_language = deck.slide_language ?? '简体中文'
+    slideForm.slide_language = deck.slide_language ?? settingsStore.settings.outputLanguage
     slideForm.slide_duration = deck.slide_duration ?? 'default'
     slideForm.slide_custom_prompt = deck.slide_custom_prompt ?? ''
   } else {
     slideForm.slide_style = 'detailed'
-    slideForm.slide_language = '简体中文'
+    slideForm.slide_language = settingsStore.settings.outputLanguage
     slideForm.slide_duration = 'default'
     slideForm.slide_custom_prompt = ''
   }
@@ -665,6 +695,7 @@ const confirmGenerateInfographic = async () => {
     await studioStore.generateInfographic(props.notebookId, {
       title: 'Generated Infographic',
       template_type: infographicTemplate.value,
+      output_language: settingsStore.settings.outputLanguage,
     })
     showInfographicDialog.value = false
     ElMessage.success('信息图已生成')
@@ -774,6 +805,19 @@ const formatDate = (dateStr: string) => {
   font-size: 10px;
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+.module-edit-btn {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+  cursor: pointer;
+}
+
+.module-card:hover .module-edit-btn {
+  opacity: 1;
+  color: var(--primary-color);
 }
 
 /* Lower: 输出的内容 */

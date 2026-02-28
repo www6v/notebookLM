@@ -72,12 +72,18 @@ export const useStudioStore = defineStore('studio', () => {
     })
   }
 
-  const generateMindMap = async (notebookId: string, sourceIds: string[], title: string = 'Mind Map') => {
+  const generateMindMap = async (
+    notebookId: string,
+    sourceIds: string[],
+    title: string = 'Mind Map',
+    outputLanguage: string = '简体中文',
+  ) => {
     loading.value = true
     try {
       const mindMap = await studioApi.generateMindMap(notebookId, {
         title,
         source_ids: sourceIds.length > 0 ? sourceIds : undefined,
+        output_language: outputLanguage,
       })
       mindMaps.value.unshift(mindMap)
       if (mindMap.status === 'pending' || mindMap.status === 'processing') {
@@ -159,7 +165,10 @@ export const useStudioStore = defineStore('studio', () => {
     infographics.value = await studioApi.listInfographics(notebookId)
   }
 
-  const generateInfographic = async (notebookId: string, data: { title?: string; template_type?: string }) => {
+  const generateInfographic = async (
+    notebookId: string,
+    data: { title?: string; template_type?: string; output_language?: string },
+  ) => {
     loading.value = true
     try {
       const info = await studioApi.generateInfographic(notebookId, data)

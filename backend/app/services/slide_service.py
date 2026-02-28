@@ -38,16 +38,6 @@ from app.services.obs_storage import (
 
 logger = logging.getLogger(__name__)
 
-# Ensure the logger has a handler for console output
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-
 
 async def _render_slide_to_image(slide: dict) -> bytes | None:
     """Call Qwen-Image API to generate one slide as image; return PNG bytes or None.

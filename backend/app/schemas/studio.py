@@ -22,6 +22,7 @@ class MindMapCreate(BaseModel):
 
     title: str = "Mind Map"
     source_ids: list[str] | None = None
+    output_language: str = "简体中文"
 
 
 class MindMapResponse(BaseModel):
@@ -32,6 +33,7 @@ class MindMapResponse(BaseModel):
     title: str
     graph_data: dict | None = None
     status: MindMapStatus = MindMapStatus.READY
+    output_language: str = "简体中文"
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -102,6 +104,7 @@ class InfographicCreate(BaseModel):
     template_type: str = "timeline"  # timeline, comparison, process, statistics, hierarchy
     source_ids: list[str] | None = None
     focus_topic: str | None = None
+    output_language: str = "简体中文"
 
 
 class InfographicUpdate(BaseModel):
@@ -122,6 +125,7 @@ class InfographicResponse(BaseModel):
     layout_data: dict | None = None
     file_path: str | None = None
     status: str
+    output_language: str = "简体中文"
     created_at: datetime
 
     model_config = {"from_attributes": True}

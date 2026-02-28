@@ -30,6 +30,34 @@
 
       <el-card class="settings-card">
         <template #header>
+          <h3>输出设置</h3>
+        </template>
+        <el-form label-position="top">
+          <el-form-item>
+            <template #label>
+              <div class="form-label-with-desc">
+                <span>输出语言</span>
+                <span class="form-label-desc">思维导图、信息图、演示文稿等 AI 生成内容的语言</span>
+              </div>
+            </template>
+            <el-select
+              :model-value="settingsStore.settings.outputLanguage"
+              style="width: 100%"
+              @update:model-value="onOutputLanguageChange"
+            >
+              <el-option
+                v-for="opt in languageOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card class="settings-card">
+        <template #header>
           <h3>LLM Provider Configuration</h3>
         </template>
         <el-form label-position="top">
@@ -93,9 +121,12 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useThemeStore } from '@/stores/useThemeStore'
 import type { ThemeMode } from '@/stores/useThemeStore'
+import { useSettingsStore, OUTPUT_LANGUAGE_OPTIONS } from '@/stores/useSettingsStore'
 
 const router = useRouter()
 const themeStore = useThemeStore()
+const settingsStore = useSettingsStore()
+const languageOptions = OUTPUT_LANGUAGE_OPTIONS
 const llmProvider = ref('openai')
 const llmModel = ref('gpt-4o')
 const apiKey = ref('')
@@ -105,6 +136,11 @@ const responseLength = ref('default')
 function onThemeChange(value: ThemeMode) {
   themeStore.setTheme(value)
   ElMessage.success(value === 'dark' ? '已切换为深色模式' : '已切换为浅色模式')
+}
+
+function onOutputLanguageChange(value: string) {
+  settingsStore.setOutputLanguage(value)
+  ElMessage.success(`输出语言已设置为 ${value}`)
 }
 
 onMounted(() => {
@@ -165,5 +201,17 @@ const saveSettings = () => {
 .settings-card h3 {
   font-size: 16px;
   font-weight: 600;
+}
+
+.form-label-with-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form-label-desc {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-weight: 400;
 }
 </style>

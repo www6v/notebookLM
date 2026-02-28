@@ -26,6 +26,7 @@ async def generate_infographic(
     template_type: str = "timeline",
     source_ids: list[str] | None = None,
     focus_topic: str | None = None,
+    output_language: str = "简体中文",
 ) -> Infographic:
     """Generate infographic data by asking the LLM to extract structured data."""
     stmt = select(Source).where(
@@ -50,6 +51,7 @@ async def generate_infographic(
             "role": "system",
             "content": f"""Extract structured data from the content for a {template_type} infographic.
 {template_instruction}{focus_instruction}
+Write all titles, headings, labels, and descriptions in this language: {output_language}.
 
 Return ONLY valid JSON:
 {{
@@ -91,6 +93,7 @@ Create 3-6 sections with 2-4 items each.""",
         template_type=template_type,
         layout_data=layout_data,
         status="ready",
+        output_language=output_language,
     )
     db.add(infographic)
     await db.flush()

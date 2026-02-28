@@ -92,6 +92,7 @@ async def generate_mindmap(
         title=body.title,
         graph_data=None,
         status=MindMapStatus.PENDING.value,
+        output_language=body.output_language,
     )
     db.add(mind_map)
     await db.flush()
