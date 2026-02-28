@@ -88,28 +88,6 @@
           </el-form-item>
         </el-form>
       </el-card>
-
-      <el-card class="settings-card">
-        <template #header>
-          <h3>Chat Settings</h3>
-        </template>
-        <el-form label-position="top">
-          <el-form-item label="Conversational Style">
-            <el-select v-model="chatStyle" style="width: 100%">
-              <el-option label="Default" value="default" />
-              <el-option label="Learning Guide" value="learning_guide" />
-              <el-option label="Custom" value="custom" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="Response Length">
-            <el-select v-model="responseLength" style="width: 100%">
-              <el-option label="Shorter" value="shorter" />
-              <el-option label="Default" value="default" />
-              <el-option label="Longer" value="longer" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </el-card>
     </main>
   </div>
 </template>
@@ -130,9 +108,6 @@ const languageOptions = OUTPUT_LANGUAGE_OPTIONS
 const llmProvider = ref('openai')
 const llmModel = ref('gpt-4o')
 const apiKey = ref('')
-const chatStyle = ref('default')
-const responseLength = ref('default')
-
 function onThemeChange(value: ThemeMode) {
   themeStore.setTheme(value)
   ElMessage.success(value === 'dark' ? '已切换为深色模式' : '已切换为浅色模式')
@@ -150,8 +125,6 @@ onMounted(() => {
       const data = JSON.parse(raw)
       if (data.provider) llmProvider.value = data.provider
       if (data.model) llmModel.value = data.model
-      if (data.chatStyle) chatStyle.value = data.chatStyle
-      if (data.responseLength) responseLength.value = data.responseLength
     } catch {
       /* ignore */
     }
@@ -163,8 +136,6 @@ const saveSettings = () => {
   localStorage.setItem('llm_settings', JSON.stringify({
     provider: llmProvider.value,
     model: llmModel.value,
-    chatStyle: chatStyle.value,
-    responseLength: responseLength.value,
   }))
   ElMessage.success('Settings saved')
 }
