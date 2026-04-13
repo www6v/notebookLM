@@ -12,6 +12,7 @@ export default {
     save: '保存',
     delete: '删除',
     back: '返回',
+    githubRepository: '在 GitHub 上查看项目',
   },
   home: {
     admin: '管理',

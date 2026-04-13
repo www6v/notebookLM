@@ -12,6 +12,7 @@ export default {
     save: 'Save',
     delete: 'Delete',
     back: 'Back',
+    githubRepository: 'View project on GitHub',
   },
   home: {
     admin: 'Admin',
