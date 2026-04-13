@@ -1,8 +1,8 @@
-# NotebookLM
+# NoteWork - 开源NotebookLM
 
 [English](./README.md)
 
-NotebookLM 是一个基于 Vue 3 和 FastAPI 构建的 AI 研究工作台。它以
+NoteWork 是一个基于 Vue 3 和 FastAPI 构建的 AI 研究工作台。它以
 Notebook 为组织核心，支持上传或关联多种资料来源，基于检索结果进行
 引用式对话，并生成思维导图、演示文稿、信息图、报告以及 Deep Research
 研究简报等内容。

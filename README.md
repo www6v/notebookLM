@@ -1,8 +1,8 @@
-# NotebookLM
+# NoteWork - Open NotebookLM
 
 [中文文档](./README.zh-CN.md)
 
-NotebookLM is an AI research workspace built with Vue 3 and FastAPI. It
+NoteWork is an AI research workspace built with Vue 3 and FastAPI. It
 organizes content around notebooks, lets users upload or link sources, chats
 with retrieval grounding and citations, and generates studio artifacts such as
 mind maps, slide decks, infographics, reports, and deep research briefs.
