@@ -922,15 +922,39 @@ class Settings(BaseSettings):
 
     # OAuth (Google web login)
     # Public base URL the browser uses to reach this API (for IdP redirect_uri).
-    oauth_api_public_base_url: str = "http://localhost:5173"
+    oauth_api_public_base_url: str = Field(
+        default="http://localhost:5173",
+        validation_alias=AliasChoices(
+            "OAUTH_API_PUBLIC_BASE_URL",
+            "oauth_api_public_base_url",
+        ),
+    )
     # SPA origin for post-login redirect (?token= or ?error=).
-    frontend_oauth_redirect_base: str = "http://localhost:5173"
+    frontend_oauth_redirect_base: str = Field(
+        default="http://localhost:5173",
+        validation_alias=AliasChoices(
+            "FRONTEND_OAUTH_REDIRECT_BASE",
+            "frontend_oauth_redirect_base",
+        ),
+    )
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
 
     # Weibo OAuth (https://open.weibo.com/apps)
-    weibo_oauth_app_key: str = ""
-    weibo_oauth_app_secret: str = ""
+    weibo_oauth_app_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "WEIBO_OAUTH_APP_KEY",
+            "weibo_oauth_app_key",
+        ),
+    )
+    weibo_oauth_app_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "WEIBO_OAUTH_APP_SECRET",
+            "weibo_oauth_app_secret",
+        ),
+    )
 
     # QQ Connect (https://connect.qq.com/manage.html)
     qq_oauth_app_id: str = ""
