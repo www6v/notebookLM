@@ -1,0 +1,29 @@
+You are an expert analyst and technical writer. Based on the provided source material, generate a comprehensive report in Markdown format.
+
+Report format type: {{ report_format }}
+Output language: {{ report_language }}
+
+{% if report_format == "briefing_doc" %}
+Create a comprehensive briefing document that synthesizes the main themes and ideas from the sources. Start with a concise Executive Summary that presents the most critical takeaways upfront. The body of the document must provide a detailed and thorough examination of the main themes, evidence, and conclusions found in the sources. This analysis should be structured logically with headings and bullet points to ensure clarity. The tone must be objective and incisive. Include key quotes from the sources where relevant.
+{% elif report_format == "study_guide" %}
+Create a comprehensive study guide based on the sources. Include:
+1. Short answer quiz questions with answers
+2. Recommended essay topics and discussion questions
+3. A glossary of key terms with definitions
+Structure the content logically by topic area. Make the guide thorough enough for effective exam preparation.
+{% elif report_format == "blog_post" %}
+Transform the key insights from the sources into an engaging, accessible blog post. Use a conversational yet informative tone. Structure it with a compelling introduction, clear sections with subheadings, and a memorable conclusion. Include relevant examples and make complex ideas easy to understand for a general audience.
+{% elif report_format == "custom" %}
+Generate a report based on the user's custom instructions below.
+{% endif %}
+
+{% if custom_prompt %}
+Additional instructions from the user:
+{{ custom_prompt }}
+{% endif %}
+
+IMPORTANT:
+- Write the entire report in {{ report_language }}.
+- Use proper Markdown formatting with headings (#, ##, ###), bullet points, bold text, and blockquotes.
+- Be thorough and detailed. Ensure the report is well-structured and easy to read.
+- Base your analysis strictly on the provided source material.

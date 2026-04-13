@@ -1,0 +1,250 @@
+"""Chat session and message API routes."""
+
+import json
+import logging
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.ai.deep_search import deep_search
+from app.api.deps import get_current_user
+from app.database import get_db
+from app.limits import ROLE_LIMITS
+from app.models.chat import ChatSession, Message
+from app.models.notebook import Notebook
+from app.models.user import User
+from app.schemas.chat import (
+    ChatSessionCreate,
+    ChatSessionResponse,
+    MessageCreate,
+    MessageResponse,
+)
+from app.services.chat_service import handle_chat_message
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["chat"])
+
+
+async def _check_daily_chat_limit(
+    db: AsyncSession, user: User
+) -> None:
+    """Raise 403 if the user has exceeded the daily chat message limit."""
+    limits = ROLE_LIMITS.get(user.role, ROLE_LIMITS["free"])
+    max_daily = limits.get("max_daily_chats", 50)
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    count_result = await db.execute(
+        select(func.count(Message.id))
+        .join(ChatSession, Message.session_id == ChatSession.id)
+        .join(Notebook, ChatSession.notebook_id == Notebook.id)
+        .where(
+            Notebook.user_id == user.id,
+            Message.role == "user",
+            Message.created_at >= today_start,
+        )
+    )
+    current_count = count_result.scalar_one()
+    if current_count >= max_daily:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"已达到每日对话次数上限（{max_daily}）。"
+                "请升级账户以获取更多对话次数。"
+            ),
+        )
+
+
+@router.post(
+    "/api/notebooks/{notebook_id}/chat/sessions",
+    response_model=ChatSessionResponse,
+    status_code=201,
+)
+async def create_session(
+    notebook_id: str,
+    body: ChatSessionCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Create a new chat session in a notebook."""
+    await _verify_notebook_access(db, notebook_id, user.id)
+    session = ChatSession(
+        notebook_id=notebook_id,
+        title=body.title,
+        settings=body.settings,
+    )
+    db.add(session)
+    await db.flush()
+    await db.refresh(session)
+    return ChatSessionResponse.model_validate(session)
+
+
+@router.get(
+    "/api/notebooks/{notebook_id}/chat/sessions",
+    response_model=list[ChatSessionResponse],
+)
+async def list_sessions(
+    notebook_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List chat sessions in a notebook."""
+    await _verify_notebook_access(db, notebook_id, user.id)
+    result = await db.execute(
+        select(ChatSession)
+        .where(ChatSession.notebook_id == notebook_id)
+        .order_by(ChatSession.created_at.desc())
+    )
+    return [
+        ChatSessionResponse.model_validate(s)
+        for s in result.scalars().all()
+    ]
+
+
+@router.post(
+    "/api/chat/{session_id}/messages",
+    response_model=MessageResponse,
+    status_code=201,
+)
+async def send_message(
+    session_id: str,
+    body: MessageCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Send a user message and get an AI response via RAG pipeline."""
+    await _check_daily_chat_limit(db, user)
+    session = await _get_session(db, session_id, user.id)
+    assistant_msg = await handle_chat_message(
+        db,
+        session,
+        body.content,
+        source_ids=body.source_ids,
+        user_id=user.username,
+        session_id=session_id,
+    )
+    return MessageResponse.model_validate(assistant_msg)
+
+
+@router.post("/api/chat/{session_id}/messages/stream")
+async def send_message_stream(
+    session_id: str,
+    body: MessageCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Send a user message with SSE streaming of search steps and final answer."""
+    await _check_daily_chat_limit(db, user)
+    session = await _get_session(db, session_id, user.id)
+
+    user_msg = Message(
+        session_id=session.id,
+        role="user",
+        content=body.content,
+    )
+    db.add(user_msg)
+    await db.flush()
+
+    async def event_generator():
+        try:
+            result = await deep_search(
+                db,
+                session.notebook_id,
+                body.content,
+                source_ids=body.source_ids,
+                conversation_style=body.conversation_style,
+                custom_prompt=body.custom_prompt,
+                answer_length=body.answer_length,
+                user_id=user.username,
+                session_id=session_id,
+            )
+
+            for step in result.get("search_steps", []):
+                yield f"data: {json.dumps({'type': 'step', 'data': step}, ensure_ascii=False)}\n\n"
+
+            assistant_msg = Message(
+                session_id=session.id,
+                role="assistant",
+                content=result["content"],
+                citations=result["citations"],
+            )
+            db.add(assistant_msg)
+            await db.flush()
+            await db.refresh(assistant_msg)
+
+            msg_data = MessageResponse.model_validate(assistant_msg).model_dump(mode="json")
+            yield f"data: {json.dumps({'type': 'answer', 'data': msg_data}, ensure_ascii=False)}\n\n"
+
+            yield "data: {\"type\": \"done\"}\n\n"
+        except Exception as exc:
+            logger.error("SSE stream error: %s", exc)
+            yield f"data: {json.dumps({'type': 'error', 'data': {'message': str(exc)}})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.get(
+    "/api/chat/{session_id}/messages",
+    response_model=list[MessageResponse],
+)
+async def list_messages(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get message history for a chat session."""
+    session = await _get_session(db, session_id, user.id)
+    result = await db.execute(
+        select(Message)
+        .where(Message.session_id == session.id)
+        .order_by(Message.created_at)
+    )
+    return [
+        MessageResponse.model_validate(m) for m in result.scalars().all()
+    ]
+
+
+async def _verify_notebook_access(
+    db: AsyncSession, notebook_id: str, user_id: str
+):
+    """Verify the user has access to the notebook."""
+    result = await db.execute(
+        select(Notebook).where(
+            Notebook.id == notebook_id, Notebook.user_id == user_id
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notebook not found",
+        )
+
+
+async def _get_session(
+    db: AsyncSession, session_id: str, user_id: str
+) -> ChatSession:
+    """Get a chat session and verify user access."""
+    result = await db.execute(
+        select(ChatSession)
+        .join(Notebook, ChatSession.notebook_id == Notebook.id)
+        .where(ChatSession.id == session_id, Notebook.user_id == user_id)
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat session not found",
+        )
+    return session

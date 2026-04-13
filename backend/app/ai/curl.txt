@@ -1,0 +1,11 @@
+# Example only — replace URL, token, and body before use.
+# Do not commit real Bearer tokens or internal endpoints.
+#
+# curl --location 'https://your-llm-gateway.example/v1/chat/completions' \
+# --header 'Authorization: Bearer YOUR_API_KEY' \
+# --header 'Content-Type: application/json' \
+# --data '{
+#     "model": "qwen3.5-plus",
+#     "messages": [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}],
+#     "stream": false
+# }'

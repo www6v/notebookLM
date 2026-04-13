@@ -1,0 +1,202 @@
+# =============================================================================
+# NotebookLM application configuration (Deer Flow–style layout)
+# =============================================================================
+#
+# Guidelines:
+# - Copy this file to `config.yaml` in the repository root (gitignored).
+# - Override the path with `NOTEBOOKLM_CONFIG_PATH` (absolute or CWD-relative).
+# - Load order: constructor kwargs > process environment > this file >
+#   defaults. The repo `.env` is not a settings file: it is loaded into
+#   `os.environ` only so values here can use `$VAR` / `${VAR}` (same idea as
+#   bytedance/deer-flow `config.example.yaml`).
+#
+# Bump when you add new sections or keys (for your own migrations).
+# =============================================================================
+
+config_version: 1
+
+# =============================================================================
+# LLM (LiteLLM / DashScope / router)
+# =============================================================================
+llm:
+  dashscope_api_key: $QWEN_API_KEY
+  dashscope_api_base: https://dashscope.aliyuncs.com/api/v1
+  litellm_model: notebooklm-chat
+  litellm_vision_model: qwen3-vl-plus
+  litellm_image_model: qwen-image-max
+  litellm_chat_router_enabled: true
+  litellm_router_group_name: notebooklm-chat
+  litellm_router_qwen_model: dashscope/qwen3.5-plus
+  dashscope_api_key_secondary: $DASHSCOPE_API_KEY_SECONDARY
+  dashscope_api_base_secondary: https://dashscope.aliyuncs.com/api/v1
+  litellm_router_gemini_model: gemini/gemini-3.1-pro-preview
+  litellm_router_openai_model: openai/gpt-5.4
+  openai_api_key: $OPENAI_API_KEY
+  gemini_api_key: $GEMINI_API_KEY
+
+# =============================================================================
+# Qwen ASR
+# =============================================================================
+asr:
+  qwen_asr_model: dashscope/qwen3-asr-flash
+  qwen_asr_filetrans_model: dashscope/qwen3-asr-flash-filetrans
+  qwen_asr_language: ""
+  qwen_asr_enable_itn: false
+  qwen_asr_sync_max_file_mb: 10
+  qwen_asr_timeout_seconds: 120.0
+  qwen_asr_filetrans_timeout_seconds: 900.0
+  qwen_asr_poll_interval_seconds: 2.0
+
+# =============================================================================
+# Embedding (DashScope multimodal)
+# =============================================================================
+embedding:
+  embedding_model: qwen3-vl-embedding
+  embedding_dimension: 1024
+
+# =============================================================================
+# Application
+# =============================================================================
+application:
+  app_name: NoteWorks
+  debug: false
+  secret_key: $SECRET_KEY
+  access_token_expire_minutes: 1440
+
+# =============================================================================
+# Database (MySQL)
+# =============================================================================
+database:
+  url: $DATABASE_URL
+  pool_size: 20
+  max_overflow: 20
+  pool_timeout_seconds: 30
+  pool_recycle_seconds: 300
+
+# =============================================================================
+# Redis / Celery / cache
+# =============================================================================
+redis:
+  redis_url: $REDIS_URL
+  celery_broker_url: $CELERY_BROKER_URL
+  celery_result_backend_url: $CELERY_RESULT_BACKEND_URL
+  cache_redis_url: $CACHE_REDIS_URL
+  task_event_redis_url: $TASK_EVENT_REDIS_URL
+  task_event_channel_prefix: task-events
+  generation_rate_limit_redis_url: $GENERATION_RATE_LIMIT_REDIS_URL
+  generation_cooldown_seconds: 300
+  generation_max_concurrent: 5
+
+# =============================================================================
+# Health checks
+# =============================================================================
+health:
+  healthcheck_timeout_seconds: 2.0
+  readiness_include_external_dependencies: false
+
+# =============================================================================
+# Logging
+# =============================================================================
+logging:
+  log_dir: logs
+  log_level: INFO
+  log_to_console: true
+  log_file_backup_count: 0
+  log_file_name: app.log
+
+# =============================================================================
+# File storage
+# =============================================================================
+file_storage:
+  upload_dir: ./uploads
+  max_upload_size_mb: 50
+
+# =============================================================================
+# yt-dlp (e.g. Bilibili cookies)
+# =============================================================================
+ytdlp:
+  ytdlp_cookies_file: $YTDLP_COOKIES_FILE
+  ytdlp_subprocess_timeout_seconds: 300
+
+# =============================================================================
+# Alibaba Cloud OSS
+# =============================================================================
+oss:
+  oss_access_key_id: $OSS_ACCESS_KEY_ID
+  oss_access_key_secret: $OSS_ACCESS_KEY_SECRET
+  oss_endpoint: https://oss-cn-hangzhou.aliyuncs.com
+  oss_bucket_name: your-oss-bucket-name
+  oss_path_prefix: txt2imgcn
+
+# =============================================================================
+# Milvus / Deep Searcher
+# =============================================================================
+milvus:
+  milvus_uri: http://localhost:19530
+  deep_search_max_iterations: 3
+  deep_search_top_k: 10
+
+# =============================================================================
+# DeerFlow (Deep Research gateway)
+# =============================================================================
+deer_flow:
+  deer_flow_base_url: http://localhost:2026
+  deer_flow_assistant_id: lead_agent
+  deer_flow_timeout_seconds: 600
+
+# =============================================================================
+# Langfuse
+# =============================================================================
+langfuse:
+  langfuse_public_key: $LANGFUSE_PUBLIC_KEY
+  langfuse_secret_key: $LANGFUSE_SECRET_KEY
+  langfuse_host: $LANGFUSE_HOST
+
+# =============================================================================
+# Alipay
+# =============================================================================
+alipay:
+  alipay_app_id: $ALIPAY_APP_ID
+  alipay_private_key: $ALIPAY_PRIVATE_KEY
+  alipay_public_key: $ALIPAY_PLATFORM_PUBLIC_KEY
+  alipay_notify_url: $ALIPAY_NOTIFY_URL
+  alipay_gateway: https://openapi.alipay.com/gateway.do
+
+# =============================================================================
+# WeChat Pay
+# =============================================================================
+wechat_pay:
+  wechat_mch_id: $WECHAT_MCH_ID
+  wechat_api_key: $WECHAT_API_KEY
+  wechat_app_id: $WECHAT_APP_ID
+  wechat_cert_serial_no: $WECHAT_CERT_SERIAL_NO
+  wechat_private_key_path: $WECHAT_PRIVATE_KEY_PATH
+  wechat_notify_url: $WECHAT_NOTIFY_URL
+
+# =============================================================================
+# Subscription pricing (fen)
+# =============================================================================
+subscription:
+  subscription_price_monthly: 9900
+
+# =============================================================================
+# OAuth
+# =============================================================================
+oauth:
+  oauth_api_public_base_url: http://localhost:5173
+  frontend_oauth_redirect_base: http://localhost:5173
+  google_oauth_client_id: $GOOGLE_OAUTH_CLIENT_ID
+  google_oauth_client_secret: $GOOGLE_OAUTH_CLIENT_SECRET
+  weibo_oauth_app_key: $WEIBO_OAUTH_APP_KEY
+  weibo_oauth_app_secret: $WEIBO_OAUTH_APP_SECRET
+  qq_oauth_app_id: $QQ_OAUTH_APP_ID
+  qq_oauth_app_key: $QQ_OAUTH_APP_KEY
+
+# =============================================================================
+# CORS (YAML list or JSON string from env after expansion)
+# =============================================================================
+cors:
+  cors_origins:
+    - http://localhost:5173
+    - http://localhost
+    - http://127.0.0.1

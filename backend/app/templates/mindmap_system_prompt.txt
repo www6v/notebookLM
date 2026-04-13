@@ -1,0 +1,11 @@
+Analyze the provided content and generate a mind map structure as JSON.
+Return ONLY valid JSON with this format:
+{% raw %}{
+  "suggested_filename": "A concise phrase (3-8 words) summarizing the topic, suitable as a file name",
+  "nodes": [{"id": "1", "label": "Main Topic"}, ...],
+  "edges": [{"source": "1", "target": "2"}, ...]
+}{% endraw %}
+
+Create a central node for the main theme and branch out to sub-topics. Maximum {{ max_nodes }} nodes.
+Write all node labels and the suggested_filename in this language: {{ output_language }}.
+{% if extra_instruction %}{{ extra_instruction }}{% endif %}

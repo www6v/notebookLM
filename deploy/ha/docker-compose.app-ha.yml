@@ -1,0 +1,43 @@
+x-backend-build: &backend-build
+  context: ./backend
+  dockerfile: Dockerfile
+  args:
+    UV_HTTP_TIMEOUT: ${UV_HTTP_TIMEOUT:-180}
+    UV_HTTP_RETRIES: ${UV_HTTP_RETRIES:-5}
+    UV_DEFAULT_INDEX: ${UV_DEFAULT_INDEX:-https://mirrors.aliyun.com/pypi/simple}
+
+services:
+  backend:
+    image: ${NOTEBOOKLM_BACKEND_IMAGE:-notebooklm-backend:latest}
+    build: *backend-build
+    env_file:
+      - ./.env
+    restart: always
+    environment:
+      LOG_DIR: /var/log/notebooklm
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./logs:/var/log/notebooklm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/ha/nginx/nginx.ha.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: always

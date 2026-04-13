@@ -1,0 +1,92 @@
+# Dependencies
+/frontend/node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# Builds
+/dist
+/build
+/.next
+.nuxt
+/public
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+/logs/
+backend/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+backend-env.sh
+.env
+
+# App YAML config (copy from config.yaml.example)
+/config.yaml
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+*.db
+*.db-journal
+
+# Docker
+.dockerenv
+
+# Runtime data
+uploads/
+milvus_data/
+
+# Backend agent (generated studio output)
+backend/agent/infographic/studio/
+backend/agent/skills/podcast-generation/studio/
+backend/agent/slide_deck/studio/
+
+# Backend Python
+*.egg-info/
+.eggs/
+.installed.cfg
+.tox/
+.coverage
+htmlcov/
+
+# Frontend TypeScript/JavaScript
+coverage/
+lib-cov/
+*.tsbuildinfo
+.nyc_output/
+
+# Alembic
+alembic/versions/
+
+
+deploy/deploy-remote.sh
+
+# Local Windows backend launchers
+win-backend.bat
+win-backend-celery.bat
+
+frontend/dist/

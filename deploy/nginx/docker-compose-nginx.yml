@@ -1,0 +1,11 @@
+services:
+  nginx:
+    # 使用阿里云加速：在宿主机配置 registry-mirrors 后拉取 nginx:alpine（见 setup-docker-aliyun-mirror.sh）
+    # 临时其它源: export NGINX_IMAGE=docker.m.daocloud.io/library/nginx:alpine
+    image: ${NGINX_IMAGE:-nginx:alpine}
+    ports:
+      - "80:80"
+    # 路径相对 project-directory（deploy-nginx.sh 中为仓库根目录）
+    volumes:
+      - ./deploy/nginx/nginx.proxy.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped

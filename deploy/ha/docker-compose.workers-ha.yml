@@ -1,0 +1,30 @@
+x-backend-build: &backend-build
+  context: ./backend
+  dockerfile: Dockerfile
+  args:
+    UV_HTTP_TIMEOUT: ${UV_HTTP_TIMEOUT:-180}
+    UV_HTTP_RETRIES: ${UV_HTTP_RETRIES:-5}
+    UV_DEFAULT_INDEX: ${UV_DEFAULT_INDEX:-https://mirrors.aliyun.com/pypi/simple}
+
+services:
+  worker:
+    image: ${NOTEBOOKLM_BACKEND_IMAGE:-notebooklm-backend:latest}
+    env_file:
+      - ./.env
+    environment:
+      LOG_DIR: /var/log/notebooklm
+      LOG_FILE_NAME: celery.log
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./logs:/var/log/notebooklm
+    command:
+      [
+        "celery",
+        "-A",
+        "app.tasks.celery_app:celery_app",
+        "worker",
+        "--loglevel=info",
+        "--queues=general,ingestion,studio,research",
+        "--concurrency=10"
+      ]
+    restart: always

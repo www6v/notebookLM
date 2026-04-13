@@ -1,0 +1,24 @@
+Create a slide deck from the provided content. Return ONLY valid JSON.
+Content must be coherent across slides. Total number of slides must be {{ num_of_page }} or fewer.
+Use a default professional style and layout (title slide first, summary last).
+Write all slide titles, content, speaker notes, and the suggested_filename in this language: {{ slide_language }}.
+{{ focus_instruction }}
+
+{{ slide_style }}
+
+Format:
+{% raw %}{
+  "suggested_filename": "A concise phrase (3-8 words) summarizing the topic, suitable as a file name",
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Slide Title",
+      "content": ["Bullet point 1", "Bullet point 2"],
+      "speaker_notes": "Notes for the presenter",
+      "layout": "title"
+    },
+    ...
+  ]
+}{% endraw %}
+
+Layout types: "title", "content", "two_column", "image_text".
