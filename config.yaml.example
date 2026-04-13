@@ -132,7 +132,7 @@ oss:
 # Milvus / Deep Searcher
 # =============================================================================
 milvus:
-  milvus_uri: http://localhost:19530
+  milvus_uri: $MILVUS_URI
   deep_search_max_iterations: 3
   deep_search_top_k: 10
 
