@@ -22,7 +22,7 @@ llm:
   dashscope_api_key: $QWEN_API_KEY
   dashscope_api_base: https://dashscope.aliyuncs.com/api/v1
   litellm_model: notebooklm-chat
-  litellm_vision_model: qwen3-vl-plus
+  litellm_vision_model: dashscope/qwen3-vl-plus
   litellm_image_model: qwen-image-max
   litellm_chat_router_enabled: true
   litellm_router_group_name: notebooklm-chat

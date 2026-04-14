@@ -805,6 +805,24 @@ class Settings(BaseSettings):
         """Allow missing/None as empty string."""
         return v if isinstance(v, str) else ""
 
+    @field_validator("litellm_vision_model", mode="after")
+    @classmethod
+    def normalize_litellm_vision_model(cls, v: str) -> str:
+        """LiteLLM requires a provider prefix (e.g. dashscope/qwen3-vl-plus).
+
+        Config files often use the bare DashScope model id; map those so
+        acompletion() and api_base injection in llm_router match.
+        """
+        v = (v or "").strip()
+        if not v:
+            return "dashscope/qwen3-vl-plus"
+        if "/" in v:
+            return v
+        lower = v.lower()
+        if lower.startswith("qwen") or lower.startswith("tongyi"):
+            return f"dashscope/{v}"
+        return v
+
     # Embedding：多模态向量（文本/图/视频），直连 DashScope MultiModalEmbedding
     embedding_model: str = "qwen3-vl-embedding"
     embedding_dimension: int = 1024
