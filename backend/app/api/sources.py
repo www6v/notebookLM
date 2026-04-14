@@ -390,6 +390,8 @@ async def get_source_content(
     return SourceContentResponse(
         id=source.id,
         title=source.title,
+        summary=source.summary,
+        tags=source.tags,
         raw_content=raw_content,
         chunk_count=chunk_count_result.scalar_one(),
         file_url=file_url,

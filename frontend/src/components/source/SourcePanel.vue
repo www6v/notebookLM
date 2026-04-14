@@ -170,6 +170,29 @@
             <v-skeleton-loader type="paragraph" />
           </div>
           <div v-else-if="sourceStore.currentContent" class="content-viewer">
+            <div class="content-summary">
+              <div class="content-meta-title">Summary</div>
+              <p class="content-summary-text">
+                {{ sourceStore.currentContent.summary || 'Summary is not available yet.' }}
+              </p>
+            </div>
+            <div class="content-tags">
+              <div class="content-meta-title">Tags</div>
+              <div v-if="displayTags.length > 0" class="content-tags-list">
+                <v-chip
+                  v-for="tag of displayTags"
+                  :key="tag"
+                  size="small"
+                  variant="tonal"
+                  class="content-tag-chip"
+                >
+                  {{ tag }}
+                </v-chip>
+              </div>
+              <p v-else class="content-tags-empty">
+                Tags are not available yet.
+              </p>
+            </div>
             <div
               v-if="sourceStore.currentContent.file_url"
               class="content-image"
@@ -313,6 +336,11 @@ const highlightedContent = computed(() => {
   const after = escapeHtml(raw.substring(idx + highlight.content.length))
 
   return `<pre>${before}<mark class="citation-highlight" id="citation-highlight-target">${match}</mark>${after}</pre>`
+})
+
+const displayTags = computed(() => {
+  const tags = sourceStore.currentContent?.tags
+  return Array.isArray(tags) ? tags.slice(0, 5) : []
 })
 
 const escapeHtml = (text: string) => {
@@ -564,6 +592,42 @@ async function onDeepResearchImportReport(report: DeepResearchReport) {
 .content-viewer {
   max-height: 70vh;
   overflow-y: auto;
+}
+
+.content-summary,
+.content-tags {
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid #e8eaed;
+  background: #f8f9fa;
+  margin-bottom: 12px;
+}
+
+.content-meta-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.content-summary-text,
+.content-tags-empty {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #202124;
+}
+
+.content-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.content-tag-chip {
+  font-size: 12px;
 }
 
 .content-image {

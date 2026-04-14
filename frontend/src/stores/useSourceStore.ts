@@ -9,6 +9,8 @@ import { useSnackbarStore } from '@/stores/useSnackbarStore'
 export interface SourceContent {
   id: string
   title: string
+  summary: string | null
+  tags: string[] | null
   raw_content: string | null
   chunk_count: number
   file_url: string | null

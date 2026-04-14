@@ -31,6 +31,8 @@ function shareRoot(token: string): string {
 export interface SourceContentDto {
   id: string
   title: string
+  summary: string | null
+  tags: string[] | null
   raw_content: string | null
   chunk_count: number
   file_url: string | null

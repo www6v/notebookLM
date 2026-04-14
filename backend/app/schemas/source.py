@@ -28,6 +28,8 @@ class SourceResponse(BaseModel):
     title: str
     type: str
     original_url: str | None = None
+    summary: str | None = None
+    tags: list[str] | None = None
     is_active: bool
     status: str
     created_at: datetime
@@ -40,6 +42,8 @@ class SourceContentResponse(BaseModel):
 
     id: str
     title: str
+    summary: str | None = None
+    tags: list[str] | None = None
     raw_content: str | None = None
     chunk_count: int = 0
     file_url: str | None = None

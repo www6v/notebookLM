@@ -6,9 +6,21 @@ export interface Source {
   title: string
   type: string
   original_url: string | null
+  summary?: string | null
+  tags?: string[] | null
   is_active: boolean
   status: string
   created_at: string
+}
+
+export interface SourceContent {
+  id: string
+  title: string
+  summary: string | null
+  tags: string[] | null
+  raw_content: string | null
+  chunk_count: number
+  file_url: string | null
 }
 
 export interface ChunkContext {
@@ -60,8 +72,8 @@ export const sourceApi = {
     await client.delete(`/sources/${sourceId}`)
   },
 
-  getContent: async (sourceId: string) => {
-    const res = await client.get(`/sources/${sourceId}/content`)
+  getContent: async (sourceId: string): Promise<SourceContent> => {
+    const res = await client.get<SourceContent>(`/sources/${sourceId}/content`)
     return res.data
   },
 

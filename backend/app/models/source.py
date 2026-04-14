@@ -29,6 +29,12 @@ class Source(Base, UUIDMixin, TimestampMixin):
     raw_content: Mapped[str | None] = mapped_column(
         LONGTEXT, nullable=True
     )
+    summary: Mapped[str | None] = mapped_column(
+        LONGTEXT, nullable=True
+    )
+    tags: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False
     )
