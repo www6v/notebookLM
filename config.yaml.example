@@ -153,14 +153,10 @@ langfuse:
   langfuse_host: $LANGFUSE_HOST
 
 # =============================================================================
-# Alipay
+# Alipay (payment notify URL only; app/keys/gateway under oauth for login + pay)
 # =============================================================================
 alipay:
-  alipay_app_id: $ALIPAY_APP_ID
-  alipay_private_key: $ALIPAY_PRIVATE_KEY
-  alipay_public_key: $ALIPAY_PLATFORM_PUBLIC_KEY
   alipay_notify_url: $ALIPAY_NOTIFY_URL
-  alipay_gateway: https://openapi.alipay.com/gateway.do
 
 # =============================================================================
 # WeChat Pay
@@ -191,6 +187,11 @@ oauth:
   weibo_oauth_app_secret: $WEIBO_OAUTH_APP_SECRET
   qq_oauth_app_id: $QQ_OAUTH_APP_ID
   qq_oauth_app_key: $QQ_OAUTH_APP_KEY
+  # Third-party Alipay login (same app credentials as native QR pay)
+  alipay_app_id: $ALIPAY_APP_ID
+  alipay_private_key: $ALIPAY_PRIVATE_KEY
+  alipay_public_key: $ALIPAY_PLATFORM_PUBLIC_KEY
+  alipay_gateway: https://openapi.alipay.com/gateway.do
 
 # =============================================================================
 # CORS (YAML list or JSON string from env after expansion)

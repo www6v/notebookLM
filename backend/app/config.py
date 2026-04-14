@@ -282,11 +282,7 @@ def _flatten_yaml_tree(
         out,
         _yaml_section(raw, "alipay"),
         {
-            "alipay_app_id": "alipay_app_id",
-            "alipay_private_key": "alipay_private_key",
-            "alipay_public_key": "alipay_public_key",
             "alipay_notify_url": "alipay_notify_url",
-            "alipay_gateway": "alipay_gateway",
         },
     )
     _merge_yaml_map(
@@ -317,6 +313,10 @@ def _flatten_yaml_tree(
         "weibo_oauth_app_secret",
         "qq_oauth_app_id",
         "qq_oauth_app_key",
+        "alipay_app_id",
+        "alipay_private_key",
+        "alipay_public_key",
+        "alipay_gateway",
     )
     _merge_yaml_map(
         out,
@@ -856,7 +856,8 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Alipay (Native QR code payment; same app/keys used for OAuth web login)
+    # Alipay: app_id / keys / gateway load from ``oauth:`` in YAML (login + API);
+    # ``alipay_notify_url`` loads from ``alipay:`` (payment callback only).
     alipay_app_id: str = Field(
         default="",
         validation_alias=AliasChoices("ALIPAY_APP_ID", "alipay_app_id"),

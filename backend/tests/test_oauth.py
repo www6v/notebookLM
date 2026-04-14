@@ -4,7 +4,7 @@ Manual acceptance (after configuring providers and running migrations):
 - Google: redirect URI {OAUTH_API_PUBLIC_BASE_URL}/api/auth/oauth/google/callback
 - Weibo: same pattern …/api/auth/oauth/weibo/callback
 - QQ Connect: same pattern …/api/auth/oauth/qq/callback
-- Alipay: …/api/auth/oauth/alipay/callback (reuse ALIPAY_APP_ID / keys / gateway)
+- Alipay: …/api/auth/oauth/alipay/callback (ALIPAY_* env or ``oauth:`` in config.yaml)
 - From /login, use each provider; expect redirect to /app with session.
 - Email/password login still works for existing users.
 """
