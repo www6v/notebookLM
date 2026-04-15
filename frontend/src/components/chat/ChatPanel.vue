@@ -144,25 +144,51 @@
         </div>
         <div class="message-content">
           <div class="message-role">AI</div>
-          <div v-if="searchSteps.length > 0" class="search-steps">
-            <div
-              v-for="(step, idx) of searchSteps"
-              :key="idx"
-              class="search-step"
-            >
-              <v-icon
-                size="12"
-                class="step-icon"
-                :class="{ rotating: idx === searchSteps.length - 1 && chatStore.streaming }"
-              >
-                {{ idx === searchSteps.length - 1 && chatStore.streaming ? 'mdi-cached' : 'mdi-check' }}
-              </v-icon>
-              <span class="step-text">{{ formatStep(step) }}</span>
-            </div>
-          </div>
-          <div v-else class="typing-indicator">
+          <div class="typing-indicator">
             <span /><span /><span />
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="!readOnly && streamPanel.visible"
+      class="stream-status-panel"
+    >
+      <div class="stream-status-header">
+        <div class="stream-status-title">
+          <v-icon
+            size="14"
+            class="stream-status-icon"
+            :class="{ rotating: chatStore.streaming && streamPanel.status !== 'error' }"
+          >
+            {{ streamPanel.status === 'error' ? 'mdi-alert-circle-outline' : 'mdi-auto-fix' }}
+          </v-icon>
+          <span>{{ streamPanel.currentAction }}</span>
+        </div>
+        <span
+          class="stream-status-badge"
+          :class="`status-${streamPanel.status}`"
+        >
+          {{ streamPanel.statusText }}
+        </span>
+      </div>
+      <div
+        ref="streamOutputContainer"
+        class="stream-status-output"
+      >
+        <div
+          v-for="(log, idx) of streamPanel.logs"
+          :key="`log-${idx}`"
+          class="stream-status-log"
+        >
+          {{ log }}
+        </div>
+        <div
+          v-if="streamPanel.output"
+          class="stream-status-answer"
+        >
+          {{ streamPanel.output }}
         </div>
       </div>
     </div>
@@ -313,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, withDefaults } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount, withDefaults } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import MarkdownIt from 'markdown-it'
@@ -335,6 +361,7 @@ const sourceStore = useSourceStore()
 const snackbar = useSnackbarStore()
 const inputText = ref('')
 const messagesContainer = ref<HTMLElement>()
+const streamOutputContainer = ref<HTMLElement>()
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
 const showConfigDialog = ref(false)
@@ -389,6 +416,29 @@ const citationPopover = reactive<{
 
 const searchSteps = ref<Record<string, unknown>[]>([])
 let popoverTimer: ReturnType<typeof setTimeout> | null = null
+let panelHideTimer: ReturnType<typeof setTimeout> | null = null
+let fallbackStreaming = false
+let doneEventReceived = false
+
+type StreamPanelStatus = 'running' | 'answering' | 'done' | 'error'
+
+const streamPanel = reactive<{
+  visible: boolean
+  status: StreamPanelStatus
+  statusText: string
+  currentAction: string
+  logs: string[]
+  output: string
+  hasChunk: boolean
+}>({
+  visible: false,
+  status: 'running',
+  statusText: 'Running',
+  currentAction: 'Preparing',
+  logs: [],
+  output: '',
+  hasChunk: false,
+})
 
 onMounted(async () => {
   if (props.readOnly) {
@@ -417,6 +467,85 @@ const formatStep = (step: Record<string, unknown>): string => {
   return JSON.stringify(step)
 }
 
+const getStepAction = (step: Record<string, unknown>): string => {
+  const type = step.step as string
+  if (type === 'decompose') return 'Planning retrieval'
+  if (type === 'retrieve') return 'Searching sources'
+  if (type === 'reflect') return 'Evaluating context'
+  return 'Running tool step'
+}
+
+const scrollStreamOutputToBottom = () => {
+  nextTick(() => {
+    if (streamOutputContainer.value) {
+      streamOutputContainer.value.scrollTop = streamOutputContainer.value.scrollHeight
+    }
+  })
+}
+
+const resetStreamPanel = () => {
+  if (panelHideTimer) {
+    clearTimeout(panelHideTimer)
+    panelHideTimer = null
+  }
+  streamPanel.visible = true
+  streamPanel.status = 'running'
+  streamPanel.statusText = 'Running'
+  streamPanel.currentAction = 'Preparing context'
+  streamPanel.logs = []
+  streamPanel.output = ''
+  streamPanel.hasChunk = false
+  fallbackStreaming = false
+  doneEventReceived = false
+}
+
+const pushStreamLog = (log: string) => {
+  streamPanel.logs.push(log)
+  if (streamPanel.logs.length > 60) {
+    streamPanel.logs = streamPanel.logs.slice(-60)
+  }
+  scrollStreamOutputToBottom()
+}
+
+const appendStreamOutput = (chunk: string) => {
+  if (!chunk) return
+  streamPanel.hasChunk = true
+  streamPanel.status = 'answering'
+  streamPanel.statusText = 'Streaming'
+  streamPanel.currentAction = 'Generating answer'
+  streamPanel.output += chunk
+  scrollStreamOutputToBottom()
+}
+
+const streamFallbackOutput = async (fullText: string) => {
+  if (!fullText || streamPanel.hasChunk) {
+    return
+  }
+  fallbackStreaming = true
+  streamPanel.status = 'answering'
+  streamPanel.statusText = 'Streaming'
+  streamPanel.currentAction = 'Generating answer'
+  const chunkSize = 20
+  for (let i = 0; i < fullText.length; i += chunkSize) {
+    streamPanel.output += fullText.slice(i, i + chunkSize)
+    scrollStreamOutputToBottom()
+    await new Promise((resolve) => setTimeout(resolve, 12))
+  }
+  fallbackStreaming = false
+  if (doneEventReceived) {
+    closeStreamPanelLater()
+  }
+}
+
+const closeStreamPanelLater = () => {
+  if (panelHideTimer) {
+    clearTimeout(panelHideTimer)
+  }
+  panelHideTimer = setTimeout(() => {
+    streamPanel.visible = false
+  }, 2200)
+}
+
 const sendMessage = async (text?: string) => {
   const content = text || inputText.value.trim()
   if (!content || !chatStore.currentSession) return
@@ -427,8 +556,10 @@ const sendMessage = async (text?: string) => {
 
   chatStore.streaming = true
   searchSteps.value = []
+  resetStreamPanel()
 
   const { style, customPrompt, answerLength } = chatStore.conversationSettings
+  let doneHandled = false
 
   chatApi.sendMessageStream(
     chatStore.currentSession.id,
@@ -442,20 +573,45 @@ const sendMessage = async (text?: string) => {
     {
       onStep: (step) => {
         searchSteps.value.push(step)
+        streamPanel.currentAction = getStepAction(step)
+        pushStreamLog(formatStep(step))
         scrollToBottom()
       },
+      onChunk: (chunk) => {
+        appendStreamOutput(chunk)
+      },
       onAnswer: (msg) => {
+        if (!streamPanel.hasChunk) {
+          void streamFallbackOutput(msg.content)
+        }
         chatStore.addAssistantMessage(msg.content, msg.citations)
         scrollToBottom()
       },
       onError: (error) => {
+        chatStore.streaming = false
         chatStore.addAssistantMessage(
           `Sorry, an error occurred: ${error}. Please try again.`
         )
+        streamPanel.status = 'error'
+        streamPanel.statusText = 'Error'
+        streamPanel.currentAction = 'Request failed'
+        pushStreamLog(`Error: ${error}`)
+        closeStreamPanelLater()
       },
       onDone: () => {
+        if (doneHandled) return
+        doneHandled = true
+        doneEventReceived = true
         chatStore.streaming = false
         searchSteps.value = []
+        if (streamPanel.status !== 'error') {
+          streamPanel.status = 'done'
+          streamPanel.statusText = 'Completed'
+          streamPanel.currentAction = 'Answer ready'
+        }
+        if (!fallbackStreaming) {
+          closeStreamPanelLater()
+        }
         scrollToBottom()
       },
     },
@@ -566,6 +722,15 @@ const saveToNote = async (content: string) => {
     snackbar.error('Failed to save note')
   }
 }
+
+onBeforeUnmount(() => {
+  if (popoverTimer) {
+    clearTimeout(popoverTimer)
+  }
+  if (panelHideTimer) {
+    clearTimeout(panelHideTimer)
+  }
+})
 </script>
 
 <style scoped>
@@ -641,7 +806,102 @@ const saveToNote = async (content: string) => {
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 20px 96px;
+}
+
+.stream-status-panel {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 88px;
+  border: 1px solid #d7e3ff;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 20px rgba(66, 133, 244, 0.12);
+  padding: 10px 12px;
+  z-index: 20;
+  backdrop-filter: blur(2px);
+}
+
+.stream-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.stream-status-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.stream-status-icon {
+  color: #4285f4;
+}
+
+.stream-status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.stream-status-badge.status-running {
+  background: #eef4ff;
+  color: #2459d6;
+  border-color: #d7e3ff;
+}
+
+.stream-status-badge.status-answering {
+  background: #e8f0fe;
+  color: #1a73e8;
+  border-color: #c7dafc;
+}
+
+.stream-status-badge.status-done {
+  background: #ebf7ef;
+  color: #1f8a4c;
+  border-color: #cde9d7;
+}
+
+.stream-status-badge.status-error {
+  background: #fff1f0;
+  color: #d93025;
+  border-color: #ffc9c5;
+}
+
+.stream-status-output {
+  max-height: 150px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: #f8faff;
+  padding: 8px 10px;
+}
+
+.stream-status-log {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #4b5563;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.stream-status-answer {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #111827;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 6px;
+  border-top: 1px dashed #d7e3ff;
+  padding-top: 6px;
 }
 
 .chat-welcome {

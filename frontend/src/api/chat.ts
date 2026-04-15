@@ -62,6 +62,7 @@ export const chatApi = {
     },
     callbacks: {
       onStep?: (step: Record<string, unknown>) => void
+      onChunk?: (chunk: string) => void
       onAnswer?: (message: Message) => void
       onError?: (error: string) => void
       onDone?: () => void
@@ -103,6 +104,9 @@ export const chatApi = {
           try {
             const event = JSON.parse(jsonStr)
             if (event.type === 'step') callbacks.onStep?.(event.data)
+            else if (event.type === 'chunk' || event.type === 'token' || event.type === 'delta') {
+              callbacks.onChunk?.(String(event.data?.content ?? event.data?.text ?? event.data ?? ''))
+            }
             else if (event.type === 'answer') callbacks.onAnswer?.(event.data as Message)
             else if (event.type === 'error') callbacks.onError?.(event.data?.message ?? 'Unknown error')
             else if (event.type === 'done') callbacks.onDone?.()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -268,6 +269,27 @@ def _litellm_response_to_chat_response(response) -> _ChatResponse:
     return _ChatResponse(choices=choices)
 
 
+def _extract_stream_delta_text(chunk: Any) -> str:
+    """Return assistant text delta from one LiteLLM streaming chunk."""
+    if chunk is None:
+        return ""
+    if isinstance(chunk, dict):
+        choices = chunk.get("choices") or []
+        if not choices:
+            return ""
+        delta = (choices[0] or {}).get("delta") or {}
+        part = delta.get("content")
+        return part if isinstance(part, str) else ""
+    choices = getattr(chunk, "choices", None) or []
+    if not choices:
+        return ""
+    delta = getattr(choices[0], "delta", None)
+    if delta is None:
+        return ""
+    part = getattr(delta, "content", None)
+    return part if isinstance(part, str) else ""
+
+
 async def _chat_via_litellm_sdk_router(
     messages: list[dict],
     temperature: float,
@@ -286,11 +308,9 @@ async def _chat_via_litellm_sdk_router(
     if stream:
         content_parts = []
         async for chunk in response:
-            delta = getattr(chunk, "choices", [None])[0]
-            if delta and getattr(delta, "delta", None):
-                part = getattr(delta.delta, "content", None)
-                if part:
-                    content_parts.append(part)
+            part = _extract_stream_delta_text(chunk)
+            if part:
+                content_parts.append(part)
         return _ChatResponse(
             choices=[
                 _Choice(
@@ -327,11 +347,9 @@ async def _chat_via_litellm_sdk(
     if stream:
         content_parts = []
         async for chunk in response:
-            delta = getattr(chunk, "choices", [None])[0]
-            if delta and getattr(delta, "delta", None):
-                part = getattr(delta.delta, "content", None)
-                if part:
-                    content_parts.append(part)
+            part = _extract_stream_delta_text(chunk)
+            if part:
+                content_parts.append(part)
         return _ChatResponse(
             choices=[
                 _Choice(
@@ -399,6 +417,77 @@ async def chat_completion(
         )
     logger.debug("LLM response via LiteLLM SDK model=%s", resolved)
     return result
+
+
+async def iter_chat_completion_text(
+    messages: list[dict],
+    model: str | None = None,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+    user_id: str | None = None,
+    session_id: str | None = None,
+) -> AsyncIterator[str]:
+    """Stream assistant text deltas (same routing as chat_completion)."""
+    if not HAS_LITELLM:
+        raise RuntimeError(
+            "LiteLLM is required. Install litellm and set LITELLM_MODEL."
+        )
+    if not settings.litellm_chat_router_enabled and not settings.litellm_model:
+        raise RuntimeError(
+            "LiteLLM is required. Install litellm and set LITELLM_MODEL."
+        )
+    if settings.litellm_chat_router_enabled and not (
+        settings.litellm_model.strip() or model
+    ):
+        raise RuntimeError(
+            "Set LITELLM_MODEL to the router group name "
+            "(same as LITELLM_ROUTER_GROUP_NAME) when using the chat router."
+        )
+    resolved = model or settings.litellm_model
+    trace_model = resolved
+    if _should_route_chat_via_litellm_router(model):
+        trace_model = settings.litellm_router_group_name
+        router = _get_litellm_chat_router()
+        with propagate_attributes(
+            user_id=user_id or "",
+            session_id=session_id or "",
+            metadata={"llm": trace_model},
+        ):
+            response = await router.acompletion(
+                model=settings.litellm_router_group_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+        async for chunk in response:
+            part = _extract_stream_delta_text(chunk)
+            if part:
+                yield part
+        return
+
+    kwargs: dict[str, Any] = {
+        "model": resolved,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": True,
+    }
+    if resolved.startswith("dashscope/") and settings.dashscope_api_key:
+        kwargs["api_key"] = settings.dashscope_api_key
+        base = settings.dashscope_api_base.replace("/api/", "/compatible-mode/")
+        kwargs["api_base"] = base.rstrip("/")
+
+    with propagate_attributes(
+        user_id=user_id or "",
+        session_id=session_id or "",
+        metadata={"llm": resolved},
+    ):
+        response = await acompletion(**kwargs)
+    async for chunk in response:
+        part = _extract_stream_delta_text(chunk)
+        if part:
+            yield part
 
 
 @observe(name="tool_chat_completion", as_type="generation")

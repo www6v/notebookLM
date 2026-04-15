@@ -1,5 +1,6 @@
 """Chat session and message API routes."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -150,39 +151,101 @@ async def send_message_stream(
     await db.flush()
 
     async def event_generator():
+        out_queue: asyncio.Queue[
+            tuple[str, dict | str] | None
+        ] = asyncio.Queue()
+
+        async def on_search_step(step: dict) -> None:
+            await out_queue.put(("step", step))
+
+        async def on_final_chunk(text: str) -> None:
+            if text:
+                await out_queue.put(("chunk", text))
+
+        async def run_deep_search() -> None:
+            try:
+                result = await deep_search(
+                    db,
+                    session.notebook_id,
+                    body.content,
+                    source_ids=body.source_ids,
+                    conversation_style=body.conversation_style,
+                    custom_prompt=body.custom_prompt,
+                    answer_length=body.answer_length,
+                    user_id=user.username,
+                    session_id=session_id,
+                    on_search_step=on_search_step,
+                    on_final_chunk=on_final_chunk,
+                )
+                await out_queue.put(("result", result))
+            except Exception as exc:
+                logger.exception("SSE stream error")
+                await out_queue.put(("error", str(exc)))
+            finally:
+                await out_queue.put(None)
+
+        worker = asyncio.create_task(run_deep_search())
         try:
-            result = await deep_search(
-                db,
-                session.notebook_id,
-                body.content,
-                source_ids=body.source_ids,
-                conversation_style=body.conversation_style,
-                custom_prompt=body.custom_prompt,
-                answer_length=body.answer_length,
-                user_id=user.username,
-                session_id=session_id,
-            )
+            while True:
+                item = await out_queue.get()
+                if item is None:
+                    break
+                kind, payload = item
+                if kind == "step":
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {"type": "step", "data": payload},
+                            ensure_ascii=False,
+                        )
+                        + "\n\n"
+                    )
+                elif kind == "chunk":
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {"type": "chunk", "data": {"content": payload}},
+                            ensure_ascii=False,
+                        )
+                        + "\n\n"
+                    )
+                elif kind == "error":
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {"type": "error", "data": {"message": payload}},
+                            ensure_ascii=False,
+                        )
+                        + "\n\n"
+                    )
+                    return
+                elif kind == "result":
+                    result = payload
+                    assistant_msg = Message(
+                        session_id=session.id,
+                        role="assistant",
+                        content=result["content"],
+                        citations=result["citations"],
+                    )
+                    db.add(assistant_msg)
+                    await db.flush()
+                    await db.refresh(assistant_msg)
 
-            for step in result.get("search_steps", []):
-                yield f"data: {json.dumps({'type': 'step', 'data': step}, ensure_ascii=False)}\n\n"
-
-            assistant_msg = Message(
-                session_id=session.id,
-                role="assistant",
-                content=result["content"],
-                citations=result["citations"],
-            )
-            db.add(assistant_msg)
-            await db.flush()
-            await db.refresh(assistant_msg)
-
-            msg_data = MessageResponse.model_validate(assistant_msg).model_dump(mode="json")
-            yield f"data: {json.dumps({'type': 'answer', 'data': msg_data}, ensure_ascii=False)}\n\n"
-
-            yield "data: {\"type\": \"done\"}\n\n"
-        except Exception as exc:
-            logger.error("SSE stream error: %s", exc)
-            yield f"data: {json.dumps({'type': 'error', 'data': {'message': str(exc)}})}\n\n"
+                    msg_data = MessageResponse.model_validate(
+                        assistant_msg
+                    ).model_dump(mode="json")
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {"type": "answer", "data": msg_data},
+                            ensure_ascii=False,
+                        )
+                        + "\n\n"
+                    )
+                    yield "data: {\"type\": \"done\"}\n\n"
+                    return
+        finally:
+            await worker
 
     return StreamingResponse(
         event_generator(),

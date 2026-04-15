@@ -6,13 +6,14 @@ and the project's LLM API as the reasoning engine.
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 
 from langfuse import observe, propagate_attributes
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings import embed_text
-from app.ai.llm_router import chat_completion
+from app.ai.llm_router import chat_completion, iter_chat_completion_text
 from app.ai.milvus_client import search_vectors
 from app.config import settings
 from app.models.source import Source, SourceChunk
@@ -44,6 +45,8 @@ async def deep_search(
     answer_length: str | None = None,
     user_id: str | None = None,
     session_id: str | None = None,
+    on_search_step: Callable[[dict], Awaitable[None]] | None = None,
+    on_final_chunk: Callable[[str], Awaitable[None]] | None = None,
 ) -> dict:
     """Run deep search over notebook sources.
 
@@ -83,6 +86,8 @@ async def deep_search(
             answer_length=answer_length,
             user_id=user_id,
             session_id=session_id,
+            on_search_step=on_search_step,
+            on_final_chunk=on_final_chunk,
         )
 
 
@@ -191,6 +196,8 @@ async def _iterative_deep_search(
     answer_length: str | None = None,
     user_id: str | None = None,
     session_id: str | None = None,
+    on_search_step: Callable[[dict], Awaitable[None]] | None = None,
+    on_final_chunk: Callable[[str], Awaitable[None]] | None = None,
 ) -> dict:
     """Built-in iterative deep search pipeline.
 
@@ -207,11 +214,14 @@ async def _iterative_deep_search(
     sub_questions = await _decompose_query(
         query, user_id=user_id, session_id=session_id
     )
-    search_steps.append({
+    step_decompose_initial = {
         "step": "decompose",
         "message": f"Decomposed into {len(sub_questions)} sub-questions",
         "sub_questions": sub_questions,
-    })
+    }
+    search_steps.append(step_decompose_initial)
+    if on_search_step is not None:
+        await on_search_step(step_decompose_initial)
 
     for iteration in range(max_iterations):
         for sq in sub_questions:
@@ -225,12 +235,15 @@ async def _iterative_deep_search(
             all_retrieved.extend(new_chunks)
             accumulated_context.extend(new_chunks)
 
-            search_steps.append({
+            step_retrieve = {
                 "step": "retrieve",
                 "iteration": iteration + 1,
                 "sub_question": sq,
                 "chunks_found": len(new_chunks),
-            })
+            }
+            search_steps.append(step_retrieve)
+            if on_search_step is not None:
+                await on_search_step(step_retrieve)
 
         reflection = await _reflect(
             query,
@@ -240,11 +253,14 @@ async def _iterative_deep_search(
             user_id=user_id,
             session_id=session_id,
         )
-        search_steps.append({
+        step_reflect = {
             "step": "reflect",
             "iteration": iteration + 1,
             "sufficient": reflection["sufficient"],
-        })
+        }
+        search_steps.append(step_reflect)
+        if on_search_step is not None:
+            await on_search_step(step_reflect)
 
         if reflection["sufficient"] or iteration >= max_iterations - 1:
             break
@@ -253,12 +269,15 @@ async def _iterative_deep_search(
         if not sub_questions:
             break
 
-        search_steps.append({
+        step_decompose_follow = {
             "step": "decompose",
             "iteration": iteration + 2,
             "message": f"Generated {len(sub_questions)} follow-up questions",
             "sub_questions": sub_questions,
-        })
+        }
+        search_steps.append(step_decompose_follow)
+        if on_search_step is not None:
+            await on_search_step(step_decompose_follow)
 
     answer, citations = await _generate_final_answer(
         query,
@@ -268,6 +287,7 @@ async def _iterative_deep_search(
         answer_length=answer_length,
         user_id=user_id,
         session_id=session_id,
+        on_final_chunk=on_final_chunk,
     )
 
     return {
@@ -413,6 +433,7 @@ async def _generate_final_answer(
     answer_length: str | None = None,
     user_id: str | None = None,
     session_id: str | None = None,
+    on_final_chunk: Callable[[str], Awaitable[None]] | None = None,
 ) -> tuple[str, dict]:
     """Generate the final answer with precise citations."""
     context_parts = []
@@ -450,14 +471,28 @@ async def _generate_final_answer(
         {"role": "user", "content": query},
     ]
 
-    response = await chat_completion(
-        messages,
-        temperature=0.3,
-        max_tokens=4096,
-        user_id=user_id,
-        session_id=session_id,
-    )
-    answer = response.choices[0].message.content
+    if on_final_chunk is None:
+        response = await chat_completion(
+            messages,
+            temperature=0.3,
+            max_tokens=4096,
+            user_id=user_id,
+            session_id=session_id,
+        )
+        answer = response.choices[0].message.content or ""
+    else:
+        parts: list[str] = []
+        async for delta in iter_chat_completion_text(
+            messages,
+            temperature=0.3,
+            max_tokens=4096,
+            user_id=user_id,
+            session_id=session_id,
+        ):
+            if delta:
+                parts.append(delta)
+                await on_final_chunk(delta)
+        answer = "".join(parts)
 
     citations = {}
     for i, chunk in enumerate(context, 1):
