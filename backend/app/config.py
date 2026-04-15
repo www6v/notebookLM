@@ -833,7 +833,8 @@ class Settings(BaseSettings):
         default="http://localhost:19530",
         validation_alias=AliasChoices("MILVUS_URI", "milvus_uri"),
     )
-    deep_search_max_iterations: int = 3
+    # Lower value speeds chat/RAG; raise via config if you need more refine rounds.
+    deep_search_max_iterations: int = 2
     deep_search_top_k: int = 10
 
     # DeerFlow（Deep Research：本地默认与 deer-flow 网关端口一致）

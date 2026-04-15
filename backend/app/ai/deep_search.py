@@ -4,15 +4,17 @@ Uses Milvus for vector retrieval and MySQL for chunk content; Qwen embedding
 and the project's LLM API as the reasoning engine.
 """
 
+import asyncio
 import json
 import logging
+import time
 from collections.abc import Awaitable, Callable
 
 from langfuse import observe, propagate_attributes
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.embeddings import embed_text
+from app.ai.embeddings import embed_chunks
 from app.ai.llm_router import chat_completion, iter_chat_completion_text
 from app.ai.milvus_client import search_vectors
 from app.config import settings
@@ -112,6 +114,128 @@ async def _has_chunks_for_notebook(
     return result.scalar_one_or_none() is not None
 
 
+def _chunk_row_to_dict(cid: str, row) -> dict:
+    """Map a SourceChunk ORM row to the chunk dict used in retrieval."""
+    return {
+        "chunk_id": cid,
+        "content": row.content,
+        "chunk_index": row.chunk_index,
+        "source_id": str(row.source_id),
+        "source_title": row.source_title,
+        "metadata": row.metadata_ or {},
+    }
+
+
+async def _retrieve_new_chunks_for_subquestions_batched(
+    db: AsyncSession,
+    notebook_id: str,
+    source_ids: list[str] | None,
+    sub_questions: list[str],
+    top_k: int,
+    already_retrieved_chunk_ids: set[str],
+) -> tuple[list[tuple[str, list[dict]]], dict[str, float]]:
+    """Embed all sub-questions in batch, search Milvus in parallel, one DB round-trip.
+
+    Mutates ``already_retrieved_chunk_ids`` for chunk_ids appended from this batch
+    (same semantics as sequential per-sub-question retrieval).
+
+    Returns:
+        Ordered (sub_question, new_chunks) pairs, and timing fields in milliseconds
+        (embed_ms, milvus_ms, db_ms).
+    """
+    timings: dict[str, float] = {
+        "embed_ms": 0.0,
+        "milvus_ms": 0.0,
+        "db_ms": 0.0,
+    }
+    if not sub_questions:
+        return [], timings
+
+    texts = [sq[:2000] for sq in sub_questions]
+    t_embed = time.perf_counter()
+    try:
+        vectors = await embed_chunks(texts)
+    except Exception as exc:
+        logger.warning("embed_chunks failed for retrieval: %s", exc)
+        return [(sq, []) for sq in sub_questions], timings
+    timings["embed_ms"] = (time.perf_counter() - t_embed) * 1000.0
+
+    while len(vectors) < len(sub_questions):
+        vectors.append(None)
+
+    async def _search_one(
+        vec: list[float] | None,
+    ) -> list[tuple[str, float]]:
+        if not vec:
+            return []
+        try:
+            return await asyncio.to_thread(
+                search_vectors,
+                vec,
+                top_k,
+                notebook_id,
+                source_ids,
+            )
+        except Exception as exc:
+            logger.warning("Milvus search_vectors failed: %s", exc)
+            return []
+
+    t_milvus = time.perf_counter()
+    hits_per_sq = await asyncio.gather(
+        *(_search_one(v) for v in vectors[: len(sub_questions)])
+    )
+    timings["milvus_ms"] = (time.perf_counter() - t_milvus) * 1000.0
+
+    all_ids: list[str] = []
+    ordered_unique: set[str] = set()
+    for hits in hits_per_sq:
+        for cid, _ in hits:
+            if cid not in ordered_unique:
+                ordered_unique.add(cid)
+                all_ids.append(cid)
+
+    if not all_ids:
+        return [(sq, []) for sq in sub_questions], timings
+
+    t_db = time.perf_counter()
+    stmt = (
+        select(
+            SourceChunk.id,
+            SourceChunk.content,
+            SourceChunk.chunk_index,
+            SourceChunk.source_id,
+            SourceChunk.metadata_,
+            Source.title.label("source_title"),
+        )
+        .join(Source, SourceChunk.source_id == Source.id)
+        .where(
+            SourceChunk.id.in_(all_ids),
+            Source.notebook_id == notebook_id,
+            Source.is_active.is_(True),
+        )
+    )
+    if source_ids:
+        stmt = stmt.where(Source.id.in_(source_ids))
+    result = await db.execute(stmt)
+    rows = {str(row.id): row for row in result.all()}
+    timings["db_ms"] = (time.perf_counter() - t_db) * 1000.0
+
+    per_sq: list[tuple[str, list[dict]]] = []
+    for sq, hits in zip(sub_questions, hits_per_sq, strict=True):
+        new_for_sq: list[dict] = []
+        for cid, _ in hits:
+            if cid in already_retrieved_chunk_ids:
+                continue
+            row = rows.get(cid)
+            if row is None:
+                continue
+            new_for_sq.append(_chunk_row_to_dict(cid, row))
+            already_retrieved_chunk_ids.add(cid)
+        per_sq.append((sq, new_for_sq))
+
+    return per_sq, timings
+
+
 async def _retrieve_chunks_from_milvus(
     db: AsyncSession,
     notebook_id: str,
@@ -124,64 +248,17 @@ async def _retrieve_chunks_from_milvus(
     Returns list of chunk dicts: chunk_id, content, chunk_index, source_id,
     source_title, metadata (no embedding).
     """
-    try:
-        query_emb = await embed_text(query[:2000])
-    except Exception as exc:
-        logger.warning("embed_text failed for retrieval: %s", exc)
-        return []
-    if not query_emb:
-        return []
-
-    try:
-        hits = search_vectors(
-            query_embedding=query_emb,
-            top_k=top_k,
-            notebook_id=notebook_id,
-            source_ids=source_ids,
-        )
-    except Exception as exc:
-        logger.warning("Milvus search_vectors failed: %s", exc)
-        return []
-
-    if not hits:
-        return []
-
-    chunk_ids = [cid for cid, _ in hits]
-    stmt = (
-        select(
-            SourceChunk.id,
-            SourceChunk.content,
-            SourceChunk.chunk_index,
-            SourceChunk.source_id,
-            SourceChunk.metadata_,
-            Source.title.label("source_title"),
-        )
-        .join(Source, SourceChunk.source_id == Source.id)
-        .where(
-            SourceChunk.id.in_(chunk_ids),
-            Source.notebook_id == notebook_id,
-            Source.is_active.is_(True),
-        )
+    seen: set[str] = set()
+    pairs, _timings = await _retrieve_new_chunks_for_subquestions_batched(
+        db,
+        notebook_id,
+        source_ids,
+        [query],
+        top_k,
+        seen,
     )
-    if source_ids:
-        stmt = stmt.where(Source.id.in_(source_ids))
-    result = await db.execute(stmt)
-    rows = {str(row.id): row for row in result.all()}
-
-    ordered = []
-    for cid in chunk_ids:
-        row = rows.get(cid)
-        if row is None:
-            continue
-        ordered.append({
-            "chunk_id": cid,
-            "content": row.content,
-            "chunk_index": row.chunk_index,
-            "source_id": str(row.source_id),
-            "source_title": row.source_title,
-            "metadata": row.metadata_ or {},
-        })
-    return ordered
+    _sq, chunks = pairs[0]
+    return chunks
 
 
 async def _iterative_deep_search(
@@ -211,8 +288,19 @@ async def _iterative_deep_search(
     all_retrieved: list[dict] = []
     accumulated_context: list[dict] = []
 
+    t_pipeline = time.perf_counter()
+    t_decompose = time.perf_counter()
     sub_questions = await _decompose_query(
         query, user_id=user_id, session_id=session_id
+    )
+    decompose_ms = (time.perf_counter() - t_decompose) * 1000.0
+    logger.info(
+        "deep_search phase=decompose decompose_ms=%.1f notebook_id=%s "
+        "session_id=%s sub_q_count=%d",
+        decompose_ms,
+        notebook_id,
+        session_id or "",
+        len(sub_questions),
     )
     step_decompose_initial = {
         "step": "decompose",
@@ -224,14 +312,19 @@ async def _iterative_deep_search(
         await on_search_step(step_decompose_initial)
 
     for iteration in range(max_iterations):
-        for sq in sub_questions:
-            retrieved = await _retrieve_chunks_from_milvus(
-                db, notebook_id, source_ids, sq, top_k
-            )
-            new_chunks = [
-                r for r in retrieved
-                if r["chunk_id"] not in {c["chunk_id"] for c in all_retrieved}
-            ]
+        seen_chunk_ids = {c["chunk_id"] for c in all_retrieved}
+        t_retrieve = time.perf_counter()
+        pairs, batch_timings = await _retrieve_new_chunks_for_subquestions_batched(
+            db,
+            notebook_id,
+            source_ids,
+            sub_questions,
+            top_k,
+            seen_chunk_ids,
+        )
+        retrieve_total_ms = (time.perf_counter() - t_retrieve) * 1000.0
+
+        for sq, new_chunks in pairs:
             all_retrieved.extend(new_chunks)
             accumulated_context.extend(new_chunks)
 
@@ -245,6 +338,22 @@ async def _iterative_deep_search(
             if on_search_step is not None:
                 await on_search_step(step_retrieve)
 
+        logger.info(
+            "deep_search phase=retrieve_batch notebook_id=%s session_id=%s "
+            "iteration=%d retrieve_total_ms=%.1f embed_ms=%.1f milvus_ms=%.1f "
+            "db_ms=%.1f sub_q_count=%d accumulated_chunks=%d",
+            notebook_id,
+            session_id or "",
+            iteration + 1,
+            retrieve_total_ms,
+            batch_timings["embed_ms"],
+            batch_timings["milvus_ms"],
+            batch_timings["db_ms"],
+            len(sub_questions),
+            len(accumulated_context),
+        )
+
+        t_reflect = time.perf_counter()
         reflection = await _reflect(
             query,
             sub_questions,
@@ -252,6 +361,17 @@ async def _iterative_deep_search(
             iteration,
             user_id=user_id,
             session_id=session_id,
+        )
+        reflect_ms = (time.perf_counter() - t_reflect) * 1000.0
+        logger.info(
+            "deep_search phase=reflect reflect_ms=%.1f notebook_id=%s "
+            "session_id=%s iteration=%d sufficient=%s accumulated_chunks=%d",
+            reflect_ms,
+            notebook_id,
+            session_id or "",
+            iteration + 1,
+            reflection["sufficient"],
+            len(accumulated_context),
         )
         step_reflect = {
             "step": "reflect",
@@ -279,6 +399,7 @@ async def _iterative_deep_search(
         if on_search_step is not None:
             await on_search_step(step_decompose_follow)
 
+    t_final = time.perf_counter()
     answer, citations = await _generate_final_answer(
         query,
         accumulated_context,
@@ -288,6 +409,22 @@ async def _iterative_deep_search(
         user_id=user_id,
         session_id=session_id,
         on_final_chunk=on_final_chunk,
+    )
+    final_answer_ms = (time.perf_counter() - t_final) * 1000.0
+    total_ms = (time.perf_counter() - t_pipeline) * 1000.0
+    logger.info(
+        "deep_search phase=final_answer final_answer_ms=%.1f notebook_id=%s "
+        "session_id=%s accumulated_chunks=%d",
+        final_answer_ms,
+        notebook_id,
+        session_id or "",
+        len(accumulated_context),
+    )
+    logger.info(
+        "deep_search phase=total total_ms=%.1f notebook_id=%s session_id=%s",
+        total_ms,
+        notebook_id,
+        session_id or "",
     )
 
     return {
@@ -359,6 +496,11 @@ async def _reflect(
                 "1. Is the context sufficient to answer the original question? "
                 "(sufficient: true/false)\n"
                 "2. If not sufficient, what new sub-questions should be asked?\n\n"
+                "If the retrieved passages already reasonably address the original "
+                "question—including definition-style or overview questions—set "
+                "sufficient to true. Do not set sufficient to false only because "
+                "some sub-questions returned no chunks while others returned "
+                "relevant material.\n\n"
                 "Return JSON: {\"sufficient\": bool, \"new_sub_questions\": [str]}\n"
                 "Only return JSON, nothing else."
             ),

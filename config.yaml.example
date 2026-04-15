@@ -133,7 +133,8 @@ oss:
 # =============================================================================
 milvus:
   milvus_uri: $MILVUS_URI
-  deep_search_max_iterations: 3
+  # RAG retrieve/reflect rounds; 2 is faster; use 3+ for deeper multi-hop search
+  deep_search_max_iterations: 2
   deep_search_top_k: 10
 
 # =============================================================================
