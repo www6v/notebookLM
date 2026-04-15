@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { chatApi } from '@/api/chat'
 import type { ChatSession, Message } from '@/api/chat'
+import { createClientUuid } from '@/utils/clientUuid'
 
 export type ConversationStyle = 'default' | 'learning_guide' | 'custom'
 export type AnswerLength = 'default' | 'long' | 'short'
@@ -47,7 +48,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const addUserMessage = (content: string) => {
     const msg: Message = {
-      id: crypto.randomUUID(),
+      id: createClientUuid(),
       session_id: currentSession.value?.id || '',
       role: 'user',
       content,
@@ -60,7 +61,7 @@ export const useChatStore = defineStore('chat', () => {
 
   const addAssistantMessage = (content: string, citations: Record<string, unknown> | null = null) => {
     const msg: Message = {
-      id: crypto.randomUUID(),
+      id: createClientUuid(),
       session_id: currentSession.value?.id || '',
       role: 'assistant',
       content,
