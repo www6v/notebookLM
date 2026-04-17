@@ -3,13 +3,12 @@
 import asyncio
 import csv
 import logging
+from pathlib import Path
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.embeddings import embed_chunks
-from app.ai.milvus_client import delete_by_source_id, insert_vectors
 from app.ai.qwen_asr import transcribe_audio
 from app.ai.qwen3_vl_video import understand_video
 from app.commons.util import get_image_source_content
@@ -17,8 +16,12 @@ from app.parsers.bilibili_parser import extract_bilibili_transcript
 from app.parsers.web_parser import parse_web_page
 from app.parsers.youtube_parser import extract_youtube_transcript
 from app.models.notebook import Notebook
-from app.models.source import Source, SourceChunk
-from app.services.obs_storage import generate_presigned_url
+from app.models.source import Source
+from app.services.obs_storage import (
+    generate_presigned_url,
+    get_file_url,
+    upload_file_to_obs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +30,9 @@ _MAX_CONTENT_PER_SOURCE = 10000
 
 # Upload path stores this for images (see extract_text); not usable for LLM.
 _IMAGE_PLACEHOLDER_TEXT = "[Image]"
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_SOURCE_MARKDOWN_ROOT = _PROJECT_ROOT / "files"
 
 
 def chunk_text(
@@ -127,100 +133,157 @@ def extract_text_by_pages(file_bytes: bytes, file_type: str) -> list[dict]:
     return [{"page_number": None, "text": file_bytes.decode("utf-8", errors="replace")}]
 
 
-async def process_source(db: AsyncSession, source_id: str):
-    """Process a source: chunk the content and generate embeddings.
+# v1 legacy (kept commented for reference per request)
+# async def process_source(db: AsyncSession, source_id: str):
+#     """Process a source: chunk the content and generate embeddings.
+#
+#     Chunks preserve page_number (PDF) and paragraph_index for citation.
+#     """
+#     result = await db.execute(select(Source).where(Source.id == source_id))
+#     source = result.scalar_one_or_none()
+#     if source is None:
+#         return
+#
+#     source.status = "processing"
+#     await db.flush()
+#
+#     try:
+#         try:
+#             delete_by_source_id(source.id)
+#         except Exception as exc:
+#             logger.warning(
+#                 "Milvus delete_by_source_id failed for %s (may be first run): %s",
+#                 source.id,
+#                 exc,
+#             )
+#         await db.execute(delete(SourceChunk).where(SourceChunk.source_id == source.id))
+#         await db.flush()
+#
+#         content = source.raw_content or ""
+#         if not content:
+#             source.status = "error"
+#             await db.flush()
+#             return
+#
+#         pages = _split_content_to_pages(content, source.type)
+#         all_chunks = _build_chunks_from_pages(pages)
+#
+#         if not all_chunks:
+#             source.status = "error"
+#             await db.flush()
+#             return
+#
+#         for i, chunk_info in enumerate(all_chunks):
+#             chunk = SourceChunk(
+#                 source_id=source.id,
+#                 content=chunk_info["text"],
+#                 chunk_index=i,
+#                 metadata_={
+#                     "char_start": chunk_info["char_start"],
+#                     "char_end": chunk_info["char_end"],
+#                     "page_number": chunk_info.get("page_number"),
+#                     "paragraph_index": chunk_info.get("paragraph_index"),
+#                 },
+#             )
+#             db.add(chunk)
+#         await db.flush()
+#         await db.refresh(source)
+#
+#         chunk_texts = [c["text"] for c in all_chunks]
+#         try:
+#             embeddings = await embed_chunks(chunk_texts)
+#         except Exception:
+#             embeddings = [None] * len(chunk_texts)
+#
+#         chunks_result = await db.execute(
+#             select(SourceChunk)
+#             .where(SourceChunk.source_id == source.id)
+#             .order_by(SourceChunk.chunk_index)
+#         )
+#         chunks_list = list(chunks_result.scalars().all())
+#         chunk_ids_with_vectors = []
+#         for chunk in chunks_list:
+#             idx = chunk.chunk_index
+#             if idx < len(embeddings) and embeddings[idx] is not None:
+#                 chunk_ids_with_vectors.append((str(chunk.id), embeddings[idx]))
+#         if chunk_ids_with_vectors:
+#             chunk_ids = [c[0] for c in chunk_ids_with_vectors]
+#             vectors = [c[1] for c in chunk_ids_with_vectors]
+#             notebook_id = source.notebook_id
+#             try:
+#                 insert_vectors(
+#                     chunk_ids=chunk_ids,
+#                     source_ids=[source.id] * len(chunk_ids),
+#                     notebook_ids=[notebook_id] * len(chunk_ids),
+#                     vectors=vectors,
+#                 )
+#             except Exception as exc:
+#                 logger.exception("Milvus insert_vectors failed: %s", exc)
+#                 raise
+#
+#         source.status = "ready"
+#         await db.flush()
+#
+#     except Exception:
+#         source.status = "error"
+#         await db.flush()
+#         raise
 
-    Chunks preserve page_number (PDF) and paragraph_index for citation.
-    """
+
+def _persist_source_markdown_and_upload(source: Source, content: str) -> str:
+    """Write source raw content into local markdown and upload to OSS."""
+    notebook_dir = _SOURCE_MARKDOWN_ROOT / source.notebook_id
+    notebook_dir.mkdir(parents=True, exist_ok=True)
+    markdown_path = notebook_dir / f"{source.id}.md"
+    markdown_path.write_text(content, encoding="utf-8")
+
+    object_key = upload_file_to_obs(
+        file_content=content.encode("utf-8"),
+        filename=f"sources/raw_content_md/{source.notebook_id}/{source.id}.md",
+        content_type="text/markdown; charset=utf-8",
+    )
+    oss_url = get_file_url(object_key)
+    logger.info(
+        "source markdown uploaded: source_id=%s local=%s oss_url=%s",
+        source.id,
+        markdown_path,
+        oss_url,
+    )
+    return oss_url
+
+
+async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
+    """Process source and persist raw_content as markdown in local + OSS."""
     result = await db.execute(select(Source).where(Source.id == source_id))
     source = result.scalar_one_or_none()
     if source is None:
-        return
+        return None
 
     source.status = "processing"
     await db.flush()
 
     try:
-        try:
-            delete_by_source_id(source.id)
-        except Exception as exc:
-            logger.warning(
-                "Milvus delete_by_source_id failed for %s (may be first run): %s",
-                source.id,
-                exc,
-            )
-        await db.execute(delete(SourceChunk).where(SourceChunk.source_id == source.id))
-        await db.flush()
-
         content = source.raw_content or ""
         if not content:
             source.status = "error"
             await db.flush()
-            return
+            return None
 
-        pages = _split_content_to_pages(content, source.type)
-        all_chunks = _build_chunks_from_pages(pages)
-
-        if not all_chunks:
-            source.status = "error"
-            await db.flush()
-            return
-
-        for i, chunk_info in enumerate(all_chunks):
-            chunk = SourceChunk(
-                source_id=source.id,
-                content=chunk_info["text"],
-                chunk_index=i,
-                metadata_={
-                    "char_start": chunk_info["char_start"],
-                    "char_end": chunk_info["char_end"],
-                    "page_number": chunk_info.get("page_number"),
-                    "paragraph_index": chunk_info.get("paragraph_index"),
-                },
-            )
-            db.add(chunk)
-        await db.flush()
-        await db.refresh(source)
-
-        chunk_texts = [c["text"] for c in all_chunks]
-        try:
-            embeddings = await embed_chunks(chunk_texts)
-        except Exception:
-            embeddings = [None] * len(chunk_texts)
-
-        chunks_result = await db.execute(
-            select(SourceChunk)
-            .where(SourceChunk.source_id == source.id)
-            .order_by(SourceChunk.chunk_index)
-        )
-        chunks_list = list(chunks_result.scalars().all())
-        chunk_ids_with_vectors = []
-        for chunk in chunks_list:
-            idx = chunk.chunk_index
-            if idx < len(embeddings) and embeddings[idx] is not None:
-                chunk_ids_with_vectors.append((str(chunk.id), embeddings[idx]))
-        if chunk_ids_with_vectors:
-            chunk_ids = [c[0] for c in chunk_ids_with_vectors]
-            vectors = [c[1] for c in chunk_ids_with_vectors]
-            notebook_id = source.notebook_id
-            try:
-                insert_vectors(
-                    chunk_ids=chunk_ids,
-                    source_ids=[source.id] * len(chunk_ids),
-                    notebook_ids=[notebook_id] * len(chunk_ids),
-                    vectors=vectors,
-                )
-            except Exception as exc:
-                logger.exception("Milvus insert_vectors failed: %s", exc)
-                raise
+        markdown_oss_url = _persist_source_markdown_and_upload(source, content)
 
         source.status = "ready"
         await db.flush()
+        return markdown_oss_url
 
     except Exception:
         source.status = "error"
         await db.flush()
         raise
+
+
+async def process_source(db: AsyncSession, source_id: str) -> str | None:
+    """v2 entrypoint kept under original method name."""
+    return await process_source_v2(db, source_id)
 
 
 async def finalize_url_source(db: AsyncSession, source: Source) -> None:
