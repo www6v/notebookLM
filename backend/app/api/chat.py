@@ -32,6 +32,43 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 
+def _extract_answer_from_deepsearch_payload(
+    payload: dict,
+) -> tuple[str, dict | None]:
+    """Resolve answer text and citations from deep-search JSON (mirrors frontend)."""
+    root = payload
+    data = payload
+    inner = payload.get("data")
+    if isinstance(inner, dict):
+        data = inner
+    content = ""
+    for key in (
+        "answer",
+        "content",
+        "result",
+        "message",
+        "text",
+        "final_answer",
+    ):
+        val = data.get(key)
+        if isinstance(val, str) and val:
+            content = val
+            break
+    if not content:
+        val = root.get("answer")
+        if isinstance(val, str):
+            content = val
+    citations = None
+    raw_c = data.get("citations")
+    if isinstance(raw_c, dict):
+        citations = raw_c
+    else:
+        raw_c = root.get("citations")
+        if isinstance(raw_c, dict):
+            citations = raw_c
+    return content, citations
+
+
 async def _check_daily_chat_limit(
     db: AsyncSession, user: User
 ) -> None:
@@ -158,8 +195,35 @@ async def send_message_stream(
     await db.flush()
 
     remote_result = await asyncio.to_thread(deepsearch_query, body.content)
+    if remote_result is None:
+        # Use 200 so the client fetch adapter parses JSON and surfaces detail.
+        return JSONResponse(
+            content={
+                "detail": (
+                    "Deep search service returned no response. "
+                    "Please try again later."
+                ),
+            },
+        )
     if isinstance(remote_result, dict):
+        answer_text, answer_citations = _extract_answer_from_deepsearch_payload(
+            remote_result
+        )
+        if answer_text.strip():
+            assistant_msg = Message(
+                session_id=session.id,
+                role="assistant",
+                content=answer_text,
+                citations=answer_citations,
+            )
+            db.add(assistant_msg)
+            await db.flush()
+            await db.refresh(assistant_msg)
         return JSONResponse(content=remote_result)
+
+    return JSONResponse(
+        content={"detail": "Unexpected response type from deep search service."},
+    )
 
     # async def event_generator():
     #     out_queue: asyncio.Queue[
