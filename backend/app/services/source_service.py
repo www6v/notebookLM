@@ -22,8 +22,13 @@ from app.services.obs_storage import (
     get_file_url,
     upload_file_to_obs,
 )
+from app.services.z_deep_load_file_remote import call_load_files
+from app.services.z_deep_upload_remote import call_upload
 
 logger = logging.getLogger(__name__)
+
+# Deep-searcher HTTP API (upload + load-files on same host).
+_DEEP_SEARCHER_BASE_URL = "http://124.221.28.203:8000"
 
 # Max characters per source to include in combined content for LLM.
 _MAX_CONTENT_PER_SOURCE = 10000
@@ -269,7 +274,47 @@ async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
             await db.flush()
             return None
 
+        notebook_id = source.notebook_id
         markdown_oss_url = _persist_source_markdown_and_upload(source, content)
+        local_path = await asyncio.to_thread(
+            call_upload,
+            markdown_oss_url,
+            notebook_id,
+        )
+        if not local_path:
+            source.status = "error"
+            await db.flush()
+            return None
+
+        collection_name = "deepsearcher"
+        load_response = await asyncio.to_thread(
+            call_load_files,
+            base_url=_DEEP_SEARCHER_BASE_URL,
+            paths=local_path,            
+            collection_name=collection_name,
+            collection_description="collection desc",
+            batch_size=8,            
+        )
+        if not load_response.ok:
+            logger.error(
+                "deep load-files failed: source_id=%s status=%s body=%s",
+                source.id,
+                load_response.status_code,
+                (load_response.text or "")[:500],
+            )
+            source.status = "error"
+            await db.flush()
+            return None
+        try:
+            load_body = load_response.json()
+        except ValueError:
+            load_body = (load_response.text or "")[:500]
+        logger.info(
+            "deep load-files ok: source_id=%s status=%s body=%s",
+            source.id,
+            load_response.status_code,
+            load_body,
+        )
 
         source.status = "ready"
         await db.flush()
