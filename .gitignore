@@ -58,6 +58,7 @@ backend-env.sh
 
 # Runtime data
 uploads/
+/files/
 milvus_data/
 
 # Backend agent (generated studio output)
