@@ -91,3 +91,6 @@ win-backend.bat
 win-backend-celery.bat
 
 frontend/dist/
+
+# Tauri (Rust)
+src-tauri/target/
