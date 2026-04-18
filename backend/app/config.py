@@ -89,6 +89,7 @@ _NESTED_BLOCK_KEYS = frozenset(
         "asr",
         "embedding",
         "milvus",
+        "deep_searcher",
         "deer_flow",
         "langfuse",
         "alipay",
@@ -253,12 +254,8 @@ def _flatten_yaml_tree(
     )
     _merge_yaml_map(
         out,
-        _yaml_section(raw, "milvus"),
-        {
-            "milvus_uri": "milvus_uri",
-            "deep_search_max_iterations": "deep_search_max_iterations",
-            "deep_search_top_k": "deep_search_top_k",
-        },
+        _yaml_section(raw, "deep_searcher"),
+        {"deep_searcher_base_url": "deep_searcher_base_url"},
     )
     _merge_yaml_map(
         out,
@@ -827,15 +824,16 @@ class Settings(BaseSettings):
     embedding_model: str = "qwen3-vl-embedding"
     embedding_dimension: int = 1024
 
-    # DeepSearcher / Milvus（本地单机，连接本机服务，数据存本地）
-    # milvus_uri: str = "http://localhost:19530"
-    milvus_uri: str = Field(
-        default="http://localhost:19530",
-        validation_alias=AliasChoices("MILVUS_URI", "milvus_uri"),
+    # DeepSearcher：远程 HTTP（``/upload``, ``/load-files/``, ``/query/``）。
+    # 原 Milvus 本地配置（milvus_uri / deep_search_max_iterations /
+    # deep_search_top_k）已停用，见 config.yaml 注释块。
+    deep_searcher_base_url: str = Field(
+        default="http://127.0.0.1:8000",
+        validation_alias=AliasChoices(
+            "DEEP_SEARCHER_BASE_URL",
+            "deep_searcher_base_url",
+        ),
     )
-    # Lower value speeds chat/RAG; raise via config if you need more refine rounds.
-    deep_search_max_iterations: int = 2
-    deep_search_top_k: int = 10
 
     # DeerFlow（Deep Research：本地默认与 deer-flow 网关端口一致）
     deer_flow_base_url: str = Field(

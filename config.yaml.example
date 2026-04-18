@@ -129,13 +129,20 @@ oss:
   oss_path_prefix: txt2imgcn
 
 # =============================================================================
-# Milvus / Deep Searcher
+# Milvus / Deep Searcher (disabled)
 # =============================================================================
-milvus:
-  milvus_uri: $MILVUS_URI
-  # RAG retrieve/reflect rounds; 2 is faster; use 3+ for deeper multi-hop search
-  deep_search_max_iterations: 2
-  deep_search_top_k: 10
+# milvus:
+#   milvus_uri: $MILVUS_URI
+#   # RAG retrieve/reflect rounds; 2 is faster; use 3+ for deeper multi-hop search
+#   deep_search_max_iterations: 2
+#   deep_search_top_k: 10
+
+# =============================================================================
+# Deep Searcher
+# =============================================================================
+deep_searcher:
+  # Remote deep-searcher HTTP API (upload / load-files / query).
+  deep_searcher_base_url: http://127.0.0.1:8000
 
 # =============================================================================
 # DeerFlow (Deep Research gateway)

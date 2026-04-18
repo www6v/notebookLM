@@ -26,7 +26,7 @@ from app.services.obs_storage import (
     get_file_url,
     upload_file_to_obs,
 )
-from app.ai.milvus_client import delete_by_source_id
+# from app.ai.milvus_client import delete_by_source_id
 from app.services.task_event_service import publish_task_event
 from app.services.source_service import (
     extract_text,
@@ -327,14 +327,14 @@ async def delete_source(
                 source.file_path,
             )
 
-    try:
-        delete_by_source_id(source_id)
-    except Exception as exc:
-        logger.warning(
-            "Milvus delete_by_source_id failed for %s: %s",
-            source_id,
-            exc,
-        )
+    # try:
+    #     delete_by_source_id(source_id)
+    # except Exception as exc:
+    #     logger.warning(
+    #         "Milvus delete_by_source_id failed for %s: %s",
+    #         source_id,
+    #         exc,
+    #     )
 
     await db.delete(source)
 

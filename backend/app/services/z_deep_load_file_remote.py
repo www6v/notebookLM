@@ -5,6 +5,8 @@ from typing import Any, Dict, Optional, Union
 
 import requests
 
+from app.config import settings
+
 
 def call_load_files(
     base_url: str,
@@ -40,7 +42,7 @@ def call_load_files(
 
 
 def main() -> None:
-    base_url = "http://124.221.28.203:8000"
+    base_url = settings.deep_searcher_base_url
     paths = "/app/files-my/2303.06865v2.pdf"
     collection_name = "deepsearcher"
     resp = call_load_files(

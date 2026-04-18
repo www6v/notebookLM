@@ -6,6 +6,7 @@ Used for ingestion (process_source) and retrieval (deep_search).
 
 import json
 import logging
+import os
 from urllib.parse import urlparse
 
 from app.config import settings
@@ -18,8 +19,8 @@ _connected = False
 
 
 def _get_connection_params():
-    """Parse milvus_uri (e.g. http://47.100.78.241:19530) into host and port."""
-    uri = (settings.milvus_uri or "").strip()
+    """Parse MILVUS_URI (e.g. http://47.100.78.241:19530) into host and port."""
+    uri = (os.environ.get("MILVUS_URI", "") or "").strip()
     if not uri:
         return {"host": "localhost", "port": "19530"}
     parsed = urlparse(uri)

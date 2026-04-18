@@ -1,9 +1,17 @@
 """Call the running deep-searcher /load-files/ HTTP API."""
 
 import json
+import sys
+from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import requests
+
+_BACKEND = Path(__file__).resolve().parents[1] / "backend"
+if _BACKEND.is_dir() and str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
+from app.config import settings  # noqa: E402
 
 
 def call_load_files(
@@ -40,7 +48,7 @@ def call_load_files(
 
 
 def main() -> None:
-    base_url = "http://124.221.28.203:8000"
+    base_url = settings.deep_searcher_base_url
     paths = "/app/files-my/2303.06865v2.pdf"
     collection_name = "deepsearcher"
     resp = call_load_files(

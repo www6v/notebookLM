@@ -6,11 +6,11 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.deep_search import deep_search
+# from app.ai.deep_search import deep_search
 from app.api.deps import get_current_user
 from app.database import get_db
 from app.limits import ROLE_LIMITS
@@ -23,7 +23,9 @@ from app.schemas.chat import (
     MessageCreate,
     MessageResponse,
 )
-from app.services.chat_service import handle_chat_message
+# from app.services.chat_service import handle_chat_message
+from app.services.z_deep_query_remote import deepsearch_query
+
 
 logger = logging.getLogger(__name__)
 
@@ -106,29 +108,30 @@ async def list_sessions(
     ]
 
 
-@router.post(
-    "/api/chat/{session_id}/messages",
-    response_model=MessageResponse,
-    status_code=201,
-)
-async def send_message(
-    session_id: str,
-    body: MessageCreate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """Send a user message and get an AI response via RAG pipeline."""
-    await _check_daily_chat_limit(db, user)
-    session = await _get_session(db, session_id, user.id)
-    assistant_msg = await handle_chat_message(
-        db,
-        session,
-        body.content,
-        source_ids=body.source_ids,
-        user_id=user.username,
-        session_id=session_id,
-    )
-    return MessageResponse.model_validate(assistant_msg)
+# @router.post(
+#     "/api/chat/{session_id}/messages",
+#     response_model=MessageResponse,
+#     status_code=201,
+# )
+# async def send_message(
+#     session_id: str,
+#     body: MessageCreate,
+#     db: AsyncSession = Depends(get_db),
+#     user: User = Depends(get_current_user),
+# ):
+#     """Send a user message and get an AI response via RAG pipeline."""
+#     await _check_daily_chat_limit(db, user)
+#     session = await _get_session(db, session_id, user.id)
+#     assistant_msg = await handle_chat_message(
+#         db,
+#         session,
+#         body.content,
+#         source_ids=body.source_ids,
+#         user_id=user.username,
+#         session_id=session_id,
+#     )
+#     return MessageResponse.model_validate(assistant_msg)
+
 
 
 @router.post("/api/chat/{session_id}/messages/stream")
@@ -138,7 +141,11 @@ async def send_message_stream(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Send a user message with SSE streaming of search steps and final answer."""
+    """Send a user message with SSE streaming of search steps and final answer.
+
+    Tries the remote deep-search service first; on failure (e.g. upstream
+    strict JSON parse errors), falls back to the local deep_search pipeline.
+    """
     await _check_daily_chat_limit(db, user)
     session = await _get_session(db, session_id, user.id)
 
@@ -150,112 +157,116 @@ async def send_message_stream(
     db.add(user_msg)
     await db.flush()
 
-    async def event_generator():
-        out_queue: asyncio.Queue[
-            tuple[str, dict | str] | None
-        ] = asyncio.Queue()
+    remote_result = await asyncio.to_thread(deepsearch_query, body.content)
+    if isinstance(remote_result, dict):
+        return JSONResponse(content=remote_result)
 
-        async def on_search_step(step: dict) -> None:
-            await out_queue.put(("step", step))
+    # async def event_generator():
+    #     out_queue: asyncio.Queue[
+    #         tuple[str, dict | str] | None
+    #     ] = asyncio.Queue()
 
-        async def on_final_chunk(text: str) -> None:
-            if text:
-                await out_queue.put(("chunk", text))
+    #     async def on_search_step(step: dict) -> None:
+    #         await out_queue.put(("step", step))
 
-        async def run_deep_search() -> None:
-            try:
-                result = await deep_search(
-                    db,
-                    session.notebook_id,
-                    body.content,
-                    source_ids=body.source_ids,
-                    conversation_style=body.conversation_style,
-                    custom_prompt=body.custom_prompt,
-                    answer_length=body.answer_length,
-                    user_id=user.username,
-                    session_id=session_id,
-                    on_search_step=on_search_step,
-                    on_final_chunk=on_final_chunk,
-                )
-                await out_queue.put(("result", result))
-            except Exception as exc:
-                logger.exception("SSE stream error")
-                await out_queue.put(("error", str(exc)))
-            finally:
-                await out_queue.put(None)
+    #     async def on_final_chunk(text: str) -> None:
+    #         if text:
+    #             await out_queue.put(("chunk", text))
 
-        worker = asyncio.create_task(run_deep_search())
-        try:
-            while True:
-                item = await out_queue.get()
-                if item is None:
-                    break
-                kind, payload = item
-                if kind == "step":
-                    yield (
-                        "data: "
-                        + json.dumps(
-                            {"type": "step", "data": payload},
-                            ensure_ascii=False,
-                        )
-                        + "\n\n"
-                    )
-                elif kind == "chunk":
-                    yield (
-                        "data: "
-                        + json.dumps(
-                            {"type": "chunk", "data": {"content": payload}},
-                            ensure_ascii=False,
-                        )
-                        + "\n\n"
-                    )
-                elif kind == "error":
-                    yield (
-                        "data: "
-                        + json.dumps(
-                            {"type": "error", "data": {"message": payload}},
-                            ensure_ascii=False,
-                        )
-                        + "\n\n"
-                    )
-                    return
-                elif kind == "result":
-                    result = payload
-                    assistant_msg = Message(
-                        session_id=session.id,
-                        role="assistant",
-                        content=result["content"],
-                        citations=result["citations"],
-                    )
-                    db.add(assistant_msg)
-                    await db.flush()
-                    await db.refresh(assistant_msg)
+    #     async def run_deep_search() -> None:
+    #         try:
+    #             result = await deep_search(
+    #                 db,
+    #                 session.notebook_id,
+    #                 body.content,
+    #                 source_ids=body.source_ids,
+    #                 conversation_style=body.conversation_style,
+    #                 custom_prompt=body.custom_prompt,
+    #                 answer_length=body.answer_length,
+    #                 user_id=user.username,
+    #                 session_id=session_id,
+    #                 on_search_step=on_search_step,
+    #                 on_final_chunk=on_final_chunk,
+    #             )
+    #             await out_queue.put(("result", result))
+    #         except Exception as exc:
+    #             logger.exception("SSE stream error")
+    #             await out_queue.put(("error", str(exc)))
+    #         finally:
+    #             await out_queue.put(None)
 
-                    msg_data = MessageResponse.model_validate(
-                        assistant_msg
-                    ).model_dump(mode="json")
-                    yield (
-                        "data: "
-                        + json.dumps(
-                            {"type": "answer", "data": msg_data},
-                            ensure_ascii=False,
-                        )
-                        + "\n\n"
-                    )
-                    yield "data: {\"type\": \"done\"}\n\n"
-                    return
-        finally:
-            await worker
+    #     worker = asyncio.create_task(run_deep_search())
+    #     try:
+    #         while True:
+    #             item = await out_queue.get()
+    #             if item is None:
+    #                 break
+    #             kind, payload = item
+    #             if kind == "step":
+    #                 yield (
+    #                     "data: "
+    #                     + json.dumps(
+    #                         {"type": "step", "data": payload},
+    #                         ensure_ascii=False,
+    #                     )
+    #                     + "\n\n"
+    #                 )
+    #             elif kind == "chunk":
+    #                 yield (
+    #                     "data: "
+    #                     + json.dumps(
+    #                         {"type": "chunk", "data": {"content": payload}},
+    #                         ensure_ascii=False,
+    #                     )
+    #                     + "\n\n"
+    #                 )
+    #             elif kind == "error":
+    #                 yield (
+    #                     "data: "
+    #                     + json.dumps(
+    #                         {"type": "error", "data": {"message": payload}},
+    #                         ensure_ascii=False,
+    #                     )
+    #                     + "\n\n"
+    #                 )
+    #                 return
+    #             elif kind == "result":
+    #                 result = payload
+    #                 assistant_msg = Message(
+    #                     session_id=session.id,
+    #                     role="assistant",
+    #                     content=result["content"],
+    #                     citations=result["citations"],
+    #                 )
+    #                 db.add(assistant_msg)
+    #                 await db.flush()
+    #                 await db.refresh(assistant_msg)
 
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    #                 msg_data = MessageResponse.model_validate(
+    #                     assistant_msg
+    #                 ).model_dump(mode="json")
+    #                 yield (
+    #                     "data: "
+    #                     + json.dumps(
+    #                         {"type": "answer", "data": msg_data},
+    #                         ensure_ascii=False,
+    #                     )
+    #                     + "\n\n"
+    #                 )
+    #                 yield "data: {\"type\": \"done\"}\n\n"
+    #                 return
+    #     finally:
+    #         await worker
+
+    # return StreamingResponse(
+    #     event_generator(),
+    #     media_type="text/event-stream",
+    #     headers={
+    #         "Cache-Control": "no-cache",
+    #         "Connection": "keep-alive",
+    #         "X-Accel-Buffering": "no",
+    #     },
+    # )
 
 
 @router.get(

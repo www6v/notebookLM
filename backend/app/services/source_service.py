@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.qwen_asr import transcribe_audio
 from app.ai.qwen3_vl_video import understand_video
 from app.commons.util import get_image_source_content
+from app.config import settings
 from app.parsers.bilibili_parser import extract_bilibili_transcript
 from app.parsers.web_parser import parse_web_page
 from app.parsers.youtube_parser import extract_youtube_transcript
@@ -26,9 +27,6 @@ from app.services.z_deep_load_file_remote import call_load_files
 from app.services.z_deep_upload_remote import call_upload
 
 logger = logging.getLogger(__name__)
-
-# Deep-searcher HTTP API (upload + load-files on same host).
-_DEEP_SEARCHER_BASE_URL = "http://124.221.28.203:8000"
 
 # Max characters per source to include in combined content for LLM.
 _MAX_CONTENT_PER_SOURCE = 10000
@@ -289,7 +287,7 @@ async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
         collection_name = "deepsearcher"
         load_response = await asyncio.to_thread(
             call_load_files,
-            base_url=_DEEP_SEARCHER_BASE_URL,
+            base_url=settings.deep_searcher_base_url,
             paths=local_path,            
             collection_name=collection_name,
             collection_description="collection desc",

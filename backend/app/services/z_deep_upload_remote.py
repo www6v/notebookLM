@@ -4,12 +4,15 @@ import logging
 
 import requests
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 
 def call_upload(oss_url: str, notebook_id: str) -> str | None:
     """POST /upload with url and notebookid; return ``local_path`` if present."""
-    endpoint = "http://124.221.28.203:8000/upload"
+    root = settings.deep_searcher_base_url.rstrip("/")
+    endpoint = f"{root}/upload"
     payload = {
         "url": oss_url,
         "notebookid": notebook_id,

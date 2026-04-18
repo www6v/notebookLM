@@ -28,6 +28,57 @@ export interface CitationDetail {
   highlight_text: string | null
 }
 
+const extractErrorDetail = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+  const d = (payload as { detail?: unknown }).detail
+  if (typeof d === 'string') {
+    return d
+  }
+  if (Array.isArray(d)) {
+    return JSON.stringify(d)
+  }
+  return null
+}
+
+const extractJsonAnswer = (
+  payload: unknown,
+): { content: string; citations: Record<string, unknown> | null; steps: Record<string, unknown>[] } => {
+  if (payload === null || payload === undefined) {
+    return { content: '', citations: null, steps: [] }
+  }
+  if (typeof payload === 'string') {
+    return { content: payload, citations: null, steps: [] }
+  }
+  if (typeof payload !== 'object') {
+    return { content: String(payload), citations: null, steps: [] }
+  }
+  const root = payload as Record<string, unknown>
+  const data =
+    root.data !== undefined && typeof root.data === 'object' && root.data !== null
+      ? (root.data as Record<string, unknown>)
+      : root
+  const stepsRaw = data.steps ?? data.search_steps ?? root.steps
+  const steps = Array.isArray(stepsRaw)
+    ? (stepsRaw as Record<string, unknown>[])
+    : []
+  const content =
+    (typeof data.answer === 'string' && data.answer) ||
+    (typeof data.content === 'string' && data.content) ||
+    (typeof data.result === 'string' && data.result) ||
+    (typeof data.message === 'string' && data.message) ||
+    (typeof data.text === 'string' && data.text) ||
+    (typeof data.final_answer === 'string' && data.final_answer) ||
+    (typeof root.answer === 'string' && root.answer) ||
+    ''
+  const citations =
+    (data.citations as Record<string, unknown> | null | undefined) ??
+    (root.citations as Record<string, unknown> | null | undefined) ??
+    null
+  return { content, citations, steps }
+}
+
 export const chatApi = {
   createSession: async (notebookId: string, data: { title?: string }): Promise<ChatSession> => {
     const res = await client.post(`/notebooks/${notebookId}/chat/sessions`, data)
@@ -87,6 +138,49 @@ export const chatApi = {
       if (!response.ok || !response.body) {
         callbacks.onError?.('Failed to connect to stream')
         return { data: null, status: response.status, statusText: response.statusText, headers: axiosHeaders, config: config as never, request: null }
+      }
+      const contentType = response.headers.get('content-type') ?? ''
+      if (!contentType.includes('text/event-stream')) {
+        const raw = await response.text()
+        let parsed: unknown
+        try {
+          parsed = raw ? JSON.parse(raw) : null
+        } catch {
+          callbacks.onError?.('Invalid response from server')
+          callbacks.onDone?.()
+          return { data: null, status: response.status, statusText: response.statusText, headers: axiosHeaders, config: config as never, request: null }
+        }
+        const httpErr = extractErrorDetail(parsed)
+        if (httpErr) {
+          callbacks.onError?.(httpErr)
+          callbacks.onDone?.()
+          return { data: null, status: response.status, statusText: response.statusText, headers: axiosHeaders, config: config as never, request: null }
+        }
+        if (parsed === null) {
+          callbacks.onError?.('Empty response from search service')
+          callbacks.onDone?.()
+          return { data: null, status: response.status, statusText: response.statusText, headers: axiosHeaders, config: config as never, request: null }
+        }
+        const { content, citations, steps } = extractJsonAnswer(parsed)
+        for (const step of steps) {
+          callbacks.onStep?.(step)
+        }
+        if (!content.trim()) {
+          callbacks.onError?.('No answer content in response')
+          callbacks.onDone?.()
+          return { data: null, status: response.status, statusText: response.statusText, headers: axiosHeaders, config: config as never, request: null }
+        }
+        const assistantMsg: Message = {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `tmp-${Date.now()}`,
+          session_id: sessionId,
+          role: 'assistant',
+          content,
+          citations,
+          created_at: new Date().toISOString(),
+        }
+        callbacks.onAnswer?.(assistantMsg)
+        callbacks.onDone?.()
+        return { data: null, status: 200, statusText: 'OK', headers: axiosHeaders, config: config as never, request: null }
       }
       const reader = response.body.getReader()
       const decoder = new TextDecoder()

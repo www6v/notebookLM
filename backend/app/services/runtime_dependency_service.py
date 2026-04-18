@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 from sqlalchemy import text
 
-from app.ai.milvus_client import ensure_connected
+# from app.ai.milvus_client import ensure_connected
 from app.config import settings
 from app.database import async_session
 from app.services.task_event_service import get_task_event_redis_client
@@ -36,13 +36,13 @@ async def probe_redis() -> dict[str, Any]:
         await redis_client.aclose()
 
 
-async def probe_milvus() -> dict[str, Any]:
-    """Check whether Milvus is reachable."""
-    try:
-        await asyncio.to_thread(ensure_connected)
-        return {"ok": True}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+# async def probe_milvus() -> dict[str, Any]:
+#     """Check whether Milvus is reachable."""
+#     try:
+#         await asyncio.to_thread(ensure_connected)
+#         return {"ok": True}
+#     except Exception as exc:
+#         return {"ok": False, "error": str(exc)}
 
 
 async def probe_deer_flow() -> dict[str, Any]:
@@ -56,15 +56,30 @@ async def probe_deer_flow() -> dict[str, Any]:
         return {"ok": False, "error": str(exc)}
 
 
+async def probe_deep_searcher() -> dict[str, Any]:
+    """Check whether the remote deep-searcher HTTP service is reachable."""
+    base = (settings.deep_searcher_base_url or "").strip().rstrip("/")
+    if not base:
+        return {"ok": False, "error": "deep_searcher_base_url is empty"}
+    try:
+        timeout = settings.healthcheck_timeout_seconds
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(f"{base}/")
+        return {"ok": response.status_code < 500, "status_code": response.status_code}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 async def collect_dependency_status() -> dict[str, Any]:
     """Return a dependency status summary for liveness and readiness probes."""
     checks = {
         "database": probe_database(),
         "redis": probe_redis(),
-        "milvus": probe_milvus(),
+        # "milvus": probe_milvus(),
     }
     if settings.readiness_include_external_dependencies:
         checks["deer_flow"] = probe_deer_flow()
+        checks["deep_searcher"] = probe_deep_searcher()
 
     results = {
         name: result
