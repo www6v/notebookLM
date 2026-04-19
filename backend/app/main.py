@@ -24,6 +24,7 @@ from app.api import (
     oauth,
     payment,
     podcasts,
+    public_config,
     reports,
     settings,
     share_read,
@@ -71,6 +72,7 @@ app.add_middleware(
 # Register routers
 app.include_router(auth.router)
 app.include_router(oauth.router)
+app.include_router(public_config.router)
 app.include_router(settings.router)
 app.include_router(notebooks.router)
 app.include_router(share_read.router)

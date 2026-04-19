@@ -40,11 +40,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import { adminApi } from '@/api/admin'
+import { fetchPublicClientConfig } from '@/api/publicClient'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
-import {
-  readDesktopBackendUrl,
-  writeDesktopBackendUrl,
-} from '@/utils/tauriDesktopBackend'
 
 defineOptions({
   name: 'DesktopBackendSettingsPanel',
@@ -60,7 +58,8 @@ const showRestartHint = computed(() => import.meta.env.PROD)
 onMounted(async () => {
   loading.value = true
   try {
-    backendUrl.value = await readDesktopBackendUrl()
+    const cfg = await fetchPublicClientConfig()
+    backendUrl.value = (cfg.desktop_backend_url ?? '').trim()
   } catch {
     snackbar.error(t('admin.desktopBackendLoadFailed'))
   } finally {
@@ -71,8 +70,10 @@ onMounted(async () => {
 const saveBackend = async () => {
   saving.value = true
   try {
-    await writeDesktopBackendUrl(backendUrl.value.trim())
-    snackbar.success(t('admin.desktopBackendSaved'))
+    await adminApi.putClientConfig({
+      desktop_backend_url: backendUrl.value.trim(),
+    })
+    snackbar.success(t('admin.desktopBackendSavedFleet'))
   } catch {
     snackbar.error(t('admin.desktopBackendSaveFailed'))
   } finally {

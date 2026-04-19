@@ -91,7 +91,17 @@ async def init_db():
     """Initialize all database tables."""
     # Import all models to register them with Base.metadata
     # Import them here to avoid circular imports
-    from app.models import user, notebook, source, chat, note, studio, user_settings, payment  # noqa: F401
+    from app.models import (  # noqa: F401
+        user,
+        notebook,
+        source,
+        chat,
+        note,
+        studio,
+        user_settings,
+        payment,
+        system_setting,
+    )
 
     try:
         async with engine.begin() as conn:

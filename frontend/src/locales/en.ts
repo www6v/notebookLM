@@ -314,11 +314,13 @@ export default {
     navDesktopApi: 'Desktop API',
     desktopBackendTitle: 'Desktop app — API server',
     desktopBackendHint:
-      'Base URL of your NotebookLM backend (the same origin that serves /api in the browser). Use http://127.0.0.1:8000 for a local server.',
+      'Fleet-wide API origin stored on the server. Every desktop client fetches this from /api/public/client-config on startup (after contacting its local bootstrap URL).',
     desktopBackendFieldLabel: 'Backend URL',
     desktopBackendPlaceholder: 'http://127.0.0.1:8000',
     desktopBackendSave: 'Save',
     desktopBackendSaved: 'Backend URL saved.',
+    desktopBackendSavedFleet:
+      'Saved for all clients. Each desktop app applies it on the next launch.',
     desktopBackendSaveFailed: 'Could not save backend URL.',
     desktopBackendLoadFailed: 'Could not load backend URL.',
     desktopBackendRestartHint:

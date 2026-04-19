@@ -1,7 +1,0 @@
-[[permission]]
-identifier = "allow-backend-settings"
-description = "Read and write backend URL for the desktop shell."
-commands.allow = [
-    "settings_get_backend_url",
-    "settings_set_backend_url",
-]
