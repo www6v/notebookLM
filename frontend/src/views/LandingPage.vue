@@ -14,7 +14,7 @@
         <label class="header-lang-wrap">
           <span class="sr-only">{{ t('common.downloadMenuLabel') }}</span>
           <select
-            class="header-lang-select header-download-select"
+            class="header-lang-select"
             @change="handleDownloadPlatformChange"
           >
             <option value="">
@@ -419,15 +419,16 @@ function handleLocaleChange(event: Event) {
 .header-lang-select {
   appearance: none;
   -webkit-appearance: none;
-  min-width: 7.5rem;
-  padding: 8px 36px 8px 16px;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 28px 8px 14px;
   font-size: 14px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
   background-color: transparent;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='rgba(255,255,255,0.65)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 14px center;
+  background-position: right 10px center;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   cursor: pointer;
@@ -446,10 +447,6 @@ function handleLocaleChange(event: Event) {
 .header-lang-select option {
   color: #111111;
   background: #ffffff;
-}
-
-.header-download-select {
-  min-width: 8.25rem;
 }
 
 .header-link {
