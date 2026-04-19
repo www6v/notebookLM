@@ -28,6 +28,8 @@ cargo tauri build
 
 Bundled macOS/Windows/Linux artifacts appear under `src-tauri/target/release/bundle/`.
 
+**macOS:** If the DMG works locally but fails after download with Gatekeeper / 「身份不明的开发者」, see [macOS distribution & Gatekeeper](macos-distribution.md) (code signing + notarization).
+
 **Note:** The loopback server currently resolves `frontend/dist` via the project layout at build time; adjust `dist_dir_for_release` in `src-tauri/src/lib.rs` if you need packaged-app resource paths.
 
 ## Admin: fleet-wide desktop API URL
