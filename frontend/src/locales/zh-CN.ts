@@ -304,6 +304,12 @@ export default {
     paidOk: '订阅成功！',
     savedOk: '设置已保存',
     saveFailed: '保存失败，请重试',
+  },
+  admin: {
+    desktopPageTitle: '桌面应用 — API 服务器',
+    desktopTauriOnly:
+      '请在 NotebookLM 桌面应用（Tauri）中打开此页以编辑后端地址；在普通浏览器中无法配置。',
+    navDesktopApi: '桌面 API',
     desktopBackendTitle: '桌面应用 — API 服务器',
     desktopBackendHint:
       'NotebookLM 后端的根地址（与浏览器中提供 /api 的站点一致）。本机开发常用 http://127.0.0.1:8000。',

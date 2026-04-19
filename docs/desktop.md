@@ -32,7 +32,7 @@ Bundled macOS/Windows/Linux artifacts appear under `src-tauri/target/release/bun
 
 ## Settings (IPC + Vue)
 
-In the desktop app, sign in, then open **Settings** (the route requires auth, same as the web app). When the page runs inside the Tauri WebView, an extra card **Desktop app — API server** appears at the top: it calls `settings_get_backend_url` / `settings_set_backend_url` via `@tauri-apps/api`.
+In the desktop app, sign in as an **admin**, open **Admin** (e.g. from the home header), then go to **Desktop API** or open `/:locale/admin/desktop` (example: `/zh-CN/admin/desktop`). Only users with the admin role can reach this route. The card calls `settings_get_backend_url` / `settings_set_backend_url` via `@tauri-apps/api`.
 
 Detection uses `window.__TAURI_INTERNALS__` so the card shows in `cargo tauri dev` even without `@tauri-apps/vite-plugin`. Optionally add that plugin if you want `import.meta.env.TAURI_ENV_*` in plain `vite` runs.
 

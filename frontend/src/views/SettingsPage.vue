@@ -12,7 +12,6 @@
     </header>
 
     <main class="settings-main">
-      <DesktopBackendSettingsPanel v-if="showDesktopBackend" />
       <v-card class="settings-card">
         <v-card-title class="text-subtitle-1 font-weight-medium">
           {{ t('settings.subscriptionPlan') }}
@@ -173,9 +172,7 @@ import type { ThemeMode } from '@/stores/useThemeStore'
 import { useSettingsStore, OUTPUT_LANGUAGE_OPTIONS } from '@/stores/useSettingsStore'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import { useUserStore } from '@/stores/useUserStore'
-import DesktopBackendSettingsPanel from '@/components/DesktopBackendSettingsPanel.vue'
 import PaymentDialog from '@/components/PaymentDialog.vue'
-import { isTauriApp } from '@/utils/isTauriApp'
 
 const { t, locale: i18nLocale } = useI18n()
 const router = useRouter()
@@ -186,7 +183,6 @@ const snackbar = useSnackbarStore()
 const userStore = useUserStore()
 const languageOptions = OUTPUT_LANGUAGE_OPTIONS
 const saving = ref(false)
-const showDesktopBackend = isTauriApp()
 
 function goHome() {
   router.push({ name: 'Home', params: { locale: routeLocale.value } })

@@ -13,6 +13,15 @@
 
     <main class="admin-main">
       <div class="admin-toolbar">
+        <v-btn
+          v-if="isTauriDesktop"
+          class="desktop-api-entry"
+          color="primary"
+          variant="outlined"
+          @click="goDesktopApi"
+        >
+          {{ t('admin.navDesktopApi') }}
+        </v-btn>
         <v-text-field
           v-model="search"
           placeholder="搜索邮箱或用户名"
@@ -125,15 +134,19 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useRouteLocale } from '@/i18n/useRouteLocale'
 import { adminApi } from '@/api/admin'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import type { UserResponse } from '@/api/auth'
+import { isTauriApp } from '@/utils/isTauriApp'
 
+const { t } = useI18n()
 const router = useRouter()
 const locale = useRouteLocale()
 const snackbar = useSnackbarStore()
+const isTauriDesktop = isTauriApp()
 
 function goHome() {
   router.push({ name: 'Home', params: { locale: locale.value } })
@@ -143,6 +156,13 @@ function goUserDetail(id: string) {
   router.push({
     name: 'AdminUserDetail',
     params: { locale: locale.value, id },
+  })
+}
+
+function goDesktopApi() {
+  router.push({
+    name: 'AdminDesktop',
+    params: { locale: locale.value },
   })
 }
 
@@ -258,6 +278,8 @@ onMounted(() => {
 
 .admin-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
   margin-bottom: 24px;
 }

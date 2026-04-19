@@ -306,6 +306,12 @@ export default {
     paidOk: 'Subscription successful!',
     savedOk: 'Settings saved',
     saveFailed: 'Could not save. Try again.',
+  },
+  admin: {
+    desktopPageTitle: 'Desktop app — API server',
+    desktopTauriOnly:
+      'Open this page in the NotebookLM desktop app (Tauri) to edit the backend URL. In a normal browser, this control is not available.',
+    navDesktopApi: 'Desktop API',
     desktopBackendTitle: 'Desktop app — API server',
     desktopBackendHint:
       'Base URL of your NotebookLM backend (the same origin that serves /api in the browser). Use http://127.0.0.1:8000 for a local server.',
