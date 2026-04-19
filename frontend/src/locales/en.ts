@@ -13,6 +13,8 @@ export default {
     delete: 'Delete',
     back: 'Back',
     githubRepository: 'View project on GitHub',
+    download: 'Download',
+    downloadMenuLabel: 'Choose a download platform',
   },
   home: {
     admin: 'Admin',

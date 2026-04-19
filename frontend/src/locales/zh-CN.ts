@@ -13,6 +13,8 @@ export default {
     delete: '删除',
     back: '返回',
     githubRepository: '在 GitHub 上查看项目',
+    download: '下载',
+    downloadMenuLabel: '选择下载平台',
   },
   home: {
     admin: '管理',

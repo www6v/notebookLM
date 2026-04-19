@@ -11,6 +11,26 @@
     <header class="landing-header">
       <AppLogo />
       <div class="landing-header-actions">
+        <label class="header-lang-wrap">
+          <span class="sr-only">{{ t('common.downloadMenuLabel') }}</span>
+          <select
+            class="header-lang-select header-download-select"
+            @change="handleDownloadPlatformChange"
+          >
+            <option value="">
+              {{ t('common.download') }}
+            </option>
+            <option value="mac">
+              Mac
+            </option>
+            <option value="windows">
+              Windows
+            </option>
+            <option value="linux">
+              Linux
+            </option>
+          </select>
+        </label>
         <a
           class="header-github-link"
           href="https://github.com/www6v/notebookLM"
@@ -49,12 +69,6 @@
             </option>
           </select>
         </label>
-        <router-link
-          :to="toPricing"
-          class="header-link"
-        >
-          {{ t('home.pricing') }}
-        </router-link>
         <router-link
           :to="toLogin"
           class="header-cta"
@@ -203,6 +217,24 @@ const toLogin = computed(() => ({
   name: 'Login' as const,
   params: { locale: locale.value },
 }))
+
+const MAC_DESKTOP_DOWNLOAD_URL =
+  'https://github.com/www6v/notebookLM/releases/download/v0.8.0/NotebookLM_0.1.0_x64.dmg'
+const DESKTOP_RELEASES_URL = 'https://github.com/www6v/notebookLM/releases'
+
+function handleDownloadPlatformChange(event: Event) {
+  const target = event.target as HTMLSelectElement
+  const value = target.value
+  if (!value) {
+    return
+  }
+  if (value === 'mac') {
+    window.open(MAC_DESKTOP_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')
+  } else if (value === 'windows' || value === 'linux') {
+    window.open(DESKTOP_RELEASES_URL, '_blank', 'noopener,noreferrer')
+  }
+  target.value = ''
+}
 
 function handleLocaleChange(event: Event) {
   const target = event.target as HTMLSelectElement
@@ -414,6 +446,10 @@ function handleLocaleChange(event: Event) {
 .header-lang-select option {
   color: #111111;
   background: #ffffff;
+}
+
+.header-download-select {
+  min-width: 8.25rem;
 }
 
 .header-link {
