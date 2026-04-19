@@ -56,7 +56,7 @@ backend-env.sh
 # Docker
 .dockerenv
 
-# Runtime data
+# Runtime data (project-root files/ and all nested content)
 uploads/
 /files/
 milvus_data/
