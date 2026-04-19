@@ -306,6 +306,17 @@ export default {
     paidOk: 'Subscription successful!',
     savedOk: 'Settings saved',
     saveFailed: 'Could not save. Try again.',
+    desktopBackendTitle: 'Desktop app — API server',
+    desktopBackendHint:
+      'Base URL of your NotebookLM backend (the same origin that serves /api in the browser). Use http://127.0.0.1:8000 for a local server.',
+    desktopBackendFieldLabel: 'Backend URL',
+    desktopBackendPlaceholder: 'http://127.0.0.1:8000',
+    desktopBackendSave: 'Save',
+    desktopBackendSaved: 'Backend URL saved.',
+    desktopBackendSaveFailed: 'Could not save backend URL.',
+    desktopBackendLoadFailed: 'Could not load backend URL.',
+    desktopBackendRestartHint:
+      'Restart the desktop app so release builds reconnect to the new address.',
   },
   studio: {
     noteViewTitle: 'View note',

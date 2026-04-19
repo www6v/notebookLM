@@ -304,6 +304,16 @@ export default {
     paidOk: '订阅成功！',
     savedOk: '设置已保存',
     saveFailed: '保存失败，请重试',
+    desktopBackendTitle: '桌面应用 — API 服务器',
+    desktopBackendHint:
+      'NotebookLM 后端的根地址（与浏览器中提供 /api 的站点一致）。本机开发常用 http://127.0.0.1:8000。',
+    desktopBackendFieldLabel: '后端地址',
+    desktopBackendPlaceholder: 'http://127.0.0.1:8000',
+    desktopBackendSave: '保存',
+    desktopBackendSaved: '后端地址已保存。',
+    desktopBackendSaveFailed: '无法保存后端地址。',
+    desktopBackendLoadFailed: '无法读取后端地址。',
+    desktopBackendRestartHint: '请重启桌面应用，正式版才会用新地址连接后端。',
   },
   studio: {
     noteViewTitle: '查看笔记',

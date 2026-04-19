@@ -30,12 +30,12 @@ Bundled macOS/Windows/Linux artifacts appear under `src-tauri/target/release/bun
 
 **Note:** The loopback server currently resolves `frontend/dist` via the project layout at build time; adjust `dist_dir_for_release` in `src-tauri/src/lib.rs` if you need packaged-app resource paths.
 
-## Settings (IPC)
+## Settings (IPC + Vue)
 
-Rust commands (for a future in-app settings UI or devtools):
+In the desktop app, open **Settings** (same as the web app). When running under Tauri, an extra card **Desktop app — API server** appears at the top: it calls `settings_get_backend_url` / `settings_set_backend_url` via `@tauri-apps/api`.
 
 - `settings_get_backend_url` — returns stored backend origin
-- `settings_set_backend_url` — `{ url: string }` — normalizes and saves; **restart the app** for release builds to pick up a new upstream for the proxy
+- `settings_set_backend_url` — `{ url: string }` — normalizes and saves; **restart the app** for release builds so the loopback proxy uses the new upstream
 
 Settings file: platform app config directory / `settings.json`.
 
