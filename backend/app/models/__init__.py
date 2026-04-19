@@ -7,6 +7,7 @@ from . import (
     payment,
     source,
     studio,
+    system_setting,
     user,
     user_settings,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "payment",
     "source",
     "studio",
+    "system_setting",
     "user",
     "user_settings",
 ]

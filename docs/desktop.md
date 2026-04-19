@@ -19,7 +19,7 @@ This starts Vite on `http://localhost:5173` (with `/api` proxied to the backend 
 
 ## Release-style run (loopback + `dist`)
 
-Release builds start a loopback server that serves `frontend/dist` and proxies `/api` to the URL in settings (default `http://127.0.0.1:8000`).
+Release builds start a loopback server that serves `frontend/dist` and proxies `/api` to the **effective** upstream: server `desktop_backend_url` from `GET /api/public/client-config` when set, otherwise the bootstrap URL in local `settings.json` (default `http://127.0.0.1:8000`).
 
 ```bash
 cd frontend && npm run build && cd ..
@@ -30,14 +30,16 @@ Bundled macOS/Windows/Linux artifacts appear under `src-tauri/target/release/bun
 
 **Note:** The loopback server currently resolves `frontend/dist` via the project layout at build time; adjust `dist_dir_for_release` in `src-tauri/src/lib.rs` if you need packaged-app resource paths.
 
-## Settings (IPC)
+## Admin: fleet-wide desktop API URL
 
-Rust commands (for a future in-app settings UI or devtools):
+Sign in as **admin**, open **Admin** → **Desktop API** (or `/:locale/admin/desktop`). The UI uses **`GET /api/public/client-config`** and **`PUT /api/admin/client-config`** (HTTP, same as a browser).
 
-- `settings_get_backend_url` — returns stored backend origin
-- `settings_set_backend_url` — `{ url: string }` — normalizes and saves; **restart the app** for release builds to pick up a new upstream for the proxy
+- **Server:** `desktop_backend_url` is stored in **`system_settings`** (shared DB).
+- **Desktop (release):** On startup, the shell requests `{bootstrap}/api/public/client-config` where **bootstrap** is `backend_url` in local `settings.json` (default `http://127.0.0.1:8000`). If the JSON includes a non-empty `desktop_backend_url`, that value becomes the reverse-proxy upstream. **Restart** each desktop app after a change.
 
-Settings file: platform app config directory / `settings.json`.
+Tauri detection in the Vue app uses `window.__TAURI_INTERNALS__` so the admin entry appears in `cargo tauri dev` without `@tauri-apps/vite-plugin`.
+
+**Bootstrap file:** App config directory / `settings.json` — only affects where to fetch `client-config`, not the fleet URL itself.
 
 ## WebSocket `/ws`
 

@@ -307,6 +307,25 @@ export default {
     savedOk: 'Settings saved',
     saveFailed: 'Could not save. Try again.',
   },
+  admin: {
+    desktopPageTitle: 'Desktop app — API server',
+    desktopTauriOnly:
+      'Open this page in the NotebookLM desktop app (Tauri) to edit the backend URL. In a normal browser, this control is not available.',
+    navDesktopApi: 'Desktop API',
+    desktopBackendTitle: 'Desktop app — API server',
+    desktopBackendHint:
+      'Fleet-wide API origin stored on the server. Every desktop client fetches this from /api/public/client-config on startup (after contacting its local bootstrap URL).',
+    desktopBackendFieldLabel: 'Backend URL',
+    desktopBackendPlaceholder: 'http://127.0.0.1:8000',
+    desktopBackendSave: 'Save',
+    desktopBackendSaved: 'Backend URL saved.',
+    desktopBackendSavedFleet:
+      'Saved for all clients. Each desktop app applies it on the next launch.',
+    desktopBackendSaveFailed: 'Could not save backend URL.',
+    desktopBackendLoadFailed: 'Could not load backend URL.',
+    desktopBackendRestartHint:
+      'Restart the desktop app so release builds reconnect to the new address.',
+  },
   studio: {
     noteViewTitle: 'View note',
     slide: {

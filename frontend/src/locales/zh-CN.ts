@@ -305,6 +305,23 @@ export default {
     savedOk: '设置已保存',
     saveFailed: '保存失败，请重试',
   },
+  admin: {
+    desktopPageTitle: '桌面应用 — API 服务器',
+    desktopTauriOnly:
+      '请在 NotebookLM 桌面应用（Tauri）中打开此页以编辑后端地址；在普通浏览器中无法配置。',
+    navDesktopApi: '桌面 API',
+    desktopBackendTitle: '桌面应用 — API 服务器',
+    desktopBackendHint:
+      '写入服务器的全局 API 根地址。各桌面端启动时会先连本机引导地址，再请求 /api/public/client-config 获取此处配置。',
+    desktopBackendFieldLabel: '后端地址',
+    desktopBackendPlaceholder: 'http://127.0.0.1:8000',
+    desktopBackendSave: '保存',
+    desktopBackendSaved: '后端地址已保存。',
+    desktopBackendSavedFleet: '已保存，所有桌面端在下次启动时生效。',
+    desktopBackendSaveFailed: '无法保存后端地址。',
+    desktopBackendLoadFailed: '无法读取后端地址。',
+    desktopBackendRestartHint: '请重启桌面应用，正式版才会用新地址连接后端。',
+  },
   studio: {
     noteViewTitle: '查看笔记',
     slide: {

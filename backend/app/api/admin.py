@@ -1,5 +1,7 @@
 """Admin API routes for user management."""
 
+from urllib.parse import urlparse
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +18,10 @@ from app.models.studio import (
     SlideDeck,
 )
 from app.models.user import User
+from app.schemas.client_config import (
+    AdminClientConfigUpdate,
+    PublicClientConfigResponse,
+)
 from app.schemas.user import (
     AdminUserDetailResponse,
     AdminUserListResponse,
@@ -24,10 +30,33 @@ from app.schemas.user import (
     UploadedFileTypeStat,
     UserResponse,
 )
+from app.services import system_setting_service as sys_svc
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 VALID_ROLES = {"free", "paid", "admin"}
+
+
+def _normalize_desktop_backend_url(raw: str) -> str:
+    """Validate and trim trailing slash from an origin URL."""
+    t = raw.strip()
+    if not t:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="URL must not be empty",
+        )
+    parsed = urlparse(t)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only http and https URLs are allowed",
+        )
+    if not parsed.netloc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="URL must include host",
+        )
+    return t.rstrip("/")
 
 
 async def _count_studio_ready_error(
@@ -249,3 +278,19 @@ async def update_user(
     await db.flush()
     await db.refresh(user)
     return UserResponse.model_validate(user)
+
+
+@router.put(
+    "/client-config",
+    response_model=PublicClientConfigResponse,
+)
+async def put_client_config(
+    body: AdminClientConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    """Set fleet-wide desktop API origin (all desktop clients read via public)."""
+    normalized = _normalize_desktop_backend_url(body.desktop_backend_url)
+    await sys_svc.set_value(db, sys_svc.DESKTOP_BACKEND_URL_KEY, normalized)
+    await db.flush()
+    return PublicClientConfigResponse(desktop_backend_url=normalized)

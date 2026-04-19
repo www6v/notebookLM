@@ -57,6 +57,12 @@ const localizedChildren: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: 'admin/desktop',
+    name: 'AdminDesktop',
+    component: () => import('@/views/admin/AdminDesktopPage.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
     path: 'admin',
     name: 'AdminUserList',
     component: () => import('@/views/admin/AdminUserList.vue'),

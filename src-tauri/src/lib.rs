@@ -1,5 +1,6 @@
 mod local_server;
 mod proxy_http;
+mod public_config;
 mod settings;
 
 #[cfg(not(debug_assertions))]
@@ -7,35 +8,22 @@ use std::path::PathBuf;
 #[cfg(not(debug_assertions))]
 use tauri::Manager;
 
-#[tauri::command]
-fn settings_get_backend_url(app: tauri::AppHandle) -> Result<String, String> {
-    Ok(settings::load(&app)?.backend_url)
-}
-
-#[tauri::command]
-fn settings_set_backend_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
-    let normalized = settings::normalize_backend_url(&url)?;
-    let mut s = settings::load(&app)?;
-    s.backend_url = normalized;
-    settings::save(&app, &s)?;
-    Ok(())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            settings_get_backend_url,
-            settings_set_backend_url
-        ]);
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
 
     #[cfg(not(debug_assertions))]
     {
         builder = builder.setup(|app| {
             let handle = app.handle();
             let loaded = settings::load(handle)?;
-            let backend = settings::normalize_backend_url(&loaded.backend_url)?;
+            let bootstrap = settings::normalize_backend_url(&loaded.backend_url)?;
+            let backend = tauri::async_runtime::block_on(
+                public_config::resolve_upstream_base(
+                    &bootstrap,
+                    loaded.accept_invalid_certs,
+                ),
+            );
             let client = proxy_http::build_upstream_client(loaded.accept_invalid_certs)
                 .map_err(|e| e.to_string())?;
             let dist = dist_dir_for_release()?;

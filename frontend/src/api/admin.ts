@@ -1,5 +1,6 @@
 import client from './client'
 import type { UserResponse } from './auth'
+import type { PublicClientConfig } from '@/api/publicClient'
 
 export interface UploadedFileTypeStat {
   source_type: string
@@ -71,6 +72,13 @@ export const adminApi = {
     data: AdminUserUpdateRequest,
   ): Promise<UserResponse> => {
     const res = await client.patch(`/admin/users/${userId}`, data)
+    return res.data
+  },
+
+  putClientConfig: async (body: {
+    desktop_backend_url: string
+  }): Promise<PublicClientConfig> => {
+    const res = await client.put<PublicClientConfig>('/admin/client-config', body)
     return res.data
   },
 }
