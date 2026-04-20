@@ -34,11 +34,11 @@ from app.services.obs_storage import (
 from app.services.studio.slide_service import (
     build_slide_pptx_from_pdf_bytes,
 )
-from app.services.studio_storage_cleanup import (
+from app.services.studio.studio_storage_cleanup import (
     delete_studio_objects_best_effort,
     slide_deck_storage_keys,
 )
-from app.services.studio_status_service import (
+from app.services.studio.studio_status_service import (
     clear_generation_error,
     reconcile_stale_generation,
     reconcile_stale_generations,

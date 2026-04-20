@@ -14,7 +14,7 @@ from app.models.studio import (
     Report,
     SlideDeck,
 )
-from app.services.studio_status_service import PENDING_GENERATION_STATUSES
+from app.services.studio.studio_status_service import PENDING_GENERATION_STATUSES
 
 
 async def count_inflight_generations(db: AsyncSession, user_id: str) -> int:

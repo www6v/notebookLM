@@ -22,7 +22,7 @@ from app.schemas.studio import (
     ReportStatus,
     ReportUpdate,
 )
-from app.services.studio_status_service import (
+from app.services.studio.studio_status_service import (
     clear_generation_error,
     reconcile_stale_generation,
     reconcile_stale_generations,

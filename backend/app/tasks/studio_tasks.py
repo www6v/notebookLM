@@ -5,7 +5,9 @@ import logging
 
 import httpx
 import app.models  # noqa: F401
-from app.services.studio_status_service import normalize_generation_error_message
+from app.services.studio.studio_status_service import (
+    normalize_generation_error_message,
+)
 from app.tasks.async_runner import run_async_in_worker
 from app.tasks.celery_app import celery_app
 from app.services.task_event_service import publish_task_event
@@ -92,7 +94,7 @@ def generate_mindmap_task(
     from app.services.studio.mindmap_service import (
         run_mindmap_generation_for_existing,
     )
-    from app.services.studio_status_service import mark_generation_as_error
+    from app.services.studio.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
     async def _run():
@@ -160,7 +162,7 @@ def generate_slide_deck_task(
     from app.services.studio.slide_service import (
         run_slide_deck_generation_for_existing,
     )
-    from app.services.studio_status_service import mark_generation_as_error
+    from app.services.studio.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
     async def _run():
@@ -231,7 +233,7 @@ def generate_infographic_task(
     from app.services.studio.infographic_service import (
         run_infographic_generation_for_existing,
     )
-    from app.services.studio_status_service import mark_generation_as_error
+    from app.services.studio.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
     async def _run():
@@ -301,7 +303,7 @@ def generate_report_task(
     from app.services.studio.report_service import (
         run_report_generation_for_existing,
     )
-    from app.services.studio_status_service import mark_generation_as_error
+    from app.services.studio.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
     async def _run():
@@ -368,7 +370,7 @@ def generate_podcast_task(
     from app.services.studio.podcast_service import (
         run_podcast_generation_for_existing,
     )
-    from app.services.studio_status_service import mark_generation_as_error
+    from app.services.studio.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
     async def _run():

@@ -17,7 +17,7 @@ from app.ratelimit import (
 from app.models.studio import MindMap
 from app.models.user import User
 from app.schemas.studio import MindMapCreate, MindMapResponse, MindMapStatus
-from app.services.studio_status_service import (
+from app.services.studio.studio_status_service import (
     reconcile_stale_generation,
     reconcile_stale_generations,
 )

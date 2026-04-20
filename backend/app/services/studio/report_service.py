@@ -21,7 +21,7 @@ from app.services.source_service import (
     build_combined_content_from_sources,
     fetch_sources,
 )
-from app.services.studio_status_service import (
+from app.services.studio.studio_status_service import (
     clear_generation_error,
     mark_generation_as_error,
 )

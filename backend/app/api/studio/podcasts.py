@@ -24,8 +24,10 @@ from app.services.obs_storage import (
     download_file_from_obs,
     generate_presigned_url,
 )
-from app.services.studio_storage_cleanup import delete_studio_objects_best_effort
-from app.services.studio_status_service import (
+from app.services.studio.studio_storage_cleanup import (
+    delete_studio_objects_best_effort,
+)
+from app.services.studio.studio_status_service import (
     reconcile_stale_generation,
     reconcile_stale_generations,
 )
