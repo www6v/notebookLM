@@ -23,7 +23,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.models.studio import SlideDeck
 from app.schemas.studio import SlideDeckStatus
-from app.services.obs_storage import upload_file_to_obs
+from app.services.infra.obs_storage import upload_file_to_obs
 from app.services.source.source_service import (
     build_combined_content_from_sources,
     fetch_sources,

@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 )
 def run_deep_research_for_report_task(report_id: str):
     """Run Deep Research asynchronously via Celery."""
-    from app.services.deep_research_service import run_deep_research_for_report
+    from app.services.infra.deep_research_service import (
+        run_deep_research_for_report,
+    )
 
     async def _run():
         await publish_task_event("deep-research", report_id, "processing")

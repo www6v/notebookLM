@@ -19,7 +19,7 @@ from app.schemas.source import (
     SourceResponse,
     SourceUpdate,
 )
-from app.services.obs_storage import (
+from app.services.infra.obs_storage import (
     delete_file_from_obs,
     download_file_from_obs,
     generate_presigned_url,

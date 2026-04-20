@@ -18,12 +18,12 @@ from app.parsers.web_parser import parse_web_page
 from app.parsers.youtube_parser import extract_youtube_transcript
 from app.models.notebook import Notebook
 from app.models.source import Source
-from app.services.obs_storage import (
+from app.services.infra.obs_storage import (
     generate_presigned_url,
     get_file_url,
     upload_file_to_obs,
 )
-from app.services.deep_searcher import call_load_files, call_upload
+from app.services.infra.deep_searcher import call_load_files, call_upload
 
 logger = logging.getLogger(__name__)
 

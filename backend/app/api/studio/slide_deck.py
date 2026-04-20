@@ -27,7 +27,7 @@ from app.schemas.studio import (
     SlideDeckStatus,
     SlideDeckUpdate,
 )
-from app.services.obs_storage import (
+from app.services.infra.obs_storage import (
     download_file_from_obs,
     generate_presigned_url,
 )

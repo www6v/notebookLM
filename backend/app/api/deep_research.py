@@ -18,7 +18,9 @@ from app.ratelimit import (
 )
 from app.schemas.source import SourceResponse
 from app.schemas.studio import DeepResearchCreate, DeepResearchResponse
-from app.services.deep_research_celery_control import revoke_deep_research_task
+from app.services.infra.deep_research_celery_control import (
+    revoke_deep_research_task,
+)
 from app.services.task_event_service import publish_task_event
 from app.tasks.deep_research_tasks import run_deep_research_for_report_task
 from app.tasks.source_tasks import process_source_task

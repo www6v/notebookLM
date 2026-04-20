@@ -4,7 +4,7 @@ import logging
 
 from app.ai.llm_router import vision_chat_completion_with_url
 from app.models.source import Source
-from app.services.obs_storage import generate_presigned_url
+from app.services.infra.obs_storage import generate_presigned_url
 
 logger = logging.getLogger(__name__)
 

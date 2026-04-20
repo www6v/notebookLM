@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.studio import PodcastOverview
 from app.schemas.studio import PodcastStatus
-from app.services.obs_storage import upload_file_to_obs
+from app.services.infra.obs_storage import upload_file_to_obs
 from app.services.studio.podcast_script_schema import (
     coerce_podcast_script_payload,
     parse_podcast_script_text,

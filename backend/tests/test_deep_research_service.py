@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services import deep_research_service as drs
+from app.services.infra import deep_research_service as drs
 
 
 class _FakeResult:

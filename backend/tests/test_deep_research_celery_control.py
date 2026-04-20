@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from app.services.deep_research_celery_control import revoke_deep_research_task
+from app.services.infra.deep_research_celery_control import (
+    revoke_deep_research_task,
+)
 
 
 def test_revoke_skips_when_task_id_missing() -> None:

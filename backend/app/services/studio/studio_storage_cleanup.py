@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
-from app.services.obs_storage import delete_file_from_obs
+from app.services.infra.obs_storage import delete_file_from_obs
 
 logger = logging.getLogger(__name__)
 

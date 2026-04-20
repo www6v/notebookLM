@@ -37,7 +37,7 @@ from app.api.studio import (
 )
 from app.config import settings as config
 from app.database import init_db
-from app.services.runtime_dependency_service import collect_dependency_status
+from app.services.infra.runtime_dependency_service import collect_dependency_status
 
 
 def _init_langfuse_env():
