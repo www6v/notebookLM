@@ -33,7 +33,7 @@ _MAX_CONTENT_PER_SOURCE = 10000
 # Upload path stores this for images (see extract_text); not usable for LLM.
 _IMAGE_PLACEHOLDER_TEXT = "[Image]"
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_PROJECT_ROOT = Path(__file__).resolve().parents[4]
 _SOURCE_MARKDOWN_ROOT = _PROJECT_ROOT / "files"
 
 
@@ -287,10 +287,10 @@ async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
         load_response = await asyncio.to_thread(
             call_load_files,
             base_url=settings.deep_searcher_base_url,
-            paths=local_path,            
+            paths=local_path,
             collection_name=collection_name,
             collection_description="collection desc",
-            batch_size=8,            
+            batch_size=8,
         )
         if not load_response.ok:
             logger.error(

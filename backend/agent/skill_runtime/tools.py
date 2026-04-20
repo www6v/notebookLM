@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from app.services.image_generation_service import (
+from app.services.studio.image_generation_service import (
     aspect_ratio_to_size,
     generate_image_from_prompt,
 )

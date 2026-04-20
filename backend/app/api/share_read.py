@@ -64,7 +64,7 @@ from app.services.obs_storage import (
     generate_presigned_url,
 )
 from app.services.studio.slide_service import build_slide_pptx_from_pdf_bytes
-from app.services.source_service import (
+from app.services.source.source_service import (
     extract_text,
     finalize_uploaded_image,
     get_source_in_notebook,

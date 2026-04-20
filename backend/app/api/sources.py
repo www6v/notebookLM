@@ -28,7 +28,7 @@ from app.services.obs_storage import (
 )
 # from app.ai.milvus_client import delete_by_source_id
 from app.services.task_event_service import publish_task_event
-from app.services.source_service import (
+from app.services.source.source_service import (
     extract_text,
     finalize_uploaded_image,
     get_source,

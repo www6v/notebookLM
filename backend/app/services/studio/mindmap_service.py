@@ -18,7 +18,7 @@ from app.ai.llm_router import chat_completion
 from app.config import settings
 from app.models.studio import MindMap
 from app.schemas.studio import MindMapStatus
-from app.services.source_service import (
+from app.services.source.source_service import (
     build_combined_content_from_sources,
     fetch_sources,
 )

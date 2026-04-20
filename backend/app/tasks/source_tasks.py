@@ -25,14 +25,14 @@ def process_source_task(source_id: str):
     """
     from app.database import async_session
     from app.models.source import Source
-    from app.services.source_service import (
+    from app.services.source.source_service import (
         finalize_uploaded_audio,
         finalize_uploaded_image,
         finalize_uploaded_video,
         finalize_url_source,
         process_source,
     )
-    from app.services.source_metadata_skill_service import (
+    from app.services.source.source_metadata_skill_service import (
         enrich_source_metadata_with_skill,
     )
     from sqlalchemy import select

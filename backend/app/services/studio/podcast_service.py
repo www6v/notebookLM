@@ -18,7 +18,7 @@ from app.services.studio.podcast_script_schema import (
     coerce_podcast_script_payload,
     parse_podcast_script_text,
 )
-from app.services.source_service import (
+from app.services.source.source_service import (
     build_combined_content_from_sources,
     fetch_sources,
 )
