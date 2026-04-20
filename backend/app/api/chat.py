@@ -24,7 +24,7 @@ from app.schemas.chat import (
     MessageResponse,
 )
 # from app.services.chat_service import handle_chat_message
-from app.services.z_deep_query_remote import deepsearch_query
+from app.services.deep_searcher import deepsearch_query
 
 
 logger = logging.getLogger(__name__)

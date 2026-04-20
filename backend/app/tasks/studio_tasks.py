@@ -89,7 +89,9 @@ def generate_mindmap_task(
     """Background task to generate a mind map for an existing pending record."""
     from app.database import async_session
     from app.models.studio import MindMap
-    from app.services.mindmap_service import run_mindmap_generation_for_existing
+    from app.services.studio.mindmap_service import (
+        run_mindmap_generation_for_existing,
+    )
     from app.services.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
@@ -155,7 +157,9 @@ def generate_slide_deck_task(
     """Background task to generate a slide deck for an existing pending record."""
     from app.database import async_session
     from app.models.studio import SlideDeck
-    from app.services.slide_service import run_slide_deck_generation_for_existing
+    from app.services.studio.slide_service import (
+        run_slide_deck_generation_for_existing,
+    )
     from app.services.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
@@ -224,7 +228,7 @@ def generate_infographic_task(
     """Background task to generate an infographic for an existing record."""
     from app.database import async_session
     from app.models.studio import Infographic
-    from app.services.infographic_service import (
+    from app.services.studio.infographic_service import (
         run_infographic_generation_for_existing,
     )
     from app.services.studio_status_service import mark_generation_as_error
@@ -294,7 +298,9 @@ def generate_report_task(
     """Background task to generate a report for an existing record."""
     from app.database import async_session
     from app.models.studio import Report
-    from app.services.report_service import run_report_generation_for_existing
+    from app.services.studio.report_service import (
+        run_report_generation_for_existing,
+    )
     from app.services.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 
@@ -359,7 +365,9 @@ def generate_podcast_task(
     """Background task: podcast-generation skill workflow + Qwen TTS."""
     from app.database import async_session
     from app.models.studio import PodcastOverview
-    from app.services.podcast_service import run_podcast_generation_for_existing
+    from app.services.studio.podcast_service import (
+        run_podcast_generation_for_existing,
+    )
     from app.services.studio_status_service import mark_generation_as_error
     from sqlalchemy import select
 

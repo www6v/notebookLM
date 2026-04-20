@@ -17,21 +17,23 @@ from app.api import (
     auth,
     chat,
     deep_research,
-    infographics,
-    mindmaps,
     notebooks,
     notes,
     oauth,
     payment,
-    podcasts,
     public_config,
-    reports,
     settings,
     share_read,
-    slide_deck,
     sources,
     studio,
     task_events,
+)
+from app.api.studio import (
+    infographics,
+    mindmaps,
+    podcasts,
+    reports,
+    slide_deck,
 )
 from app.config import settings as config
 from app.database import init_db

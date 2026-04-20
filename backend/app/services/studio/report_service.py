@@ -45,7 +45,7 @@ def _render_report_system_prompt(
     custom_prompt: str | None = None,
 ) -> str:
     """Render report system prompt from Jinja2 template."""
-    template_dir = Path(__file__).resolve().parent.parent / "templates"
+    template_dir = Path(__file__).resolve().parents[2] / "templates"
     env = Environment(
         autoescape=select_autoescape(default_for_string=False),
         loader=FileSystemLoader(template_dir),

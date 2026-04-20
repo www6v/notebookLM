@@ -36,7 +36,7 @@ def _render_mindmap_system_prompt(
     output_language: str = "简体中文",
 ) -> str:
     """Render mind map system prompt from template with Jinja2 variables."""
-    template_dir = Path(__file__).resolve().parent.parent / "templates"
+    template_dir = Path(__file__).resolve().parents[2] / "templates"
     env = Environment(
         autoescape=select_autoescape(default_for_string=False),
         loader=FileSystemLoader(template_dir),

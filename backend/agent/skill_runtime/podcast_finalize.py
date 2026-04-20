@@ -7,7 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 
-from app.services.podcast_script_schema import (
+from app.services.studio.podcast_script_schema import (
     coerce_podcast_script_payload,
     parse_podcast_script_text,
 )

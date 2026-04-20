@@ -190,7 +190,7 @@ def _build_v2_source_markdown(
 
 def _studio_workflow_dir(slide_deck_id: str) -> Path:
     """Return the local workspace directory for one slide-deck workflow run."""
-    backend_root = Path(__file__).resolve().parents[2]
+    backend_root = Path(__file__).resolve().parents[3]
     return backend_root / "agent" / "slide_deck" / "studio" / slide_deck_id
 
 
@@ -438,7 +438,7 @@ async def _merge_slide_deck_outputs(
 ) -> tuple[Path, Path, dict[str, dict[str, str]]]:
     """Merge generated slide images into PDF and PPTX artifacts."""
     skill_dir = (
-        Path(__file__).resolve().parents[2]
+        Path(__file__).resolve().parents[3]
         / "agent"
         / "skills"
         / SKILL_WORKFLOW_NAME
@@ -471,7 +471,7 @@ async def _run_slide_deck_generation_v2(
     combined_content = await build_combined_content_from_sources(sources)
     workflow_options = _build_v2_workflow_options(slide_deck)
 
-    backend_root = Path(__file__).resolve().parents[2]
+    backend_root = Path(__file__).resolve().parents[3]
     workflow_dir = _studio_workflow_dir(slide_deck.id)
     workflow_dir.mkdir(parents=True, exist_ok=True)
 

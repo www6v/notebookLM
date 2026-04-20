@@ -23,8 +23,7 @@ from app.services.obs_storage import (
     get_file_url,
     upload_file_to_obs,
 )
-from app.services.z_deep_load_file_remote import call_load_files
-from app.services.z_deep_upload_remote import call_upload
+from app.services.deep_searcher import call_load_files, call_upload
 
 logger = logging.getLogger(__name__)
 

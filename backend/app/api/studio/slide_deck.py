@@ -31,7 +31,7 @@ from app.services.obs_storage import (
     download_file_from_obs,
     generate_presigned_url,
 )
-from app.services.slide_service import (
+from app.services.studio.slide_service import (
     build_slide_pptx_from_pdf_bytes,
 )
 from app.services.studio_storage_cleanup import (

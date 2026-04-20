@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.slide_deck import (
+from app.api.studio.slide_deck import (
     _build_content_disposition,
     _build_media_headers,
     _build_slide_image_manifest,
@@ -63,7 +63,7 @@ from app.services.obs_storage import (
     download_file_from_obs,
     generate_presigned_url,
 )
-from app.services.slide_service import build_slide_pptx_from_pdf_bytes
+from app.services.studio.slide_service import build_slide_pptx_from_pdf_bytes
 from app.services.source_service import (
     extract_text,
     finalize_uploaded_image,

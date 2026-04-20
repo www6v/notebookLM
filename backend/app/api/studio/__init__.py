@@ -1,4 +1,4 @@
-"""Studio API routes."""
+"""Studio HTTP API package (mindmaps, slides, infographics, reports, podcasts)."""
 
 import logging
 
