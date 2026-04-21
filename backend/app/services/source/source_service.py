@@ -14,7 +14,7 @@ from app.ai.qwen3_vl_video import understand_video
 from app.commons.util import get_image_source_content
 from app.config import settings
 from app.parsers.bilibili_parser import extract_bilibili_transcript
-from app.parsers.web_parser import parse_web_page
+from app.parsers.web_parser import fetch_web_markdown_via_jina
 from app.parsers.youtube_parser import extract_youtube_transcript
 from app.models.notebook import Notebook
 from app.models.source import Source
@@ -342,7 +342,7 @@ async def finalize_url_source(db: AsyncSession, source: Source) -> None:
 
     try:
         if source.type == "web":
-            text = await parse_web_page(url)
+            text = await fetch_web_markdown_via_jina(url)
         elif source.type == "youtube":
             text = await asyncio.to_thread(extract_youtube_transcript, url)
         elif source.type == "bilibili":
