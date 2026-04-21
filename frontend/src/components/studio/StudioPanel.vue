@@ -424,8 +424,13 @@
         </v-card-text>
         <v-card-actions class="infographic-customize-actions">
           <v-btn
+            variant="text"
+            @click="showInfographicDialog = false"
+          >
+            {{ t('common.cancel') }}
+          </v-btn>
+          <v-btn
             color="primary"
-            block
             :loading="studioStore.loading"
             @click="submitInfographicCustomize"
           >
@@ -614,8 +619,13 @@
         </v-card-text>
         <v-card-actions class="slide-customize-actions">
           <v-btn
+            variant="text"
+            @click="showSlideCustomizeDialog = false"
+          >
+            {{ t('common.cancel') }}
+          </v-btn>
+          <v-btn
             color="primary"
-            block
             :loading="studioStore.loading"
             @click="submitSlideCustomize"
           >
@@ -3067,6 +3077,7 @@ const formatDate = (dateStr: string) => {
 
 .slide-customize-actions {
   padding: 12px 20px 16px;
+  justify-content: flex-end;
 }
 
 .slide-style-scroll {
@@ -3465,6 +3476,7 @@ const formatDate = (dateStr: string) => {
 
 .infographic-customize-actions {
   padding: 12px 20px 16px;
+  justify-content: flex-end;
 }
 
 /* 报告配置 Dialog */
