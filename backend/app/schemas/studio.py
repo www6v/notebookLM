@@ -8,6 +8,10 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, field_validator
 
+from app.services.security.custom_prompt_safety import (
+    validate_custom_prompt_text,
+)
+
 if TYPE_CHECKING:
     from app.models.studio import DeepResearchReport
 
@@ -115,6 +119,15 @@ class SlideDeckCreate(BaseModel):
         validated = _validate_slide_style_value(value)
         return validated or "blueprint"
 
+    @field_validator("slide_custom_prompt")
+    @classmethod
+    def validate_slide_custom_prompt(cls, value: str | None) -> str | None:
+        """Validate and normalize user custom prompt text."""
+        return validate_custom_prompt_text(
+            value,
+            field_name="slide_custom_prompt",
+        )
+
 
 class SlideDeckUpdate(BaseModel):
     """Schema for updating a slide deck."""
@@ -133,6 +146,15 @@ class SlideDeckUpdate(BaseModel):
     def validate_slide_style(cls, value: str | None) -> str | None:
         """Validate slide style identifiers accepted by the backend."""
         return _validate_slide_style_value(value)
+
+    @field_validator("slide_custom_prompt")
+    @classmethod
+    def validate_slide_custom_prompt(cls, value: str | None) -> str | None:
+        """Validate and normalize user custom prompt text."""
+        return validate_custom_prompt_text(
+            value,
+            field_name="slide_custom_prompt",
+        )
 
 
 class SlideDeckResponse(BaseModel):
@@ -190,6 +212,17 @@ class InfographicCreate(BaseModel):
     infographic_visual_style: str = "craft-handmade"
     infographic_custom_prompt: str | None = None
 
+    @field_validator("infographic_custom_prompt")
+    @classmethod
+    def validate_infographic_custom_prompt(
+        cls, value: str | None
+    ) -> str | None:
+        """Validate and normalize user custom prompt text."""
+        return validate_custom_prompt_text(
+            value,
+            field_name="infographic_custom_prompt",
+        )
+
 
 class InfographicUpdate(BaseModel):
     """Schema for updating an infographic."""
@@ -200,6 +233,17 @@ class InfographicUpdate(BaseModel):
     infographic_direction: str | None = None
     infographic_visual_style: str | None = None
     infographic_custom_prompt: str | None = None
+
+    @field_validator("infographic_custom_prompt")
+    @classmethod
+    def validate_infographic_custom_prompt(
+        cls, value: str | None
+    ) -> str | None:
+        """Validate and normalize user custom prompt text."""
+        return validate_custom_prompt_text(
+            value,
+            field_name="infographic_custom_prompt",
+        )
 
 
 class InfographicResponse(BaseModel):
@@ -304,6 +348,15 @@ class PodcastCreate(BaseModel):
     audio_language: str = "简体中文"
     audio_length: str = "default"
     audio_focus_prompt: str | None = None
+
+    @field_validator("audio_focus_prompt")
+    @classmethod
+    def validate_audio_focus_prompt(cls, value: str | None) -> str | None:
+        """Validate and normalize user custom prompt text."""
+        return validate_custom_prompt_text(
+            value,
+            field_name="audio_focus_prompt",
+        )
 
 
 class PodcastResponse(BaseModel):

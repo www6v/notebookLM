@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services.oauth_service import (
+from app.services.security.oauth_service import (
     build_alipay_authorize_url,
     build_google_authorize_url,
     build_qq_authorize_url,

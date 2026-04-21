@@ -7,7 +7,7 @@ from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserLogin, UserResponse
-from app.services.auth_service import (
+from app.services.security.auth_service import (
     authenticate_user,
     create_access_token,
     create_user,

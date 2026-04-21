@@ -11,7 +11,7 @@ Manual acceptance (after configuring providers and running migrations):
 
 import pytest
 
-from app.services.oauth_service import (
+from app.services.security.oauth_service import (
     create_oauth_state,
     verify_oauth_state,
 )
@@ -24,9 +24,9 @@ def test_oauth_state_roundtrip() -> None:
 
 
 def test_oauth_state_rejects_wrong_purpose(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.services import oauth_service
+    from app.services.security import oauth_service
     from jose import jwt
-    from app.services.auth_service import ALGORITHM
+    from app.services.security.auth_service import ALGORITHM
 
     bad = jwt.encode(
         {"purpose": "other", "p": "google"},
