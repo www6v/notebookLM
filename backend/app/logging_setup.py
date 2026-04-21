@@ -8,6 +8,30 @@ from pathlib import Path
 from app.config import settings
 
 
+def _argv_has_celery_worker() -> bool:
+    """True when this process was started as ``celery ... worker``."""
+    lowered = [a.lower() for a in sys.argv]
+    try:
+        celery_i = lowered.index("celery")
+        worker_i = lowered.index("worker")
+    except ValueError:
+        return False
+    return celery_i < worker_i
+
+
+def _windows_celery_log_file_name(file_name: str) -> str:
+    """Use a separate log file so rotation can rename on Windows.
+
+    ``TimedRotatingFileHandler`` rotates by ``os.rename``. On Windows that
+    fails if another process (e.g. the API server) still has the same path
+    open, or if multiple prefork children each attach a file handler.
+    """
+    path = Path(file_name)
+    stem = path.stem
+    suffix = path.suffix or ".log"
+    return f"{stem}-celery{suffix}"
+
+
 def configure_logging() -> None:
     """Configure the root logger once per process.
 
@@ -39,6 +63,8 @@ def configure_logging() -> None:
         log_path = Path(log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
         file_name = (settings.log_file_name or "app.log").strip() or "app.log"
+        if sys.platform == "win32" and _argv_has_celery_worker():
+            file_name = _windows_celery_log_file_name(file_name)
         file_handler = TimedRotatingFileHandler(
             filename=str(log_path / file_name),
             when="midnight",

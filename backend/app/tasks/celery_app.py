@@ -1,5 +1,7 @@
 """Celery application configuration."""
 
+import sys
+
 from celery import Celery
 from kombu import Queue
 
@@ -52,6 +54,14 @@ celery_app.conf.update(
         "run_deep_research": {"queue": "research"},
     },
 )
+
+# prefork/billiard worker pools are unreliable on Windows (semaphore / IPC errors).
+# threads keeps one process and avoids broken multiprocessing primitives.
+if sys.platform == "win32":
+    celery_app.conf.update(
+        worker_pool="threads",
+        worker_concurrency=4,
+    )
 
 from app.logging_setup import configure_logging
 
