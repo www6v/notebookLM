@@ -1208,7 +1208,7 @@ const infographicStyleOptions = computed(() => [
   {
     value: '详细',
     label: t('studio.infographicCustomize.detailDetailed'),
-    beta: true,
+    beta: false,
   },
 ])
 
