@@ -1,228 +1,230 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <div class="login-card-inner">
-        <div class="login-branding">
-          <AppLogo size="large" />
-          <h2 class="login-title">{{ t('login.title') }}</h2>
-          <p class="login-subtitle">
-            {{ t('login.subtitle') }}
-          </p>
-          <router-link
-            :to="toPricing"
-            class="login-pricing-link"
-          >
-            {{ t('common.viewPricing') }}
-          </router-link>
-        </div>
-
-        <div class="login-form-wrap">
-          <template v-if="step === 1">
-            <v-form
-              ref="emailFormRef"
-              class="login-form"
-              @submit.prevent="goToPasswordStep"
+      <div class="login-card-body">
+        <div class="login-card-inner">
+          <div class="login-branding">
+            <AppLogo size="large" />
+            <h2 class="login-title">{{ t('login.title') }}</h2>
+            <p class="login-subtitle">
+              {{ t('login.subtitle') }}
+            </p>
+            <router-link
+              :to="toPricing"
+              class="login-pricing-link"
             >
-              <v-text-field
-                v-model="emailForm.email"
-                :placeholder="t('login.emailOrPhone')"
-                :rules="emailRules"
-                autocomplete="username"
-                density="comfortable"
-              />
-              <div class="form-links">
-                <a
-                  href="#"
-                  class="text-link"
-                  @click.prevent="handleForgotEmail"
-                >
-                  {{ t('login.forgotEmail') }}
-                </a>
-              </div>
-              <p class="guest-hint">
-                {{ t('login.guestHint') }}
-              </p>
-              <div class="form-actions">
-                <router-link
-                  :to="toRegister"
-                  class="text-link"
-                >
-                  {{ t('login.createAccount') }}
-                </router-link>
-                <v-btn
-                  color="primary"
-                  size="large"
-                  class="login-btn"
-                  type="submit"
-                >
-                  {{ t('login.next') }}
-                </v-btn>
-              </div>
-            </v-form>
-            <div class="oauth-social-block">
-              <p class="oauth-other-title">
-                {{ t('login.oauthOtherMethods') }}
-              </p>
-              <div class="oauth-social-row">
-                <button
-                  type="button"
-                  class="oauth-social-item"
-                  :aria-label="t('login.oauthWeibo')"
-                  @click="startWeiboOAuth"
-                >
-                  <span class="oauth-social-icon oauth-social-icon--weibo">
-                    <v-icon
-                      color="white"
-                      size="22"
-                    >
-                      mdi-sina-weibo
-                    </v-icon>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="oauth-social-item"
-                  :aria-label="t('login.oauthAlipay')"
-                  @click="startAlipayOAuth"
-                >
-                  <span class="oauth-social-icon oauth-social-icon--alipay">
-                    <img
-                      :src="oauthAlipayIconUrl"
-                      alt=""
-                      class="oauth-social-icon-img oauth-social-icon-img--alipay"
-                    />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="oauth-social-item oauth-social-item--disabled"
-                  :aria-label="t('login.oauthGoogle')"
-                  disabled
-                >
-                  <span class="oauth-social-icon oauth-social-icon--google">
-                    <v-icon
-                      color="white"
-                      size="22"
-                    >
-                      mdi-google
-                    </v-icon>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="oauth-social-item oauth-social-item--disabled"
-                  :aria-label="t('login.oauthQQ')"
-                  disabled
-                >
-                  <span class="oauth-social-icon oauth-social-icon--qq">
-                    <v-icon
-                      color="white"
-                      size="22"
-                    >
-                      mdi-qqchat
-                    </v-icon>
-                  </span>
-                </button>
-              </div>
-            </div>
-          </template>
+              {{ t('common.viewPricing') }}
+            </router-link>
+          </div>
 
-          <template v-else-if="step === 2 && !showRegister">
-            <v-form
-              ref="loginFormRef"
-              class="login-form"
-              @submit.prevent="handleLogin"
-            >
-              <div class="account-display">
-                <span class="account-email">{{ emailForm.email }}</span>
-              </div>
-              <v-text-field
-                v-model="loginForm.password"
-                :type="showPassword ? 'text' : 'password'"
-                :placeholder="t('login.enterPassword')"
-                :rules="loginRules"
-                autocomplete="current-password"
-                density="comfortable"
-              />
-              <div class="form-links">
-                <v-checkbox
-                  v-model="showPassword"
-                  :label="t('login.showPassword')"
-                  density="compact"
-                  hide-details
+          <div class="login-form-wrap">
+            <template v-if="step === 1">
+              <v-form
+                ref="emailFormRef"
+                class="login-form"
+                @submit.prevent="goToPasswordStep"
+              >
+                <v-text-field
+                  v-model="emailForm.email"
+                  :placeholder="t('login.emailOrPhone')"
+                  :rules="emailRules"
+                  autocomplete="username"
+                  density="comfortable"
                 />
+                <div class="form-links">
+                  <a
+                    href="#"
+                    class="text-link"
+                    @click.prevent="handleForgotEmail"
+                  >
+                    {{ t('login.forgotEmail') }}
+                  </a>
+                </div>
+                <p class="guest-hint">
+                  {{ t('login.guestHint') }}
+                </p>
+                <div class="form-actions">
+                  <router-link
+                    :to="toRegister"
+                    class="text-link"
+                  >
+                    {{ t('login.createAccount') }}
+                  </router-link>
+                  <v-btn
+                    color="primary"
+                    size="large"
+                    class="login-btn"
+                    type="submit"
+                  >
+                    {{ t('login.next') }}
+                  </v-btn>
+                </div>
+              </v-form>
+              <div class="oauth-social-block">
+                <p class="oauth-other-title">
+                  {{ t('login.oauthOtherMethods') }}
+                </p>
+                <div class="oauth-social-row">
+                  <button
+                    type="button"
+                    class="oauth-social-item"
+                    :aria-label="t('login.oauthWeibo')"
+                    @click="startWeiboOAuth"
+                  >
+                    <span class="oauth-social-icon oauth-social-icon--weibo">
+                      <v-icon
+                        color="white"
+                        size="22"
+                      >
+                        mdi-sina-weibo
+                      </v-icon>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="oauth-social-item"
+                    :aria-label="t('login.oauthAlipay')"
+                    @click="startAlipayOAuth"
+                  >
+                    <span class="oauth-social-icon oauth-social-icon--alipay">
+                      <img
+                        :src="oauthAlipayIconUrl"
+                        alt=""
+                        class="oauth-social-icon-img oauth-social-icon-img--alipay"
+                      />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="oauth-social-item oauth-social-item--disabled"
+                    :aria-label="t('login.oauthGoogle')"
+                    disabled
+                  >
+                    <span class="oauth-social-icon oauth-social-icon--google">
+                      <v-icon
+                        color="white"
+                        size="22"
+                      >
+                        mdi-google
+                      </v-icon>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="oauth-social-item oauth-social-item--disabled"
+                    :aria-label="t('login.oauthQQ')"
+                    disabled
+                  >
+                    <span class="oauth-social-icon oauth-social-icon--qq">
+                      <v-icon
+                        color="white"
+                        size="22"
+                      >
+                        mdi-qqchat
+                      </v-icon>
+                    </span>
+                  </button>
+                </div>
               </div>
-              <div class="form-actions">
-                <a
-                  href="#"
-                  class="text-link"
-                  @click.prevent="step = 1"
-                >
-                  {{ t('login.tryAnotherWay') }}
-                </a>
-                <v-btn
-                  color="primary"
-                  size="large"
-                  :loading="loading"
-                  class="login-btn"
-                  type="submit"
-                >
-                  {{ t('login.next') }}
-                </v-btn>
-              </div>
-            </v-form>
-          </template>
+            </template>
 
-          <template v-else>
-            <v-form
-              ref="registerFormRef"
-              class="login-form"
-              @submit.prevent="handleRegister"
-            >
-              <v-text-field
-                v-model="registerForm.email"
-                :label="t('login.emailOrPhone')"
-                type="email"
-                placeholder="you@example.com"
-                :rules="registerEmailRules"
-                density="comfortable"
-              />
-              <v-text-field
-                v-model="registerForm.username"
-                :label="t('login.username')"
-                :placeholder="t('login.username')"
-                :rules="registerUsernameRules"
-                density="comfortable"
-                class="mt-2"
-              />
-              <v-text-field
-                v-model="registerForm.password"
-                :label="t('login.createPassword')"
-                type="password"
-                :placeholder="t('login.createPassword')"
-                :rules="registerPasswordRules"
-                density="comfortable"
-                class="mt-2"
-              />
-              <div class="form-actions mt-4">
-                <router-link
-                  :to="toLogin"
-                  class="text-link"
-                >
-                  {{ t('login.tryAnotherWay') }}
-                </router-link>
-                <v-btn
-                  color="primary"
-                  size="large"
-                  :loading="loading"
-                  class="login-btn"
-                  type="submit"
-                >
-                  {{ t('login.createAccount') }}
-                </v-btn>
-              </div>
-            </v-form>
-          </template>
+            <template v-else-if="step === 2 && !showRegister">
+              <v-form
+                ref="loginFormRef"
+                class="login-form"
+                @submit.prevent="handleLogin"
+              >
+                <div class="account-display">
+                  <span class="account-email">{{ emailForm.email }}</span>
+                </div>
+                <v-text-field
+                  v-model="loginForm.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  :placeholder="t('login.enterPassword')"
+                  :rules="loginRules"
+                  autocomplete="current-password"
+                  density="comfortable"
+                />
+                <div class="form-links">
+                  <v-checkbox
+                    v-model="showPassword"
+                    :label="t('login.showPassword')"
+                    density="compact"
+                    hide-details
+                  />
+                </div>
+                <div class="form-actions">
+                  <a
+                    href="#"
+                    class="text-link"
+                    @click.prevent="step = 1"
+                  >
+                    {{ t('login.tryAnotherWay') }}
+                  </a>
+                  <v-btn
+                    color="primary"
+                    size="large"
+                    :loading="loading"
+                    class="login-btn"
+                    type="submit"
+                  >
+                    {{ t('login.next') }}
+                  </v-btn>
+                </div>
+              </v-form>
+            </template>
+
+            <template v-else>
+              <v-form
+                ref="registerFormRef"
+                class="login-form"
+                @submit.prevent="handleRegister"
+              >
+                <v-text-field
+                  v-model="registerForm.email"
+                  :label="t('login.emailOrPhone')"
+                  type="email"
+                  placeholder="you@example.com"
+                  :rules="registerEmailRules"
+                  density="comfortable"
+                />
+                <v-text-field
+                  v-model="registerForm.username"
+                  :label="t('login.username')"
+                  :placeholder="t('login.username')"
+                  :rules="registerUsernameRules"
+                  density="comfortable"
+                  class="mt-2"
+                />
+                <v-text-field
+                  v-model="registerForm.password"
+                  :label="t('login.createPassword')"
+                  type="password"
+                  :placeholder="t('login.createPassword')"
+                  :rules="registerPasswordRules"
+                  density="comfortable"
+                  class="mt-2"
+                />
+                <div class="form-actions mt-4">
+                  <router-link
+                    :to="toLogin"
+                    class="text-link"
+                  >
+                    {{ t('login.tryAnotherWay') }}
+                  </router-link>
+                  <v-btn
+                    color="primary"
+                    size="large"
+                    :loading="loading"
+                    class="login-btn"
+                    type="submit"
+                  >
+                    {{ t('login.createAccount') }}
+                  </v-btn>
+                </div>
+              </v-form>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -451,17 +453,25 @@ async function handleRegister() {
   min-height: 560px;
 }
 
+.login-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
 .login-card-inner {
   display: flex;
+  align-items: flex-start;
   gap: 48px;
-  flex: 1;
 }
 
 .login-branding {
   flex: 0 0 320px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .login-branding .app-logo {
@@ -496,7 +506,7 @@ async function handleRegister() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .oauth-social-block {
@@ -662,6 +672,10 @@ async function handleRegister() {
 }
 
 @media (max-width: 768px) {
+  .login-card-body {
+    justify-content: flex-start;
+  }
+
   .login-card-inner {
     flex-direction: column;
     gap: 24px;
