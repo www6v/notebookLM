@@ -12,6 +12,7 @@ from app.ai.llm_router import tool_chat_completion
 
 from .loader import SkillLoader
 from .prompt_builder import SkillPromptBuilder
+from .tool_policy import tool_allowlist_for_skill
 from .tools import SkillToolRuntime
 
 
@@ -127,6 +128,7 @@ class OpenAISkillExecutor:
             self.loader,
             current_skill_name=skill_name,
             current_variables=options or {},
+            allowed_tool_names=tool_allowlist_for_skill(skill_name),
             image_provider=self.image_provider,
             image_model=self.image_model,
             image_quality=self.image_quality,

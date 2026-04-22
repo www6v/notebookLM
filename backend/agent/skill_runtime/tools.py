@@ -24,6 +24,7 @@ class SkillToolRuntime:
         *,
         current_skill_name: str | None = None,
         current_variables: dict[str, str] | None = None,
+        allowed_tool_names: frozenset[str] | None = None,
         image_provider: str | None = None,
         image_model: str | None = None,
         image_quality: str = "2k",
@@ -33,6 +34,7 @@ class SkillToolRuntime:
         self.loader = loader
         self.current_skill_name = current_skill_name
         self.current_variables = current_variables or {}
+        self.allowed_tool_names = allowed_tool_names
         self.image_provider = image_provider
         self.image_model = image_model
         self.image_quality = image_quality
@@ -44,7 +46,7 @@ class SkillToolRuntime:
 
     def get_tool_specs(self) -> list[dict]:
         """Return OpenAI-compatible tool definitions."""
-        return [
+        specs: list[dict] = [
             {
                 "type": "function",
                 "function": {
@@ -188,9 +190,36 @@ class SkillToolRuntime:
                 },
             },
         ]
+        if self.allowed_tool_names is not None:
+            return [
+                spec
+                for spec in specs
+                if spec.get("function", {}).get("name") in self.allowed_tool_names
+            ]
+        return specs
+
+    def _tool_allowed(self, tool_name: str) -> bool:
+        """Return whether ``tool_name`` may run for this runtime."""
+        if self.allowed_tool_names is None:
+            return True
+        return tool_name in self.allowed_tool_names
 
     async def execute(self, tool_name: str, arguments: dict) -> str:
         """Run one tool call and return a text result."""
+        if not self._tool_allowed(tool_name):
+            return json.dumps(
+                {
+                    "error": "tool_not_allowed_for_skill",
+                    "tool": tool_name,
+                    "skill": self.current_skill_name,
+                    "message": (
+                        "This tool is disabled for the current skill. "
+                        "Use read_file, write_file, list_dir, "
+                        "read_skill_reference, or generate_image_from_promptfile."
+                    ),
+                },
+                ensure_ascii=False,
+            )
         if tool_name == "list_dir":
             return self.list_dir(arguments.get("path", "."))
         if tool_name == "read_file":
