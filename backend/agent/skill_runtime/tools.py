@@ -12,6 +12,11 @@ from app.services.studio.image_generation_service import (
 )
 
 from .loader import SkillLoader
+from .tool_audit import (
+    audit_run_shell,
+    audit_tool_denied,
+    audit_tool_invoked,
+)
 
 
 class SkillToolRuntime:
@@ -207,6 +212,7 @@ class SkillToolRuntime:
     async def execute(self, tool_name: str, arguments: dict) -> str:
         """Run one tool call and return a text result."""
         if not self._tool_allowed(tool_name):
+            audit_tool_denied(self.current_skill_name, tool_name)
             return json.dumps(
                 {
                     "error": "tool_not_allowed_for_skill",
@@ -220,6 +226,7 @@ class SkillToolRuntime:
                 },
                 ensure_ascii=False,
             )
+        audit_tool_invoked(self.current_skill_name, tool_name, arguments)
         if tool_name == "list_dir":
             return self.list_dir(arguments.get("path", "."))
         if tool_name == "read_file":
@@ -289,6 +296,11 @@ class SkillToolRuntime:
         if not cwd.exists() or not cwd.is_dir():
             raise FileNotFoundError(f"Working directory not found: {cwd}")
 
+        audit_run_shell(
+            self.current_skill_name,
+            working_directory=str(cwd),
+            command_char_len=len(command or ""),
+        )
         completed = subprocess.run(
             command,
             shell=True,

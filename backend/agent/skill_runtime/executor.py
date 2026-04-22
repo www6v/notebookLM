@@ -12,6 +12,7 @@ from app.ai.llm_router import tool_chat_completion
 
 from .loader import SkillLoader
 from .prompt_builder import SkillPromptBuilder
+from .tool_audit import audit_tool_result
 from .tool_policy import tool_allowlist_for_skill
 from .tools import SkillToolRuntime
 
@@ -183,6 +184,11 @@ class OpenAISkillExecutor:
                 raw_arguments = tool_call.function.arguments or "{}"
                 arguments = self._parse_tool_arguments(raw_arguments)
                 result = await tool_runtime.execute(tool_name, arguments)
+                audit_tool_result(
+                    skill_name,
+                    tool_name,
+                    response_chars=len(result),
+                )
                 tool_transcript.append(
                     f"{tool_name}({raw_arguments}) -> {result[:1000]}"
                 )

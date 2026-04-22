@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 MAX_CUSTOM_PROMPT_CHARS = 1000
+MAX_CUSTOM_PROMPT_LINES = 120
 
 _LINE_BREAK_RE = re.compile(r"\r\n?")
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
@@ -59,6 +61,11 @@ def validate_custom_prompt_text(
         raise ValueError(
             f"{field_name} exceeds {max_chars} characters."
         )
+    line_count = len(normalized.splitlines())
+    if line_count > MAX_CUSTOM_PROMPT_LINES:
+        raise ValueError(
+            f"{field_name} exceeds {MAX_CUSTOM_PROMPT_LINES} lines."
+        )
     if _looks_like_prompt_injection(normalized):
         raise ValueError(
             f"{field_name} contains unsafe instructions. "
@@ -69,7 +76,11 @@ def validate_custom_prompt_text(
 
 def _normalize_custom_prompt(value: str) -> str:
     """Normalize line breaks and remove hidden control characters."""
-    normalized = _LINE_BREAK_RE.sub("\n", value)
+    normalized = unicodedata.normalize("NFKC", value)
+    normalized = "".join(
+        ch for ch in normalized if unicodedata.category(ch) != "Cf"
+    )
+    normalized = _LINE_BREAK_RE.sub("\n", normalized)
     normalized = _CONTROL_CHAR_RE.sub("", normalized)
     normalized = normalized.strip()
     normalized = _MULTI_BLANK_RE.sub("\n\n", normalized)
