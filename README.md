@@ -77,6 +77,7 @@ notebookLM/
 ├── backend-celery.sh            # Local Celery worker
 ├── frontend.sh                  # Local Vite dev server
 ├── backend-env.sh               # Optional local env overrides (Redis, DB, Milvus, …)
+├── makefile                     # Unified entrypoint for deploy/dev commands
 ├── deploy/
 │   ├── middleware/              # Middleware compose + deploy-middleware.sh
 │   └── ha/                      # App HA compose + deploy-app-ha.sh
@@ -125,32 +126,33 @@ Optional integrations:
 > and the default dependency set uses MySQL via `aiomysql`. Vector retrieval
 > is handled by Milvus.
 
-### 2. Deploy with Docker (recommended scripts)
+### 2. Deploy with Docker (recommended Make targets)
 
 Container deployment is split into **middleware** and **application** steps.
 
 **Middleware** (Redis, Milvus, etcd, MinIO, Attu, and related services):
 
 ```bash
-bash deploy/middleware/deploy-middleware.sh
+make up-middleware
 ```
 
-Run from any directory, or set `DEPLOY_DIR` to the repository root. The script
-uses `deploy/middleware/docker-compose-middleware.yml`, syncs the repo to
+Run this from the repository root. This target wraps
+`deploy/middleware/deploy-middleware.sh`, which uses
+`deploy/middleware/docker-compose-middleware.yml`, syncs the repo to
 `origin/master`, then rebuilds and starts the stack. Set `NO_CACHE=true` for a
 no-cache image build.
 
 **Application** (backend, frontend, Nginx, Celery workers in HA compose files):
 
 ```bash
-bash deploy/ha/deploy-app-ha.sh
+make up-ha
 ```
 
 Requires a project-root `config.yaml` (for example copy from
 `config.yaml.example`) and `.env`. Uses `deploy/ha/docker-compose.app-ha.yml`
 and `deploy/ha/docker-compose.workers-ha.yml`, syncs to `origin/master`, builds
-`backend` and `frontend` images, then brings the stack up. Optional: `NO_CACHE=true`,
-`DEPLOY_DIR` for a non-default repo root.
+`backend` and `frontend` images, then brings the stack up. Optional:
+`NO_CACHE=true`, `DEPLOY_DIR` for a non-default repo root.
 
 For manual composition or older layouts, Compose files also live under
 `deploy/` (for example `docker-compose-core.yml`). For HA and worker scaling
@@ -202,21 +204,22 @@ From the **repository root**, after `.env` (and optionally `backend-env.sh`) is
 configured:
 
 ```bash
-./backend.sh
+make dev
 ```
 
 In another terminal:
 
 ```bash
-./backend-celery.sh
+make dev-celery
 ```
 
 And for the Vite dev server:
 
 ```bash
-./frontend.sh
+make dev-frontend
 ```
 
+These Make targets wrap `backend.sh`, `backend-celery.sh`, and `frontend.sh`.
 `backend.sh` and `backend-celery.sh` activate `backend/.venv` when present,
 `cd` into `backend`, and source optional `backend-env.sh` at the repo root for
 local overrides (for example Redis and MySQL URLs pointing at `127.0.0.1` or a
