@@ -14,8 +14,18 @@ else
     exit 1
 fi
 
-# Local Redis / MySQL / Milvus / Deer Flow overrides (same dir as this script).
-# shellcheck source=backend-env.sh
-source "$SCRIPT_DIR/backend-env.sh"
+# Legacy local overrides from repo root (optional).
+if [ -f "$SCRIPT_DIR/backend-env.sh" ]; then
+    # shellcheck source=backend-env.sh
+    source "$SCRIPT_DIR/backend-env.sh"
+fi
+
+# Preferred runtime environment source.
+if [ -f "$PWD/.env" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$PWD/.env"
+    set +a
+fi
 
 "$PYTHON_BIN" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

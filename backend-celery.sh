@@ -16,8 +16,19 @@ else
     exit 1
 fi
 
-# shellcheck source=backend-env.sh
-source "$SCRIPT_DIR/backend-env.sh"
+# Legacy local overrides from repo root (optional).
+if [ -f "$SCRIPT_DIR/backend-env.sh" ]; then
+    # shellcheck source=backend-env.sh
+    source "$SCRIPT_DIR/backend-env.sh"
+fi
+
+# Preferred runtime environment source.
+if [ -f "$PWD/.env" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$PWD/.env"
+    set +a
+fi
 
 "$PYTHON_BIN" -m celery -A app.tasks.celery_app:celery_app \
     worker --loglevel=info
