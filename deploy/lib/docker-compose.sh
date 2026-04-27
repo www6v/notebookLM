@@ -10,18 +10,25 @@
 # Optional override: export DOCKER_COMPOSE_BIN="/usr/bin/docker-compose"
 
 run_docker_compose() {
+    local compose_project_args=()
+    if [ -n "${PROJECT_ROOT:-}" ] && [ -d "${PROJECT_ROOT}" ]; then
+        compose_project_args=(--project-directory "${PROJECT_ROOT}")
+    elif [ -n "${DEPLOY_DIR:-}" ] && [ -d "${DEPLOY_DIR}" ]; then
+        compose_project_args=(--project-directory "${DEPLOY_DIR}")
+    fi
+
     if [ -n "${DOCKER_COMPOSE_BIN:-}" ]; then
-        "${DOCKER_COMPOSE_BIN}" "$@"
+        "${DOCKER_COMPOSE_BIN}" "${compose_project_args[@]}" "$@"
         return $?
     fi
     if command -v docker-compose >/dev/null 2>&1 \
         && docker-compose --version >/dev/null 2>&1; then
-        docker-compose "$@"
+        docker-compose "${compose_project_args[@]}" "$@"
         return $?
     fi
     _dc_ver_out=$(docker compose version 2>&1) || _dc_ver_out=
     if echo "${_dc_ver_out}" | grep -qiE 'Docker Compose version|Compose version v[0-9]'; then
-        docker compose "$@"
+        docker compose "${compose_project_args[@]}" "$@"
         return $?
     fi
     echo "error: need a working Compose CLI. Install one of:" >&2
