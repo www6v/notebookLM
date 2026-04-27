@@ -107,3 +107,8 @@ volumes:
   etcd_data:
   minio_data:
   milvus_data:
+
+networks:
+  default:
+    external: true
+    name: notebooklm_default
