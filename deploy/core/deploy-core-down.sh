@@ -6,8 +6,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${DEPLOY_DIR:-$(dirname "${SCRIPT_DIR}")}"
+# shellcheck source=../lib/docker-compose.sh
+. "${SCRIPT_DIR}/../lib/docker-compose.sh"
 COMPOSE_CORE="${SCRIPT_DIR}/docker-compose-core.yml"
 
 cd "${PROJECT_ROOT}"
 git fetch origin && git reset --hard origin/master
-docker compose -f "${COMPOSE_CORE}" down
+run_docker_compose -f "${COMPOSE_CORE}" down

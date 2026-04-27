@@ -9,6 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${DEPLOY_DIR:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 COMPOSE_APP_HA="${SCRIPT_DIR}/docker-compose.app-ha.yml"
 COMPOSE_WORKERS_HA="${SCRIPT_DIR}/docker-compose.workers-ha.yml"
+# shellcheck source=../lib/docker-compose.sh
+. "${SCRIPT_DIR}/../lib/docker-compose.sh"
 ENV_FILE="${PROJECT_ROOT}/.env"
 CONFIG_YAML="${PROJECT_ROOT}/config.yaml"
 BUILD_ARGS=()
@@ -33,6 +35,6 @@ if [ ! -f "${ENV_FILE}" ]; then
 fi
 
 git fetch origin && git reset --hard origin/master
-docker compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" down
-docker compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" build "${BUILD_ARGS[@]}" backend frontend
-docker compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" up -d
+run_docker_compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" down
+run_docker_compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" build "${BUILD_ARGS[@]}" backend frontend
+run_docker_compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" up -d

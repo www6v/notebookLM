@@ -6,6 +6,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${DEPLOY_DIR:-$(dirname "${SCRIPT_DIR}")}"
+# shellcheck source=../lib/docker-compose.sh
+. "${SCRIPT_DIR}/../lib/docker-compose.sh"
 COMPOSE_CORE="${SCRIPT_DIR}/docker-compose-core.yml"
 ENV_FILE="${PROJECT_ROOT}/.env"
 BUILD_ARGS=()
@@ -23,6 +25,6 @@ if [ ! -f "${ENV_FILE}" ]; then
 fi
 
 git fetch origin && git reset --hard origin/master
-docker compose -f "${COMPOSE_CORE}" down
-docker compose -f "${COMPOSE_CORE}" build "${BUILD_ARGS[@]}"
-docker compose -f "${COMPOSE_CORE}" up -d
+run_docker_compose -f "${COMPOSE_CORE}" down
+run_docker_compose -f "${COMPOSE_CORE}" build "${BUILD_ARGS[@]}"
+run_docker_compose -f "${COMPOSE_CORE}" up -d
