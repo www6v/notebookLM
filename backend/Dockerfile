@@ -31,14 +31,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
 
 # Install runtime dependencies from pyproject.toml without uv
 COPY pyproject.toml ./
-RUN python - <<'PY'
-from pathlib import Path
-import tomllib
-
-pyproject = tomllib.loads(Path('pyproject.toml').read_text())
-dependencies = pyproject['project']['dependencies']
-Path('requirements.docker.txt').write_text('\n'.join(dependencies) + '\n')
-PY
+RUN python -c "from pathlib import Path; import tomllib; pyproject = tomllib.loads(Path('pyproject.toml').read_text()); dependencies = pyproject['project']['dependencies']; Path('requirements.docker.txt').write_text('\\n'.join(dependencies) + '\\n')"
 RUN python -m pip install --retries ${UV_HTTP_RETRIES} -r requirements.docker.txt
 
 # Bun for slide-deck merge scripts: copy binary from bun_upstream (see top).
