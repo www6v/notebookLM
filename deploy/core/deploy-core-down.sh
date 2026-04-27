@@ -10,4 +10,4 @@ COMPOSE_CORE="${SCRIPT_DIR}/docker-compose-core.yml"
 
 cd "${PROJECT_ROOT}"
 git fetch origin && git reset --hard origin/master
-docker compose --project-directory "${PROJECT_ROOT}"  -f "${COMPOSE_CORE}" down
+docker compose -f "${COMPOSE_CORE}" down

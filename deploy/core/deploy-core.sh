@@ -23,6 +23,6 @@ if [ ! -f "${ENV_FILE}" ]; then
 fi
 
 git fetch origin && git reset --hard origin/master
-docker compose --project-directory "${PROJECT_ROOT}"  -f "${COMPOSE_CORE}" down
-docker compose --project-directory "${PROJECT_ROOT}"  -f "${COMPOSE_CORE}" build "${BUILD_ARGS[@]}"
-docker compose --project-directory "${PROJECT_ROOT}"  -f "${COMPOSE_CORE}" up -d
+docker compose -f "${COMPOSE_CORE}" down
+docker compose -f "${COMPOSE_CORE}" build "${BUILD_ARGS[@]}"
+docker compose -f "${COMPOSE_CORE}" up -d

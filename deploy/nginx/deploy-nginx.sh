@@ -16,5 +16,5 @@ PROJECT_ROOT="${DEPLOY_DIR:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose-nginx.yml"
 
 cd "${PROJECT_ROOT}"
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_FILE}" down
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_FILE}" up -d
+docker compose -f "${COMPOSE_FILE}" down
+docker compose -f "${COMPOSE_FILE}" up -d

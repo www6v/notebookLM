@@ -21,6 +21,6 @@ fi
 
 cd "${PROJECT_ROOT}"
 git fetch origin && git reset --hard origin/master
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_FILE}" down
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_FILE}" build "${BUILD_ARGS[@]}"
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_FILE}" up -d
+docker compose -f "${COMPOSE_FILE}" down
+docker compose -f "${COMPOSE_FILE}" build "${BUILD_ARGS[@]}"
+docker compose -f "${COMPOSE_FILE}" up -d

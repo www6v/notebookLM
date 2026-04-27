@@ -33,6 +33,6 @@ if [ ! -f "${ENV_FILE}" ]; then
 fi
 
 git fetch origin && git reset --hard origin/master
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" down
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" build "${BUILD_ARGS[@]}" backend frontend
-docker compose --project-directory "${PROJECT_ROOT}" -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" up -d
+docker compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" down
+docker compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" build "${BUILD_ARGS[@]}" backend frontend
+docker compose -f "${COMPOSE_APP_HA}" -f "${COMPOSE_WORKERS_HA}" up -d

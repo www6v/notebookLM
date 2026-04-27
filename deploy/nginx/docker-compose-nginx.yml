@@ -5,7 +5,7 @@ services:
     image: ${NGINX_IMAGE:-nginx:alpine}
     ports:
       - "80:80"
-    # 路径相对 project-directory（deploy-nginx.sh 中为仓库根目录）
+    # 路径相对 compose 工作目录（deploy-nginx.sh 中 cd 到仓库根目录）
     volumes:
       - ./deploy/nginx/nginx.proxy.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
