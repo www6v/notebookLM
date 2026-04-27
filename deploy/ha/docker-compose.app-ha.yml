@@ -41,3 +41,8 @@ services:
       - backend
       - frontend
     restart: always
+
+networks:
+  default:
+    external: true
+    name: notebooklm_default

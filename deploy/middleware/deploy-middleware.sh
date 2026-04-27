@@ -15,6 +15,7 @@ PROJECT_ROOT="${DEPLOY_DIR:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 # shellcheck source=../lib/docker-compose.sh
 . "${SCRIPT_DIR}/../lib/docker-compose.sh"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose-middleware.yml"
+MIDDLEWARE_COMPOSE_PROJECT_NAME="${MIDDLEWARE_COMPOSE_PROJECT_NAME:-middleware}"
 BUILD_ARGS=()
 
 if [ "${NO_CACHE:-false}" = "true" ]; then
@@ -23,6 +24,6 @@ fi
 
 cd "${PROJECT_ROOT}"
 git fetch origin && git reset --hard origin/master
-run_docker_compose -f "${COMPOSE_FILE}" down
-run_docker_compose -f "${COMPOSE_FILE}" build "${BUILD_ARGS[@]}"
-run_docker_compose -f "${COMPOSE_FILE}" up -d
+run_docker_compose -p "${MIDDLEWARE_COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" down
+run_docker_compose -p "${MIDDLEWARE_COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" build "${BUILD_ARGS[@]}"
+run_docker_compose -p "${MIDDLEWARE_COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" up -d

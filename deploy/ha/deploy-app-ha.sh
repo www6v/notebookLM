@@ -21,6 +21,11 @@ fi
 
 cd "${PROJECT_ROOT}"
 
+# Shared external network for app + middleware stacks.
+if ! docker network inspect notebooklm_default >/dev/null 2>&1; then
+    docker network create notebooklm_default >/dev/null
+fi
+
 if [ ! -f "${CONFIG_YAML}" ]; then
     echo "Missing config: ${CONFIG_YAML}"
     echo "Create it first, for example: cp config.yaml.example config.yaml"

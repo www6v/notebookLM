@@ -28,3 +28,8 @@ services:
         "--concurrency=10"
       ]
     restart: always
+
+networks:
+  default:
+    external: true
+    name: notebooklm_default
