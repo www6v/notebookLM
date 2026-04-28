@@ -130,7 +130,7 @@ def _build_v2_source_markdown(
 
 def _studio_workflow_dir(infographic_id: str) -> Path:
     """Return the local workspace directory for one infographic workflow run."""
-    backend_root = Path(__file__).resolve().parents[2]
+    backend_root = Path(__file__).resolve().parents[3]
     return backend_root / "agent" / "infographic" / "studio" / infographic_id
 
 
@@ -158,7 +158,7 @@ async def _run_infographic_generation_v2(
     combined_content = await build_combined_content_from_sources(sources)
     workflow_options = _build_v2_workflow_options(infographic)
 
-    backend_root = Path(__file__).resolve().parents[2]
+    backend_root = Path(__file__).resolve().parents[3]
     workflow_dir = _studio_workflow_dir(infographic.id)
     workflow_dir.mkdir(parents=True, exist_ok=True)
 

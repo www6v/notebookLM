@@ -30,7 +30,7 @@ from agent.run_skill_prompt import SkillWorkflowRequest, run_skill_workflow
 
 logger = logging.getLogger(__name__)
 
-_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+_BACKEND_ROOT = Path(__file__).resolve().parents[3]
 _PODCAST_SKILL_WORKFLOW = "podcast-generation"
 
 

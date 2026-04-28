@@ -58,7 +58,7 @@ INVALID_FILENAME_CHARS = str.maketrans(
 
 def _slide_workflow_dir(slide_id: str) -> Path:
     """Return the local workflow directory for one slide deck."""
-    backend_root = Path(__file__).resolve().parents[2]
+    backend_root = Path(__file__).resolve().parents[3]
     return backend_root / "agent" / "slide_deck" / "studio" / slide_id
 
 
