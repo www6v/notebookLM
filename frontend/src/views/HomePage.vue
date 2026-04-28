@@ -549,7 +549,7 @@ const formatNotebookDate = (dateStr: string) => {
 
 const featuredNotebookItems = [
   {
-    shareToken: 'Bd6L3SN3HyAfTnq1AB7RMzP6OBFRpQv33sPcpxclaDA',
+    shareToken: 'xHlLsvQ3aoSoghb_truoamdecqQKS9Sb7til-osh8C8',
     titleKey: 'home.featuredDemoTitle',
     sourceCount: null as number | null,
     createdAt: null as string | null,
