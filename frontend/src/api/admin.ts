@@ -51,6 +51,20 @@ export interface AdminUserUpdateRequest {
   is_active?: boolean
 }
 
+export interface AdminFeaturedNotebookItem {
+  share_token: string
+  custom_title: string | null
+  sort_order: number
+  notebook_found: boolean
+  resolved_title: string | null
+  source_count: number | null
+  notebook_created_at: string | null
+}
+
+export interface AdminFeaturedNotebooksResponse {
+  items: AdminFeaturedNotebookItem[]
+}
+
 export const adminApi = {
   listUsers: async (params: {
     page?: number
@@ -79,6 +93,23 @@ export const adminApi = {
     desktop_backend_url: string
   }): Promise<PublicClientConfig> => {
     const res = await client.put<PublicClientConfig>('/admin/client-config', body)
+    return res.data
+  },
+
+  listFeaturedNotebooks: async (): Promise<AdminFeaturedNotebooksResponse> => {
+    const res = await client.get<AdminFeaturedNotebooksResponse>(
+      '/admin/featured-notebooks',
+    )
+    return res.data
+  },
+
+  putFeaturedNotebooks: async (body: {
+    items: { share_token: string; custom_title?: string | null }[]
+  }): Promise<AdminFeaturedNotebooksResponse> => {
+    const res = await client.put<AdminFeaturedNotebooksResponse>(
+      '/admin/featured-notebooks',
+      body,
+    )
     return res.data
   },
 }

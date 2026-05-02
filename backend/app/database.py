@@ -101,6 +101,7 @@ async def init_db():
         user_settings,
         payment,
         system_setting,
+        featured_notebook_link,
     )
 
     try:

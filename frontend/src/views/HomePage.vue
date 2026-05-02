@@ -260,46 +260,78 @@
           v-show="homeTab === 'featured'"
           class="home-tab-panel"
         >
-          <div v-show="viewMode === 'grid'" class="notebook-grid">
-            <div
-              v-for="item of featuredNotebookItems"
-              :key="item.shareToken"
-              class="notebook-card"
-              @click="goSharedNotebook(item.shareToken)"
-            >
-              <div class="card-emoji">{{ getFeaturedEmoji(item.shareToken) }}</div>
-              <h3 class="card-title">{{ t(item.titleKey) }}</h3>
-              <div class="card-meta">
-                <span>{{ featuredDateLabel(item.createdAt) }}</span>
-                <span>{{ featuredSourceLabel(item.sourceCount) }}</span>
-              </div>
-            </div>
+          <div
+            v-if="featuredLoading"
+            class="loading-state"
+          >
+            <v-skeleton-loader
+              type="list-item-three-line"
+              class="mb-2"
+            />
+            <v-skeleton-loader type="list-item-three-line" />
           </div>
           <div
-            v-show="viewMode === 'list'"
-            class="notebook-list-wrap"
+            v-else-if="featuredLoadFailed"
+            class="empty-state"
           >
-            <div class="notebook-list-header">
-              <div class="col-title">{{ t('home.colTitle') }}</div>
-              <div class="col-sources">{{ t('home.colSources') }}</div>
-              <div class="col-date">{{ t('home.colDate') }}</div>
-              <div class="col-role">{{ t('home.colRole') }}</div>
-              <div class="col-actions" />
+            {{ t('home.featuredLoadFailed') }}
+          </div>
+          <div
+            v-else-if="featuredNotebookItems.length === 0"
+            class="empty-state"
+          >
+            {{ t('home.featuredEmpty') }}
+          </div>
+          <div
+            v-else
+            class="featured-listed"
+          >
+            <div
+              v-show="viewMode === 'grid'"
+              class="notebook-grid"
+            >
+              <div
+                v-for="item of featuredNotebookItems"
+                :key="item.share_token"
+                class="notebook-card"
+                @click="goSharedNotebook(item.share_token)"
+              >
+                <div class="card-emoji">{{ getFeaturedEmoji(item.share_token) }}</div>
+                <h3 class="card-title">{{ item.title }}</h3>
+                <div class="card-meta">
+                  <span>{{ formatNotebookDate(item.created_at) }}</span>
+                  <span>{{ featuredSourceCountLabel(item.source_count) }}</span>
+                </div>
+              </div>
             </div>
             <div
-              v-for="item of featuredNotebookItems"
-              :key="item.shareToken"
-              class="notebook-list-row"
-              @click="goSharedNotebook(item.shareToken)"
+              v-show="viewMode === 'list'"
+              class="notebook-list-wrap"
             >
-              <div class="col-title">
-                <span class="row-emoji">{{ getFeaturedEmoji(item.shareToken) }}</span>
-                <span class="row-title-text">{{ t(item.titleKey) }}</span>
+              <div class="notebook-list-header">
+                <div class="col-title">{{ t('home.colTitle') }}</div>
+                <div class="col-sources">{{ t('home.colSources') }}</div>
+                <div class="col-date">{{ t('home.colDate') }}</div>
+                <div class="col-role">{{ t('home.colRole') }}</div>
+                <div class="col-actions" />
               </div>
-              <div class="col-sources">{{ featuredSourceLabel(item.sourceCount) }}</div>
-              <div class="col-date">{{ featuredDateLabel(item.createdAt) }}</div>
-              <div class="col-role">{{ t('home.featuredReader') }}</div>
-              <div class="col-actions" />
+              <div
+                v-for="item of featuredNotebookItems"
+                :key="item.share_token"
+                class="notebook-list-row"
+                @click="goSharedNotebook(item.share_token)"
+              >
+                <div class="col-title">
+                  <span class="row-emoji">{{ getFeaturedEmoji(item.share_token) }}</span>
+                  <span class="row-title-text">{{ item.title }}</span>
+                </div>
+                <div class="col-sources">
+                  {{ featuredSourceCountLabel(item.source_count) }}
+                </div>
+                <div class="col-date">{{ formatNotebookDate(item.created_at) }}</div>
+                <div class="col-role">{{ t('home.featuredReader') }}</div>
+                <div class="col-actions" />
+              </div>
             </div>
           </div>
         </div>
@@ -356,6 +388,10 @@ import { useUserStore } from '@/stores/useUserStore'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import { useConfirmStore } from '@/stores/useConfirmStore'
 import type { Notebook as NotebookType } from '@/api/notebook'
+import {
+  fetchPublicFeaturedNotebooks,
+  type PublicFeaturedNotebookItem,
+} from '@/api/publicClient'
 
 const VIEW_MODE_KEY = 'notebook-list-view'
 const HOME_TAB_KEY = 'notebook-home-tab'
@@ -400,6 +436,9 @@ function loadHomeTab() {
 
 function setHomeTab(tab: HomeMainTab) {
   homeTab.value = tab
+  if (tab === 'featured') {
+    void loadFeaturedNotebooks()
+  }
 }
 
 watch(
@@ -418,10 +457,28 @@ watch(
   { immediate: false },
 )
 
+const featuredNotebookItems = ref<PublicFeaturedNotebookItem[]>([])
+const featuredLoading = ref(false)
+const featuredLoadFailed = ref(false)
+
+async function loadFeaturedNotebooks() {
+  featuredLoading.value = true
+  featuredLoadFailed.value = false
+  try {
+    featuredNotebookItems.value = await fetchPublicFeaturedNotebooks()
+  } catch {
+    featuredNotebookItems.value = []
+    featuredLoadFailed.value = true
+  } finally {
+    featuredLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadViewMode()
   loadHomeTab()
   notebookStore.fetchNotebooks()
+  void loadFeaturedNotebooks()
 })
 
 const sortedNotebooks = computed(() => {
@@ -547,15 +604,6 @@ const formatNotebookDate = (dateStr: string) => {
   })
 }
 
-const featuredNotebookItems = [
-  {
-    shareToken: 'xHlLsvQ3aoSoghb_truoamdecqQKS9Sb7til-osh8C8',
-    titleKey: 'home.featuredDemoTitle',
-    sourceCount: null as number | null,
-    createdAt: null as string | null,
-  },
-]
-
 function goSharedNotebook(shareToken: string) {
   router.push({
     name: 'SharedNotebook',
@@ -568,17 +616,7 @@ function getFeaturedEmoji(shareToken: string) {
   return EMOJI_LIST[idx]
 }
 
-function featuredDateLabel(createdAt: string | null) {
-  if (!createdAt) {
-    return t('home.featuredMetaDash')
-  }
-  return formatNotebookDate(createdAt)
-}
-
-function featuredSourceLabel(sourceCount: number | null) {
-  if (sourceCount === null) {
-    return t('home.featuredMetaDash')
-  }
+function featuredSourceCountLabel(sourceCount: number) {
   return t('chat.sourceCount', { count: sourceCount })
 }
 

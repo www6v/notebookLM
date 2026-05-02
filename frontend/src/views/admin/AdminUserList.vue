@@ -14,6 +14,14 @@
     <main class="admin-main">
       <div class="admin-toolbar">
         <v-btn
+          class="admin-toolbar-secondary"
+          color="primary"
+          variant="outlined"
+          @click="goFeaturedNotebooks"
+        >
+          {{ t('admin.navFeatured') }}
+        </v-btn>
+        <v-btn
           v-if="isTauriDesktop"
           class="desktop-api-entry"
           color="primary"
@@ -162,6 +170,13 @@ function goUserDetail(id: string) {
 function goDesktopApi() {
   router.push({
     name: 'AdminDesktop',
+    params: { locale: locale.value },
+  })
+}
+
+function goFeaturedNotebooks() {
+  router.push({
+    name: 'AdminFeaturedNotebooks',
     params: { locale: locale.value },
   })
 }

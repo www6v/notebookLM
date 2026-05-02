@@ -25,6 +25,10 @@ export default {
     featuredReader: 'Shared',
     featuredDemoTitle: 'Featured demo notebook',
     featuredMetaDash: '—',
+    featuredLoading: 'Loading featured notebooks…',
+    featuredEmpty:
+      'No featured notebooks yet. An admin can configure share links in the admin area.',
+    featuredLoadFailed: 'Could not load featured notebooks',
     gridView: 'Grid view',
     listView: 'List view',
     sortPlaceholder: 'Sort',
@@ -314,6 +318,21 @@ export default {
     desktopTauriOnly:
       'Open this page in the NotebookLM desktop app (Tauri) to edit the backend URL. In a normal browser, this control is not available.',
     navDesktopApi: 'Desktop API',
+    navFeatured: 'Featured notebooks',
+    featuredPageTitle: 'Featured notebooks (share links)',
+    featuredIntro:
+      'The Featured tab on the home screen reads from the database. Enter one share_token per line; order is display order.',
+    featuredHint:
+      'Enable sharing on a notebook, then copy the token from the share URL (last path segment) and paste it below.',
+    featuredTokensLabel: 'Share tokens (one per line)',
+    featuredReload: 'Reload from server',
+    featuredPreviewTitle: 'Saved configuration preview',
+    featuredStatusOk: 'Linked notebook found',
+    featuredStatusMissing:
+      'No notebook found for this token (check token or sharing enabled)',
+    featuredSaved: 'Saved',
+    featuredSaveFailed: 'Could not save',
+    featuredLoadFailed: 'Could not load',
     desktopBackendTitle: 'Desktop app — API server',
     desktopBackendHint:
       'Fleet-wide API origin stored on the server. Every desktop client fetches this from /api/public/client-config on startup (after contacting its local bootstrap URL).',

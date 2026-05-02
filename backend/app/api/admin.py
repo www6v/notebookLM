@@ -22,6 +22,10 @@ from app.schemas.client_config import (
     AdminClientConfigUpdate,
     PublicClientConfigResponse,
 )
+from app.schemas.featured_notebook import (
+    FeaturedNotebooksAdminListResponse,
+    FeaturedNotebooksReplaceRequest,
+)
 from app.schemas.user import (
     AdminUserDetailResponse,
     AdminUserListResponse,
@@ -30,6 +34,7 @@ from app.schemas.user import (
     UploadedFileTypeStat,
     UserResponse,
 )
+from app.services import featured_notebook_service as featured_svc
 from app.services import system_setting_service as sys_svc
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -294,3 +299,37 @@ async def put_client_config(
     await sys_svc.set_value(db, sys_svc.DESKTOP_BACKEND_URL_KEY, normalized)
     await db.flush()
     return PublicClientConfigResponse(desktop_backend_url=normalized)
+
+
+@router.get(
+    "/featured-notebooks",
+    response_model=FeaturedNotebooksAdminListResponse,
+)
+async def admin_list_featured_notebooks(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    """List curated featured share links (including broken tokens)."""
+    items = await featured_svc.get_admin_items(db)
+    return FeaturedNotebooksAdminListResponse(items=items)
+
+
+@router.put(
+    "/featured-notebooks",
+    response_model=FeaturedNotebooksAdminListResponse,
+)
+async def admin_replace_featured_notebooks(
+    body: FeaturedNotebooksReplaceRequest,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    """Replace the full curated list; order matches request array order."""
+    try:
+        await featured_svc.replace_all(db, body.items)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    items = await featured_svc.get_admin_items(db)
+    return FeaturedNotebooksAdminListResponse(items=items)

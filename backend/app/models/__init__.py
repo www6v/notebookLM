@@ -2,6 +2,7 @@
 
 from . import (
     chat,
+    featured_notebook_link,
     note,
     notebook,
     payment,
@@ -14,6 +15,7 @@ from . import (
 
 __all__ = [
     "chat",
+    "featured_notebook_link",
     "note",
     "notebook",
     "payment",
