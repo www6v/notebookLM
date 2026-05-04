@@ -350,7 +350,14 @@ def _build_pdf_markdown_via_mineru(source: Source) -> str:
     ) -> tuple[str, str]:
         norm, object_key, data, ctype = job
         upload_bytes_at_key(object_key, data, ctype)
-        return norm, get_file_url(object_key)
+        if settings.mineru_parsed_assets_use_presigned_urls:
+            asset_url = generate_presigned_url(
+                object_key,
+                expiration=int(settings.mineru_parsed_asset_presign_seconds),
+            )
+        else:
+            asset_url = get_file_url(object_key)
+        return norm, asset_url
 
     t_upload0 = time.perf_counter()
     if upload_jobs:

@@ -270,6 +270,12 @@ def _flatten_yaml_tree(
             "mineru_use_multipart": "mineru_use_multipart",
             "mineru_model_version": "mineru_model_version",
             "mineru_poll_interval_seconds": "mineru_poll_interval_seconds",
+            "mineru_parsed_assets_use_presigned_urls": (
+                "mineru_parsed_assets_use_presigned_urls"
+            ),
+            "mineru_parsed_asset_presign_seconds": (
+                "mineru_parsed_asset_presign_seconds"
+            ),
         },
     )
     _merge_yaml_map(
@@ -913,6 +919,25 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "MINERU_POLL_INTERVAL_SECONDS",
             "mineru_poll_interval_seconds",
+        ),
+    )
+    # Parsed PDF assets (images, etc.): presigned GET so browsers work on
+    # private buckets. Set false only if the bucket is public-read and you
+    # prefer short CDN-style URLs in stored markdown.
+    mineru_parsed_assets_use_presigned_urls: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "MINERU_PARSED_ASSETS_USE_PRESIGNED_URLS",
+            "mineru_parsed_assets_use_presigned_urls",
+        ),
+    )
+    mineru_parsed_asset_presign_seconds: int = Field(
+        default=604800,
+        ge=60,
+        le=604800,
+        validation_alias=AliasChoices(
+            "MINERU_PARSED_ASSET_PRESIGN_SECONDS",
+            "mineru_parsed_asset_presign_seconds",
         ),
     )
 

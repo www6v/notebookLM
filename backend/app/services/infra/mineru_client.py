@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import logging
 import mimetypes
+import re
 import time
 import zipfile
 from dataclasses import dataclass
@@ -357,6 +358,52 @@ def call_mineru_parse(
     )
 
 
+def _relative_path_variants(rel: str) -> list[str]:
+    """Stable list of path spellings MinerU may emit (longest first, unique)."""
+    rel = rel.replace("\\", "/").lstrip("/")
+    if not rel:
+        return []
+    encoded = "/".join(p.replace(" ", "%20") for p in rel.split("/"))
+    raw: list[str] = [rel, f"./{rel}"]
+    if encoded != rel:
+        raw.extend((encoded, f"./{encoded}"))
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in sorted(raw, key=len, reverse=True):
+        if item not in seen:
+            seen.add(item)
+            ordered.append(item)
+    return ordered
+
+
+def _replace_asset_path_occurrences(body: str, old: str, new: str) -> str:
+    """Swap one relative path for a URL in markdown links and HTML img src."""
+    if not old or old == new:
+        return body
+    esc = re.escape(old)
+    body = re.sub(
+        rf'(!\[[^\]]*\]\()\s*{esc}\s*(\))',
+        lambda m: m.group(1) + new + m.group(2),
+        body,
+    )
+    body = re.sub(
+        rf'(!\[[^\]]*\]\()\s*<\s*{esc}\s*>\s*(\))',
+        lambda m: m.group(1) + "<" + new + ">" + m.group(2),
+        body,
+    )
+    body = re.sub(
+        rf'(\[[^\]]*\]\()\s*{esc}\s*(\))',
+        lambda m: m.group(1) + new + m.group(2),
+        body,
+    )
+    body = re.sub(
+        rf'(?i)(src\s*=\s*)(["\']){esc}\2',
+        lambda m: m.group(1) + m.group(2) + new + m.group(2),
+        body,
+    )
+    return body
+
+
 def apply_asset_urls_to_markdown(
     markdown: str,
     path_to_public_url: dict[str, str],
@@ -371,20 +418,11 @@ def apply_asset_urls_to_markdown(
         reverse=True,
     )
 
-    def _variants(rel: str) -> list[str]:
-        rel = rel.replace("\\", "/")
-        base = [rel, f"./{rel}"]
-        encoded = "/".join(
-            p.replace(" ", "%20") for p in rel.split("/")
-        )
-        if encoded != rel:
-            base.append(encoded)
-            base.append(f"./{encoded}")
-        return base
-
     out = markdown
     for rel, public_url in ordered:
-        for variant in _variants(rel):
+        for variant in _relative_path_variants(rel):
+            out = _replace_asset_path_occurrences(out, variant, public_url)
+        for variant in _relative_path_variants(rel):
             out = out.replace(variant, public_url)
     return out
 

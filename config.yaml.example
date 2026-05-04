@@ -159,6 +159,9 @@ mineru:
   mineru_parse_path: /api/v4/extract/task
   mineru_timeout_seconds: 600
   mineru_oss_presign_seconds: 7200
+  # Images etc. embedded in PDF markdown: presigned OSS GET (private bucket).
+  mineru_parsed_assets_use_presigned_urls: true
+  mineru_parsed_asset_presign_seconds: 604800
   mineru_use_multipart: false
   mineru_model_version: vlm
   mineru_poll_interval_seconds: 3
