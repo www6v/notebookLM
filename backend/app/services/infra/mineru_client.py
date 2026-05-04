@@ -6,6 +6,7 @@ import base64
 import binascii
 import logging
 import mimetypes
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -107,6 +108,7 @@ def call_mineru_parse(
         headers["Authorization"] = f"Bearer {key}"
 
     use_multipart = settings.mineru_use_multipart
+    t_req = time.perf_counter()
     if use_multipart:
         if not pdf_bytes:
             raise MinerUClientError("mineru_use_multipart requires pdf bytes")
@@ -127,6 +129,17 @@ def call_mineru_parse(
         }
         with httpx.Client(timeout=timeout) as client:
             response = client.post(url, json=body, headers=headers)
+    http_elapsed_s = time.perf_counter() - t_req
+    pdf_mb = (len(pdf_bytes) / (1024 * 1024)) if pdf_bytes else None
+    logger.info(
+        "MinerU HTTP POST done url=%s mode=%s status=%s elapsed_s=%.3f "
+        "pdf_mb=%s",
+        url,
+        "multipart" if use_multipart else "json_url",
+        response.status_code,
+        http_elapsed_s,
+        f"{pdf_mb:.2f}" if pdf_mb is not None else "n/a",
+    )
 
     if response.status_code >= 400:
         raise MinerUClientError(

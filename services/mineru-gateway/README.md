@@ -56,6 +56,54 @@ mineru:
 
 **注意**：网关必须能访问 `pdf_url`（公网或 VPC 内 OSS 预签名链接）。
 
+## 运行环境与耗时观测
+
+网关进程启动时会打一条 **`gateway_runtime_env`** 日志，汇总与 MinerU 相关的环境变量（设备、后端、公式/表格开关、分页等）以及 **`in_docker`**（是否检测到 `/.dockerenv`）。每次解析请求会起一个子进程执行官方 **`mineru`** CLI（与 `legal_agent` 等项目用法一致：`mineru -p … -o … -b …`）；模型加载与推理发生在该子进程内。每次 `POST /v1/parse` 还会记录 **`parse_input`**：`input_fetch_s`（JSON 模式为下载 URL 耗时，multipart 为读表单项耗时）、`pdf_bytes`、`pdf_pages`（若能用 `pypdf` / `PyPDF2` 解析页数，否则为 `None`）。主进程中的 **`MinerU CLI parse wall time`** 为整段子进程墙钟时间。若在 **macOS** 上设备为 **cpu** 且该墙钟超过 **`MINERU_GATEWAY_SLOW_HINT_SEC`**（默认 `120`），会额外打一条 **`performance_hint`**，提示尝试 MPS 或远端 GPU（见「典型慢日志与一键调优」）。
+
+**确认环境 checklist**：本机脚本 [`scripts/run_mineru_gateway_local.sh`](../scripts/run_mineru_gateway_local.sh) 在 macOS 上未显式设置设备时默认 **`MINERU_GATEWAY_DEVICE=cpu`**；Docker 默认 CPU 版 PyTorch，见下文「GPU / CPU 镜像」。对照 `gateway_runtime_env` 与 MinerU 日志即可确认是否误跑 CPU、是否在容器内。
+
+## 性能调优（A/B 测耗时）
+
+在可接受的质量前提下，可通过环境变量缩短 pipeline 时间（由 [`app/main.py`](app/main.py) 映射到 `mineru` CLI 参数）：
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `MINERU_GATEWAY_FORMULA_ENABLE` | `true` | 设为 `0`/`false`/`no`/`off` 可关闭公式识别 |
+| `MINERU_GATEWAY_TABLE_ENABLE` | `true` | 同上关闭表格结构识别 |
+| `MINERU_GATEWAY_START_PAGE` | `0` | 起始页（0-based） |
+| `MINERU_GATEWAY_END_PAGE` | 空 | 结束页（含）；空表示直到末页 |
+
+建议固定同一 PDF，只改一项，对比日志中的 **`MinerU CLI parse wall time`**。
+
+### 典型慢日志与一键调优（运维）
+
+若日志里 **`gateway_runtime_env`** 含 **`MINERU_GATEWAY_DEVICE=cpu`**，且 **`parse_input`** 页数不多但 **`MinerU CLI parse wall time`** 仍达数百秒，瓶颈通常是 **CPU 跑全量 pipeline**，而非下载。
+
+**Apple Silicon 本机（先试 Metal）**（启动网关前执行）：
+
+```bash
+export MINERU_GATEWAY_DEVICE=mps
+./scripts/run_mineru_gateway_local.sh
+```
+
+若出现 MPS OOM，见上文「Apple Silicon（本机 venv）与 MPS 显存报错」；可退回 CPU 或调小任务。
+
+**可接受降质时加快 A/B**：
+
+```bash
+export MINERU_GATEWAY_FORMULA_ENABLE=0
+export MINERU_GATEWAY_TABLE_ENABLE=0
+```
+
+**Linux + NVIDIA**：勿用默认 CPU 镜像；按「GPU / CPU 镜像」改用 CUDA 版 PyTorch，并设置 **`MINERU_DEVICE_MODE=cuda`**（或 **`MINERU_GATEWAY_DEVICE=cuda`**，与 MinerU 版本一致即可）。
+
+**远端 GPU**：将解析迁到带 GPU 的机器或 MinerU **client + 常驻服务**（见「进程模型」），NotebookLM 仍通过同一 `mineru_base_url` 调网关或直连服务（视部署而定）。
+
+## 进程模型：子进程 vs 常驻推理
+
+- **默认**：每个请求起一个子进程执行官方 **`mineru`** CLI（`-p` / `-o` / `-b` 及网关环境变量映射的 `-m`、`-l`、`-f`、`-t`、分页、`-u`、`--source` 等；见 `mineru --help`）。`MINERU_CLI_EXTRA_ARGS` 以 shell 词法追加；`pipeline` 后端下若设置了 **`MINERU_GATEWAY_DEVICE`** 或 **`MINERU_DEVICE_MODE`**，会在 **参数列表末尾** 再追加 **`-d`**（可覆盖 compose 里 `MINERU_CLI_EXTRA_ARGS` 中较早出现的 `-d`）。注意 stock CLI 遇错仍可能 exit 0，网关会结合输出目录是否产生 markdown 再判失败。
+- **Client 后端**：当 `MINERU_GATEWAY_BACKEND` 以 **`-client`** 结尾时，按 MinerU 文档配置 **`MINERU_GATEWAY_SERVER_URL`** 指向常驻推理服务，由远端持有模型与显存，网关只做轻量调用；具体后端名称与部署方式以官方 MinerU 版本为准。
+
 ## GPU / CPU 镜像
 
 `Dockerfile` 在完整安装依赖后，会 **强制重装** PyTorch 的 **Linux CPU** 轮（`download.pytorch.org/whl/cpu`），避免默认 PyPI 拉取 CUDA 大包且便于无 GPU 环境。

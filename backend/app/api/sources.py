@@ -1,6 +1,7 @@
 """Source management API routes."""
 
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import Response
@@ -42,6 +43,11 @@ from app.tasks.source_tasks import process_source_task
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sources"])
+
+
+def _stage_elapsed_ms(start: float, end: float) -> float:
+    """Wall time between perf_counter samples, in milliseconds."""
+    return round((end - start) * 1000.0, 2)
 
 # Allowed file extensions for upload (documents + images + audio + video)
 ALLOWED_EXTENSIONS = frozenset({
@@ -189,7 +195,9 @@ async def upload_source(
     avi, mp4, mpeg (video).
     File content is stored in OSS; metadata is stored in the database.
     """
+    t0 = time.perf_counter()
     await verify_notebook_access(db, notebook_id, user.id)
+    t_after_verify = time.perf_counter()
 
     limits = ROLE_LIMITS.get(user.role, ROLE_LIMITS["free"])
     count_result = await db.execute(
@@ -204,6 +212,7 @@ async def upload_source(
                 "请升级账户以添加更多资源。"
             ),
         )
+    t_after_quota = time.perf_counter()
 
     filename = file.filename or "unknown"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -218,7 +227,9 @@ async def upload_source(
     file_type = FILE_TYPE_MAP.get(ext, "txt")
 
     # Read file content
+    t_before_read = time.perf_counter()
     content = await file.read()
+    t_after_read = time.perf_counter()
     content_type = file.content_type or "application/octet-stream"
 
     # Upload file to object storage (OSS)
@@ -238,6 +249,7 @@ async def upload_source(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to upload file to object storage: {exc}",
         ) from exc
+    t_after_oss = time.perf_counter()
 
     raw_content = None
     if file_type == "pdf":
@@ -251,6 +263,7 @@ async def upload_source(
         "image",
     ):
         raw_content = extract_text(content, file_type)
+    t_after_raw = time.perf_counter()
 
     source = Source(
         notebook_id=notebook_id,
@@ -268,12 +281,34 @@ async def upload_source(
 
     await db.commit()
     await db.refresh(source)
+    t_after_db = time.perf_counter()
 
+    t_after_task = t_after_db
     if file_type in ("video", "image", "audio", "pdf") or (
         raw_content and raw_content.strip()
     ):
         await publish_task_event("source", source.id, source.status)
         process_source_task.delay(source.id)
+        t_after_task = time.perf_counter()
+
+    logger.info(
+        "upload_source timing notebook_id=%s filename=%s file_type=%s "
+        "size_bytes=%s verify_ms=%s quota_ms=%s validate_ms=%s read_ms=%s "
+        "oss_ms=%s raw_content_ms=%s db_ms=%s task_dispatch_ms=%s total_ms=%s",
+        notebook_id,
+        filename,
+        file_type,
+        len(content),
+        _stage_elapsed_ms(t0, t_after_verify),
+        _stage_elapsed_ms(t_after_verify, t_after_quota),
+        _stage_elapsed_ms(t_after_quota, t_before_read),
+        _stage_elapsed_ms(t_before_read, t_after_read),
+        _stage_elapsed_ms(t_after_read, t_after_oss),
+        _stage_elapsed_ms(t_after_oss, t_after_raw),
+        _stage_elapsed_ms(t_after_raw, t_after_db),
+        _stage_elapsed_ms(t_after_db, t_after_task),
+        _stage_elapsed_ms(t0, t_after_task),
+    )
 
     return SourceResponse.model_validate(source)
 

@@ -94,70 +94,34 @@ def _normalize_summary(raw_summary: object) -> str | None:
     return text[:2000]
 
 
-def _build_task_payload(source: Source) -> str:
-    content = (source.raw_content or "").strip()
-    if len(content) > _MAX_CONTENT_CHARS:
-        content = content[:_MAX_CONTENT_CHARS]
+def _build_task_payload_from_inputs(
+    content: str,
+    original_title: str,
+    source_type: str,
+) -> str:
+    body = (content or "").strip()
+    if len(body) > _MAX_CONTENT_CHARS:
+        body = body[:_MAX_CONTENT_CHARS]
     return (
         "Generate metadata for this uploaded source and return strict JSON only.\n\n"
-        f"original_filename: {source.title}\n"
-        f"source_type: {source.type}\n"
+        f"original_filename: {original_title}\n"
+        f"source_type: {source_type}\n"
         "content_language_hint: auto-detect from content\n"
         "content:\n"
-        f"{content}\n"
+        f"{body}\n"
     )
 
 
-async def enrich_source_metadata_with_skill(
-    db: AsyncSession,
-    source: Source,
-) -> None:
-    """Populate source title/summary/tags using the source-metadata skill."""
-    content = (source.raw_content or "").strip()
-    if not content:
-        return
-    if not settings.litellm_model:
-        logger.warning(
-            "Skip source metadata skill for %s: LITELLM_MODEL is not set",
-            source.id,
-        )
-        return
-
-    workspace = _backend_root()
-    loader = SkillLoader(workspace=workspace)
-    skill = loader.get_skill(_SKILL_NAME)
-    if skill is None:
-        logger.warning(
-            "Skip source metadata skill for %s: skill `%s` not found",
-            source.id,
-            _SKILL_NAME,
-        )
-        return
-
-    executor = OpenAISkillExecutor(
-        workspace=workspace,
-        loader=loader,
-        prompt_builder=SkillPromptBuilder(workspace=workspace),
+def _build_task_payload(source: Source) -> str:
+    return _build_task_payload_from_inputs(
+        source.raw_content or "",
+        source.title,
+        source.type,
     )
 
-    result = await executor.run(
-        skill_name=_SKILL_NAME,
-        task=_build_task_payload(source),
-        options={},
-        attachments=[],
-        model=settings.litellm_model,
-        selected_skills=[_SKILL_NAME],
-        temperature=0.2,
-        max_completion_tokens=1200,
-    )
-    payload = _parse_json_payload(result.content)
-    if not payload:
-        logger.warning(
-            "Source metadata skill returned invalid payload for %s",
-            source.id,
-        )
-        return
 
+def apply_source_metadata_payload(source: Source, payload: dict) -> None:
+    """Apply parsed skill JSON to ``source`` (no DB flush)."""
     extension = _extract_extension(source.title)
     fallback_stem = _normalize_filename_stem(
         source.title.rsplit(".", 1)[0] if extension else source.title,
@@ -174,4 +138,79 @@ async def enrich_source_metadata_with_skill(
     if summary is not None:
         source.summary = summary
 
+
+async def run_source_metadata_skill(
+    content: str,
+    original_title: str,
+    source_type: str,
+    *,
+    log_label: str | None = None,
+) -> dict | None:
+    """Run source-metadata skill LLM only; returns parsed payload or None."""
+    stripped = (content or "").strip()
+    if not stripped:
+        return None
+    label = log_label or "unknown"
+    if not settings.litellm_model:
+        logger.warning(
+            "Skip source metadata skill for %s: LITELLM_MODEL is not set",
+            label,
+        )
+        return None
+
+    workspace = _backend_root()
+    loader = SkillLoader(workspace=workspace)
+    skill = loader.get_skill(_SKILL_NAME)
+    if skill is None:
+        logger.warning(
+            "Skip source metadata skill for %s: skill `%s` not found",
+            label,
+            _SKILL_NAME,
+        )
+        return None
+
+    executor = OpenAISkillExecutor(
+        workspace=workspace,
+        loader=loader,
+        prompt_builder=SkillPromptBuilder(workspace=workspace),
+    )
+
+    result = await executor.run(
+        skill_name=_SKILL_NAME,
+        task=_build_task_payload_from_inputs(
+            stripped,
+            original_title,
+            source_type,
+        ),
+        options={},
+        attachments=[],
+        model=settings.litellm_model,
+        selected_skills=[_SKILL_NAME],
+        temperature=0.2,
+        max_completion_tokens=1200,
+    )
+    payload = _parse_json_payload(result.content)
+    if not payload:
+        logger.warning(
+            "Source metadata skill returned invalid payload for %s",
+            label,
+        )
+        return None
+    return payload
+
+
+async def enrich_source_metadata_with_skill(
+    db: AsyncSession,
+    source: Source,
+) -> None:
+    """Populate source title/summary/tags using the source-metadata skill."""
+    payload = await run_source_metadata_skill(
+        source.raw_content or "",
+        source.title,
+        source.type,
+        log_label=str(source.id),
+    )
+    if not payload:
+        return
+    apply_source_metadata_payload(source, payload)
     await db.flush()

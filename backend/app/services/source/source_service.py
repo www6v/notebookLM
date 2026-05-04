@@ -3,6 +3,8 @@
 import asyncio
 import csv
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from fastapi import HTTPException, status
@@ -19,6 +21,10 @@ from app.parsers.youtube_parser import extract_youtube_transcript
 from app.models.notebook import Notebook
 from app.models.source import Source
 from app.services.infra.deep_searcher import call_load_files, call_upload
+from app.services.source.source_metadata_skill_service import (
+    apply_source_metadata_payload,
+    run_source_metadata_skill,
+)
 from app.services.infra.mineru_client import (
     MinerUClientError,
     apply_asset_urls_to_markdown,
@@ -247,10 +253,12 @@ def extract_text_by_pages(file_bytes: bytes, file_type: str) -> list[dict]:
 
 def _persist_source_markdown_and_upload(source: Source, content: str) -> str:
     """Write source raw content into local markdown and upload to OSS."""
+    t0 = time.perf_counter()
     notebook_dir = _SOURCE_MARKDOWN_ROOT / source.notebook_id
     notebook_dir.mkdir(parents=True, exist_ok=True)
     markdown_path = notebook_dir / f"{source.id}.md"
     markdown_path.write_text(content, encoding="utf-8")
+    t_after_write = time.perf_counter()
 
     object_key = upload_file_to_obs(
         file_content=content.encode("utf-8"),
@@ -258,56 +266,112 @@ def _persist_source_markdown_and_upload(source: Source, content: str) -> str:
         content_type="text/markdown; charset=utf-8",
     )
     oss_url = get_file_url(object_key)
+    total_s = time.perf_counter() - t0
+    write_s = t_after_write - t0
+    upload_s = time.perf_counter() - t_after_write
     logger.info(
-        "source markdown uploaded: source_id=%s local=%s oss_url=%s",
+        "source markdown uploaded: source_id=%s local=%s oss_url=%s "
+        "timings_s write=%.3f oss_put=%.3f total=%.3f",
         source.id,
         markdown_path,
         oss_url,
+        write_s,
+        upload_s,
+        total_s,
     )
     return oss_url
 
 
 def _build_pdf_markdown_via_mineru(source: Source) -> str:
     """Sync helper (Celery thread): MinerU → OSS parsed assets → markdown."""
+    t_pipeline = time.perf_counter()
     fp = (source.file_path or "").strip()
     if not fp:
         raise MinerUClientError("source has no file_path")
 
+    t_del0 = time.perf_counter()
     try:
         delete_parsed_assets_for_source(source.id)
     except RuntimeError:
         logger.warning(
             "Could not clear prior parsed OSS assets for %s", source.id
         )
+    delete_s = time.perf_counter() - t_del0
 
+    t_dl0 = time.perf_counter()
     pdf_bytes = download_file_from_obs(fp)
+    download_s = time.perf_counter() - t_dl0
+
     presigned = None
+    t_presign0 = time.perf_counter()
     if not settings.mineru_use_multipart:
         presigned = generate_presigned_url(
             fp,
             expiration=int(settings.mineru_oss_presign_seconds),
         )
+    presign_s = time.perf_counter() - t_presign0
 
     title = source.title or "document.pdf"
     if not title.lower().endswith(".pdf"):
         title = f"{title}.pdf"
 
+    t_mineru0 = time.perf_counter()
     result = call_mineru_parse(
         pdf_presigned_url=presigned,
         pdf_bytes=pdf_bytes if settings.mineru_use_multipart else None,
         original_filename=title,
     )
+    mineru_http_s = time.perf_counter() - t_mineru0
 
     prefix = sources_parsed_prefix(source.id)
-    path_to_url: dict[str, str] = {}
+    upload_jobs: list[tuple[str, str, bytes, str]] = []
     for rel_path, data in result.files:
         norm = rel_path.replace("\\", "/").lstrip("/")
         if not norm or ".." in norm.split("/"):
             continue
         object_key = f"{prefix}{norm}"
         ctype = guess_content_type(norm)
+        upload_jobs.append((norm, object_key, data, ctype))
+
+    path_to_url: dict[str, str] = {}
+
+    def _upload_parsed_asset(
+        job: tuple[str, str, bytes, str],
+    ) -> tuple[str, str]:
+        norm, object_key, data, ctype = job
         upload_bytes_at_key(object_key, data, ctype)
-        path_to_url[norm] = get_file_url(object_key)
+        return norm, get_file_url(object_key)
+
+    t_upload0 = time.perf_counter()
+    if upload_jobs:
+        max_workers = min(8, max(1, len(upload_jobs)))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [
+                pool.submit(_upload_parsed_asset, job)
+                for job in upload_jobs
+            ]
+            for fut in as_completed(futures):
+                norm, url = fut.result()
+                path_to_url[norm] = url
+    oss_parallel_s = time.perf_counter() - t_upload0
+
+    total_s = time.perf_counter() - t_pipeline
+    asset_bytes = sum(len(j[2]) for j in upload_jobs)
+    logger.info(
+        "pdf mineru pipeline timings source_id=%s "
+        "delete_s=%.3f download_s=%.3f presign_s=%.3f "
+        "mineru_http_s=%.3f oss_parallel_upload_s=%.3f "
+        "asset_count=%s asset_bytes=%s total_s=%.3f",
+        source.id,
+        delete_s,
+        download_s,
+        presign_s,
+        mineru_http_s,
+        oss_parallel_s,
+        len(upload_jobs),
+        asset_bytes,
+        total_s,
+    )
 
     return apply_asset_urls_to_markdown(result.markdown, path_to_url)
 
@@ -364,50 +428,96 @@ async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
                 return None
 
         notebook_id = source.notebook_id
-        markdown_oss_url = _persist_source_markdown_and_upload(source, content)
-        local_path = await asyncio.to_thread(
-            call_upload,
-            markdown_oss_url,
-            notebook_id,
-        )
-        if not local_path:
-            source.status = "error"
-            await db.flush()
-            return None
 
-        collection_name = "deepsearcher"
-        load_response = await asyncio.to_thread(
-            call_load_files,
-            base_url=settings.deep_searcher_base_url,
-            paths=local_path,
-            collection_name=collection_name,
-            collection_description="collection desc",
-            batch_size=8,
-        )
-        if not load_response.ok:
-            logger.error(
-                "deep load-files failed: source_id=%s status=%s body=%s",
+        async def _deepsearch_branch() -> str | None:
+            markdown_oss_url = await asyncio.to_thread(
+                _persist_source_markdown_and_upload,
+                source,
+                content,
+            )
+            local_path = await asyncio.to_thread(
+                call_upload,
+                markdown_oss_url,
+                notebook_id,
+            )
+            if not local_path:
+                source.status = "error"
+                await db.flush()
+                return None
+
+            collection_name = "deepsearcher"
+            load_response = await asyncio.to_thread(
+                call_load_files,
+                base_url=settings.deep_searcher_base_url,
+                paths=local_path,
+                collection_name=collection_name,
+                collection_description="collection desc",
+                batch_size=8,
+            )
+            if not load_response.ok:
+                logger.error(
+                    "deep load-files failed: source_id=%s status=%s body=%s",
+                    source.id,
+                    load_response.status_code,
+                    (load_response.text or "")[:500],
+                )
+                source.status = "error"
+                await db.flush()
+                return None
+            try:
+                load_body = load_response.json()
+            except ValueError:
+                load_body = (load_response.text or "")[:500]
+            logger.info(
+                "deep load-files ok: source_id=%s status=%s body=%s",
                 source.id,
                 load_response.status_code,
-                (load_response.text or "")[:500],
+                load_body,
+            )
+            return markdown_oss_url
+
+        t_gather0 = time.perf_counter()
+        deep_out, meta_out = await asyncio.gather(
+            _deepsearch_branch(),
+            run_source_metadata_skill(
+                content,
+                source.title,
+                source.type,
+                log_label=str(source.id),
+            ),
+            return_exceptions=True,
+        )
+        gather_wall_s = time.perf_counter() - t_gather0
+        logger.info(
+            "process_source deepsearch+metadata_gather wall_s=%.3f "
+            "source_id=%s",
+            gather_wall_s,
+            source.id,
+        )
+
+        if isinstance(deep_out, Exception):
+            logger.exception(
+                "deepsearch pipeline failed for %s",
+                source.id,
             )
             source.status = "error"
             await db.flush()
             return None
-        try:
-            load_body = load_response.json()
-        except ValueError:
-            load_body = (load_response.text or "")[:500]
-        logger.info(
-            "deep load-files ok: source_id=%s status=%s body=%s",
-            source.id,
-            load_response.status_code,
-            load_body,
-        )
+
+        if deep_out is None:
+            return None
+
+        if isinstance(meta_out, Exception):
+            logger.exception(
+                "Source metadata skill failed for %s",
+                source.id,
+            )
+        elif isinstance(meta_out, dict) and meta_out:
+            apply_source_metadata_payload(source, meta_out)
 
         source.status = "ready"
         await db.flush()
-        return markdown_oss_url
+        return deep_out
 
     except Exception:
         source.status = "error"

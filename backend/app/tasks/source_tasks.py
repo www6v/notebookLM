@@ -34,9 +34,6 @@ def process_source_task(source_id: str):
         finalize_url_source,
         process_source,
     )
-    from app.services.source.source_metadata_skill_service import (
-        enrich_source_metadata_with_skill,
-    )
     from sqlalchemy import select
 
     async def _run():
@@ -65,16 +62,6 @@ def process_source_task(source_id: str):
                 else:
                     await process_source(session, source_id)
 
-                # URL sources (web/youtube/bilibili) have no OSS file_path but do
-                # have raw_content after finalize_url_source + process_source.
-                if source.status == "ready" and (source.raw_content or "").strip():
-                    try:
-                        await enrich_source_metadata_with_skill(session, source)
-                    except Exception:
-                        logger.exception(
-                            "Source metadata enrichment failed for %s",
-                            source_id,
-                        )
                 await session.commit()
                 result = await session.execute(
                     select(Source).where(Source.id == source_id)

@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import json
 import logging
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -21,10 +24,82 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+
+def _ensure_gateway_logger_streams() -> None:
+    """Attach stderr so INFO logs show under plain ``uvicorn`` (no app handlers)."""
+    if logger.handlers:
+        return
+    stream_handler = logging.StreamHandler(sys.stderr)
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(
+        logging.Formatter("%(levelname)s [%(name)s] %(message)s"),
+    )
+    logger.addHandler(stream_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+
+_ensure_gateway_logger_streams()
+
+
+def _running_in_docker() -> bool:
+    return Path("/.dockerenv").is_file()
+
+
+def _log_gateway_runtime_env() -> None:
+    """Log MinerU-related env at startup (device is finalized in child)."""
+    keys = (
+        "MINERU_DEVICE_MODE",
+        "MINERU_GATEWAY_DEVICE",
+        "MINERU_GATEWAY_BACKEND",
+        "MINERU_GATEWAY_PARSE_METHOD",
+        "MINERU_MODEL_SOURCE",
+        "MINERU_GATEWAY_SERVER_URL",
+        "MINERU_GATEWAY_FORMULA_ENABLE",
+        "MINERU_GATEWAY_TABLE_ENABLE",
+        "MINERU_GATEWAY_START_PAGE",
+        "MINERU_GATEWAY_END_PAGE",
+        "MINERU_GATEWAY_SLOW_HINT_SEC",
+    )
+    parts: list[str] = [f"in_docker={_running_in_docker()}"]
+    for key in keys:
+        raw = (os.environ.get(key) or "").strip()
+        if not raw:
+            parts.append(f"{key}=(unset)")
+        elif key == "MINERU_GATEWAY_SERVER_URL":
+            parts.append(f"{key}=(set,len={len(raw)})")
+        else:
+            parts.append(f"{key}={raw}")
+    logger.info("gateway_runtime_env %s", " ".join(parts))
+
+
+def _try_pdf_page_count(data: bytes) -> int | None:
+    """Best-effort page count for observability (MinerU deps may provide pypdf)."""
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        try:
+            from PyPDF2 import PdfReader
+        except ImportError:
+            return None
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        return len(reader.pages)
+    except Exception:
+        return None
+
+
+@asynccontextmanager
+async def _gateway_lifespan(_app: FastAPI):
+    _log_gateway_runtime_env()
+    yield
+
+
 app = FastAPI(
     title="MinerU gateway",
     description="Implements POST /v1/parse for notebookLM backend (mineru_client).",
     version="1.0.0",
+    lifespan=_gateway_lifespan,
 )
 
 _GATEWAY_API_KEY = (os.environ.get("MINERU_GATEWAY_API_KEY") or "").strip()
@@ -65,6 +140,40 @@ def _download_pdf(url: str) -> bytes:
     return data
 
 
+def _maybe_log_darwin_cpu_slow_hint(elapsed: float) -> None:
+    """Log a one-line hint when macOS CPU parses exceed a wall-time threshold."""
+    raw = (os.environ.get("MINERU_GATEWAY_SLOW_HINT_SEC") or "120").strip()
+    try:
+        threshold = float(raw)
+    except ValueError:
+        threshold = 120.0
+    if threshold <= 0:
+        return
+    if sys.platform != "darwin":
+        return
+    gw = (os.environ.get("MINERU_GATEWAY_DEVICE") or "").strip().lower()
+    dm = (os.environ.get("MINERU_DEVICE_MODE") or "").strip().lower()
+    mode = gw or dm
+    if mode != "cpu":
+        return
+    if elapsed < threshold:
+        return
+    logger.info(
+        "performance_hint darwin_cpu_slow elapsed_s=%.2f "
+        "threshold_s=%.1f try MINERU_GATEWAY_DEVICE=mps on "
+        "Apple Silicon or CUDA/remote worker; optionally set "
+        "MINERU_GATEWAY_FORMULA_ENABLE=0 MINERU_GATEWAY_TABLE_ENABLE=0; "
+        "see services/mineru-gateway/README.md",
+        elapsed,
+        threshold,
+    )
+
+
+def _truthy_env(name: str, default: str = "true") -> bool:
+    raw = (os.environ.get(name) or default).strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
 def _mineru_invocation_prefix() -> list[str]:
     """Resolve how to start MinerU: ``mineru`` on PATH, or ``python -m``."""
     cli_bin = (os.environ.get("MINERU_CLI_BIN") or "mineru").strip() or "mineru"
@@ -76,54 +185,104 @@ def _mineru_invocation_prefix() -> list[str]:
     return [sys.executable, "-m", "mineru.cli.client"]
 
 
-def _run_mineru_cli(pdf_path: Path, output_dir: Path) -> None:
-    """Run MinerU parse.
+def _mineru_cli_command(pdf_path: Path, output_dir: Path) -> list[str]:
+    """Build ``mineru`` argv (same style as legal_agent: ``-p``, ``-o``, ``-b``).
 
-    Default: ``python -m app.mineru_invoke`` so exceptions become non-zero
-    exits (the stock ``mineru`` CLI logs errors and still exits 0).
-
-    Set ``MINERU_GATEWAY_LEGACY_MINERU_CLI=1`` to use ``mineru -p …`` plus
-    ``MINERU_CLI_EXTRA_ARGS`` instead.
+    Maps gateway env vars to official CLI flags; see ``mineru --help``.
+    Appends ``MINERU_CLI_EXTRA_ARGS`` (e.g. compose ``-d cpu``), then optional
+    trailing ``-d`` from ``MINERU_GATEWAY_DEVICE`` / ``MINERU_DEVICE_MODE`` so
+    an explicit gateway device overrides earlier flags (Click uses the last
+    value for repeated options).
     """
-    legacy = (
-        (os.environ.get("MINERU_GATEWAY_LEGACY_MINERU_CLI") or "")
-        .strip()
-        .lower()
+    prefix = _mineru_invocation_prefix()
+    backend = (os.environ.get("MINERU_GATEWAY_BACKEND") or "pipeline").strip()
+    cmd: list[str] = [
+        *prefix,
+        "-p",
+        str(pdf_path),
+        "-o",
+        str(output_dir),
+        "-b",
+        backend,
+    ]
+    parse_method = (
+        (os.environ.get("MINERU_GATEWAY_PARSE_METHOD") or "auto").strip()
     )
-    if legacy in ("1", "true", "yes"):
-        prefix = _mineru_invocation_prefix()
-        cmd = [
-            *prefix,
-            "-p",
-            str(pdf_path),
-            "-o",
-            str(output_dir),
-        ]
-        extra = (os.environ.get("MINERU_CLI_EXTRA_ARGS") or "").strip()
-        if extra:
-            cmd.extend(extra.split())
-    else:
-        cmd = [
-            sys.executable,
-            "-m",
-            "app.mineru_invoke",
-            str(pdf_path),
-            str(output_dir),
-        ]
+    if parse_method:
+        cmd.extend(["-m", parse_method])
+    lang = (os.environ.get("MINERU_GATEWAY_LANG") or "ch").strip()
+    if lang:
+        cmd.extend(["-l", lang])
+    formula_on = _truthy_env("MINERU_GATEWAY_FORMULA_ENABLE", "true")
+    table_on = _truthy_env("MINERU_GATEWAY_TABLE_ENABLE", "true")
+    cmd.extend(["-f", "true" if formula_on else "false"])
+    cmd.extend(["-t", "true" if table_on else "false"])
+    start_raw = (os.environ.get("MINERU_GATEWAY_START_PAGE") or "0").strip()
+    if start_raw:
+        cmd.extend(["-s", start_raw])
+    end_raw = (os.environ.get("MINERU_GATEWAY_END_PAGE") or "").strip()
+    if end_raw:
+        cmd.extend(["-e", end_raw])
+    server_url = (os.environ.get("MINERU_GATEWAY_SERVER_URL") or "").strip()
+    if server_url:
+        cmd.extend(["-u", server_url])
+    model_source = (os.environ.get("MINERU_MODEL_SOURCE") or "").strip()
+    if model_source in {"huggingface", "modelscope", "local"}:
+        cmd.extend(["--source", model_source])
+    vram_raw = (os.environ.get("MINERU_VIRTUAL_VRAM_SIZE") or "").strip()
+    if vram_raw.isdigit():
+        cmd.extend(["--vram", vram_raw])
+    extra = (os.environ.get("MINERU_CLI_EXTRA_ARGS") or "").strip()
+    extra_tokens = shlex.split(extra) if extra else []
+    if extra_tokens:
+        cmd.extend(extra_tokens)
+    device = (
+        (os.environ.get("MINERU_GATEWAY_DEVICE") or "").strip()
+        or (os.environ.get("MINERU_DEVICE_MODE") or "").strip()
+    )
+    if device and backend == "pipeline":
+        cmd.extend(["-d", device])
+    return cmd
+
+
+def _run_mineru_cli(pdf_path: Path, output_dir: Path) -> None:
+    """Run MinerU via the official ``mineru`` CLI (subprocess).
+
+    Empty or broken output is detected later via missing markdown; the stock
+    CLI may still exit 0 on some failures, so the handler checks artifacts.
+    """
+    cmd = _mineru_cli_command(pdf_path, output_dir)
     logger.info("Running: %s", " ".join(cmd))
     started = time.perf_counter()
+    proc_stderr = ""
     try:
-        subprocess.run(
+        completed = subprocess.run(
             cmd,
-            check=True,
+            check=False,
             timeout=_MINERU_TIMEOUT_SEC,
             env=os.environ.copy(),
             capture_output=True,
             text=True,
         )
+        proc_stderr = completed.stderr or ""
+        completed.check_returncode()
+    except subprocess.CalledProcessError as exc:
+        if exc.stderr:
+            proc_stderr = exc.stderr
+        raise
+    except subprocess.TimeoutExpired as exc:
+        if getattr(exc, "stderr", None):
+            proc_stderr = exc.stderr or proc_stderr
+        raise
     finally:
         elapsed = time.perf_counter() - started
         logger.info("MinerU CLI parse wall time %.2fs", elapsed)
+        err_tail = "\n".join(
+            ln.strip() for ln in proc_stderr.splitlines() if ln.strip()
+        )
+        if err_tail and elapsed > 5.0:
+            logger.info("MinerU stderr (tail): %s", err_tail[-1500:])
+        _maybe_log_darwin_cpu_slow_hint(elapsed)
 
 
 def _iter_markdown_paths(output_dir: Path) -> list[Path]:
@@ -275,6 +434,7 @@ async def parse_v1(request: Request) -> JSONResponse:
     work = Path(tempfile.mkdtemp(prefix="mineru-gw-"))
     try:
         ct = (request.headers.get("content-type") or "").lower()
+        input_started = time.perf_counter()
         if "application/json" in ct:
             data = await request.json()
             body = ParseJsonBody.model_validate(data)
@@ -302,6 +462,14 @@ async def parse_v1(request: Request) -> JSONResponse:
                 status_code=415,
                 detail="Use Content-Type: application/json or multipart/form-data",
             )
+        input_elapsed = time.perf_counter() - input_started
+        pdf_pages = _try_pdf_page_count(raw)
+        logger.info(
+            "parse_input input_fetch_s=%.3f pdf_bytes=%s pdf_pages=%s",
+            input_elapsed,
+            len(raw),
+            pdf_pages,
+        )
 
         out_dir = work / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -356,9 +524,8 @@ async def parse_v1(request: Request) -> JSONResponse:
                 status_code=500,
                 detail=(
                     "MinerU produced no markdown (and no usable content_list). "
-                    "See gateway logs. With MINERU_GATEWAY_LEGACY_MINERU_CLI=1, "
-                    "the stock mineru binary can exit 0 despite parse errors. "
-                    "Output tree:\n"
+                    "See gateway logs; the mineru CLI may exit 0 despite parse "
+                    "errors. Output tree:\n"
                     f"{tree}"
                 ),
             )
