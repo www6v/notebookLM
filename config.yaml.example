@@ -145,16 +145,23 @@ deep_searcher:
   deep_searcher_base_url: http://127.0.0.1:8000
 
 # =============================================================================
-# MinerU (external PDF → Markdown HTTP service)
+# MinerU (PDF → Markdown)
 # =============================================================================
+# Option A — Official API (async URL + ZIP): set base to https://mineru.net,
+# path to /api/v4/extract/task, and mineru_api_key to your mineru.net token.
+# The PDF must be reachable at a public HTTPS URL (same host as oss_endpoint
+# bucket URL from get_file_url); MinerU does not use OSS access keys.
+#
+# Option B — Self-hosted gateway: base e.g. http://mineru:8080, path /v1/parse.
 mineru:
-  # Base URL of the sidecar, e.g. http://mineru:8080 — leave empty to fail PDFs.
   mineru_base_url: $MINERU_BASE_URL
   mineru_api_key: $MINERU_API_KEY
-  mineru_parse_path: /v1/parse
+  mineru_parse_path: /api/v4/extract/task
   mineru_timeout_seconds: 600
   mineru_oss_presign_seconds: 7200
   mineru_use_multipart: false
+  mineru_model_version: vlm
+  mineru_poll_interval_seconds: 3
 
 # =============================================================================
 # DeerFlow (Deep Research gateway)

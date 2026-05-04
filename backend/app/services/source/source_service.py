@@ -30,10 +30,10 @@ from app.services.infra.mineru_client import (
     apply_asset_urls_to_markdown,
     call_mineru_parse,
     guess_content_type,
+    mineru_official_extract_api_configured,
 )
 from app.services.infra.obs_storage import (
     delete_parsed_assets_for_source,
-    download_file_from_obs,
     generate_presigned_url,
     get_file_url,
     sources_parsed_prefix,
@@ -298,18 +298,28 @@ def _build_pdf_markdown_via_mineru(source: Source) -> str:
         )
     delete_s = time.perf_counter() - t_del0
 
-    t_dl0 = time.perf_counter()
-    pdf_bytes = download_file_from_obs(fp)
-    download_s = time.perf_counter() - t_dl0
+    if not mineru_official_extract_api_configured():
+        raise MinerUClientError(
+            "Legacy MinerU gateway client is disabled. Set mineru_parse_path to "
+            "/api/v4/extract/task and mineru_base_url to https://mineru.net "
+            "(see mineru.net API docs)."
+        )
 
-    presigned = None
+    # MinerU fetches the PDF via HTTPS. Private buckets need a presigned GET
+    # URL; ``get_file_url`` is only valid for anonymous public-read objects.
     t_presign0 = time.perf_counter()
-    if not settings.mineru_use_multipart:
-        presigned = generate_presigned_url(
+    try:
+        pdf_url_for_mineru = generate_presigned_url(
             fp,
             expiration=int(settings.mineru_oss_presign_seconds),
         )
+    except RuntimeError as exc:
+        raise MinerUClientError(
+            f"Could not presign PDF for MinerU: {exc}"
+        ) from exc
     presign_s = time.perf_counter() - t_presign0
+    pdf_bytes = b""
+    download_s = 0.0
 
     title = source.title or "document.pdf"
     if not title.lower().endswith(".pdf"):
@@ -317,7 +327,7 @@ def _build_pdf_markdown_via_mineru(source: Source) -> str:
 
     t_mineru0 = time.perf_counter()
     result = call_mineru_parse(
-        pdf_presigned_url=presigned,
+        pdf_presigned_url=pdf_url_for_mineru,
         pdf_bytes=pdf_bytes if settings.mineru_use_multipart else None,
         original_filename=title,
     )
@@ -397,6 +407,16 @@ async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
                 source.status = "error"
                 source.raw_content = (
                     "[PDF] MinerU is not configured (mineru_base_url)."
+                )
+                await db.flush()
+                return None
+            if mineru_official_extract_api_configured() and not (
+                settings.mineru_api_key or ""
+            ).strip():
+                source.status = "error"
+                source.raw_content = (
+                    "[PDF] Official MinerU API requires mineru_api_key "
+                    "(Bearer token from mineru.net)."
                 )
                 await db.flush()
                 return None

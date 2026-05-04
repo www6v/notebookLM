@@ -268,6 +268,8 @@ def _flatten_yaml_tree(
             "mineru_timeout_seconds": "mineru_timeout_seconds",
             "mineru_oss_presign_seconds": "mineru_oss_presign_seconds",
             "mineru_use_multipart": "mineru_use_multipart",
+            "mineru_model_version": "mineru_model_version",
+            "mineru_poll_interval_seconds": "mineru_poll_interval_seconds",
         },
     )
     _merge_yaml_map(
@@ -893,6 +895,24 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "MINERU_USE_MULTIPART",
             "mineru_use_multipart",
+        ),
+    )
+    # Official MinerU net API (POST /api/v4/extract/task): pipeline / vlm /
+    # MinerU-HTML. Ignored when mineru_parse_path is not that endpoint.
+    mineru_model_version: str = Field(
+        default="vlm",
+        validation_alias=AliasChoices(
+            "MINERU_MODEL_VERSION",
+            "mineru_model_version",
+        ),
+    )
+    mineru_poll_interval_seconds: float = Field(
+        default=3.0,
+        ge=0.5,
+        le=60.0,
+        validation_alias=AliasChoices(
+            "MINERU_POLL_INTERVAL_SECONDS",
+            "mineru_poll_interval_seconds",
         ),
     )
 

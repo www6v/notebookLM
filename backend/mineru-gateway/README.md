@@ -7,6 +7,8 @@
 - 可选鉴权：请求头 `Authorization: Bearer <MINERU_GATEWAY_API_KEY>`
 - 响应：`{"markdown": "...", "files": [{"path": "相对路径", "content_base64": "..."}]}`
 
+主项目也可改为直连 **MinerU 官方云端**（`mineru_base_url: https://mineru.net`、`mineru_parse_path: /api/v4/extract/task`、官网 Token 填入 `mineru_api_key`）：由后端提交**公网可访问**的 PDF URL，轮询任务并解压 ZIP 中的 `full.md` 与资源；该路径下**不必**部署本网关。
+
 本目录通过 **调用官方 `mineru` CLI** 完成解析。`requirements.txt` 使用 **`mineru[pipeline]`**（含 torch 等），否则默认后端 `hybrid-auto-engine` 会报缺少本地 pipeline 依赖。镜像体积与首次安装/构建时间会较大，属正常。
 
 若出现 ``AttributeError: module 'torch' has no attribute 'Tensor'``，说明本机 venv 里 **torch 安装不完整**（例如磁盘满、安装中断）。在 `backend/mineru-gateway` 下执行  
