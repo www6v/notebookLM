@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GATEWAY_DIR="${ROOT}/services/mineru-gateway"
+GATEWAY_DIR="${ROOT}/backend/mineru-gateway"
 PORT="${MINERU_GATEWAY_PORT:-8765}"
 
 if ! command -v docker >/dev/null 2>&1; then

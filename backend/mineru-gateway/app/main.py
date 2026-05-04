@@ -163,7 +163,7 @@ def _maybe_log_darwin_cpu_slow_hint(elapsed: float) -> None:
         "threshold_s=%.1f try MINERU_GATEWAY_DEVICE=mps on "
         "Apple Silicon or CUDA/remote worker; optionally set "
         "MINERU_GATEWAY_FORMULA_ENABLE=0 MINERU_GATEWAY_TABLE_ENABLE=0; "
-        "see services/mineru-gateway/README.md",
+        "see backend/mineru-gateway/README.md",
         elapsed,
         threshold,
     )

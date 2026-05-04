@@ -1,6 +1,6 @@
 # MinerU 独立网关（NotebookLM 兼容）
 
-与主项目 [`mineru_client`](../../backend/app/services/infra/mineru_client.py) 约定一致：
+与主项目 [`mineru_client`](../app/services/infra/mineru_client.py) 约定一致：
 
 - `POST /v1/parse`，`Content-Type: application/json`：`{"pdf_url": "<预签名URL>", "output_preference": "markdown"}`
 - 或 `multipart/form-data`，字段名 `pdf`（对应后端 `mineru_use_multipart: true`）
@@ -9,7 +9,7 @@
 
 本目录通过 **调用官方 `mineru` CLI** 完成解析。`requirements.txt` 使用 **`mineru[pipeline]`**（含 torch 等），否则默认后端 `hybrid-auto-engine` 会报缺少本地 pipeline 依赖。镜像体积与首次安装/构建时间会较大，属正常。
 
-若出现 ``AttributeError: module 'torch' has no attribute 'Tensor'``，说明本机 venv 里 **torch 安装不完整**（例如磁盘满、安装中断）。在 `services/mineru-gateway` 下执行  
+若出现 ``AttributeError: module 'torch' has no attribute 'Tensor'``，说明本机 venv 里 **torch 安装不完整**（例如磁盘满、安装中断）。在 `backend/mineru-gateway` 下执行  
 `pip install --force-reinstall --no-cache-dir -r requirements.txt`  
 或删掉 `.venv` 后重新跑 `./scripts/run_mineru_gateway_local.sh`。
 
@@ -34,7 +34,7 @@ MinerU pipeline 会从远端拉取权重。若默认走 **Hugging Face** 且网�
 或手动：
 
 ```bash
-cd services/mineru-gateway
+cd backend/mineru-gateway
 docker compose build
 docker compose up -d
 curl -s http://127.0.0.1:8765/health
@@ -60,7 +60,7 @@ mineru:
 
 网关进程启动时会打一条 **`gateway_runtime_env`** 日志，汇总与 MinerU 相关的环境变量（设备、后端、公式/表格开关、分页等）以及 **`in_docker`**（是否检测到 `/.dockerenv`）。每次解析请求会起一个子进程执行官方 **`mineru`** CLI（与 `legal_agent` 等项目用法一致：`mineru -p … -o … -b …`）；模型加载与推理发生在该子进程内。每次 `POST /v1/parse` 还会记录 **`parse_input`**：`input_fetch_s`（JSON 模式为下载 URL 耗时，multipart 为读表单项耗时）、`pdf_bytes`、`pdf_pages`（若能用 `pypdf` / `PyPDF2` 解析页数，否则为 `None`）。主进程中的 **`MinerU CLI parse wall time`** 为整段子进程墙钟时间。若在 **macOS** 上设备为 **cpu** 且该墙钟超过 **`MINERU_GATEWAY_SLOW_HINT_SEC`**（默认 `120`），会额外打一条 **`performance_hint`**，提示尝试 MPS 或远端 GPU（见「典型慢日志与一键调优」）。
 
-**确认环境 checklist**：本机脚本 [`scripts/run_mineru_gateway_local.sh`](../scripts/run_mineru_gateway_local.sh) 在 macOS 上未显式设置设备时默认 **`MINERU_GATEWAY_DEVICE=cpu`**；Docker 默认 CPU 版 PyTorch，见下文「GPU / CPU 镜像」。对照 `gateway_runtime_env` 与 MinerU 日志即可确认是否误跑 CPU、是否在容器内。
+**确认环境 checklist**：本机脚本 [`scripts/run_mineru_gateway_local.sh`](../../scripts/run_mineru_gateway_local.sh) 在 macOS 上未显式设置设备时默认 **`MINERU_GATEWAY_DEVICE=cpu`**；Docker 默认 CPU 版 PyTorch，见下文「GPU / CPU 镜像」。对照 `gateway_runtime_env` 与 MinerU 日志即可确认是否误跑 CPU、是否在容器内。
 
 ## 性能调优（A/B 测耗时）
 
