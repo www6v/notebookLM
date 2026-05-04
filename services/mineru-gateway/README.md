@@ -68,6 +68,7 @@ mineru:
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
+| `MINERU_GATEWAY_PARSE_METHOD` | `txt` | 对应 `mineru -m`：`txt` 纯文本直抽；扫描件可设 `ocr`；自动判别设 `auto` |
 | `MINERU_GATEWAY_FORMULA_ENABLE` | `true` | 设为 `0`/`false`/`no`/`off` 可关闭公式识别 |
 | `MINERU_GATEWAY_TABLE_ENABLE` | `true` | 同上关闭表格结构识别 |
 | `MINERU_GATEWAY_START_PAGE` | `0` | 起始页（0-based） |

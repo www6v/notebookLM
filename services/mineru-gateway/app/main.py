@@ -205,8 +205,9 @@ def _mineru_cli_command(pdf_path: Path, output_dir: Path) -> list[str]:
         "-b",
         backend,
     ]
+    # Default ``txt``: text extraction; use ``auto`` or ``ocr`` for scans.
     parse_method = (
-        (os.environ.get("MINERU_GATEWAY_PARSE_METHOD") or "auto").strip()
+        (os.environ.get("MINERU_GATEWAY_PARSE_METHOD") or "txt").strip()
     )
     if parse_method:
         cmd.extend(["-m", parse_method])
