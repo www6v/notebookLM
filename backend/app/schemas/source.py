@@ -42,6 +42,7 @@ class SourceContentResponse(BaseModel):
 
     id: str
     title: str
+    type: str
     summary: str | None = None
     tags: list[str] | None = None
     raw_content: str | None = None

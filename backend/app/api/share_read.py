@@ -278,7 +278,7 @@ async def share_get_source_content(
     elif (
         raw_content is None
         and source.file_path
-        and source.type not in ("image", "video", "audio")
+        and source.type not in ("image", "video", "audio", "pdf")
     ):
         try:
             file_bytes = download_file_from_obs(source.file_path)
@@ -290,6 +290,7 @@ async def share_get_source_content(
     return SourceContentResponse(
         id=source.id,
         title=source.title,
+        type=source.type,
         summary=source.summary,
         tags=source.tags,
         raw_content=raw_content,

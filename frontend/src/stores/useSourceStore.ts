@@ -3,18 +3,10 @@ import { ref, computed } from 'vue'
 import { shareReadApi } from '@/api/shareRead'
 import { sourceApi } from '@/api/source'
 import { streamTaskUntilTerminal } from '@/api/taskEvents'
-import type { Source, ChunkContext } from '@/api/source'
+import type { Source, ChunkContext, SourceContent } from '@/api/source'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 
-export interface SourceContent {
-  id: string
-  title: string
-  summary: string | null
-  tags: string[] | null
-  raw_content: string | null
-  chunk_count: number
-  file_url: string | null
-}
+export type { SourceContent }
 
 export interface HighlightRequest {
   sourceId: string

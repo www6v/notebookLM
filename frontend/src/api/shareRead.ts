@@ -13,7 +13,7 @@ import type {
   SlideDeckPdfUrlOptions,
 } from '@/api/studio'
 import type { Note } from '@/api/note'
-import type { ChunkContext, Source } from '@/api/source'
+import type { ChunkContext, Source, SourceContent } from '@/api/source'
 
 export interface SharedNotebookDto {
   id: string
@@ -26,16 +26,6 @@ export interface SharedNotebookDto {
 
 function shareRoot(token: string): string {
   return `/share/${encodeURIComponent(token)}`
-}
-
-export interface SourceContentDto {
-  id: string
-  title: string
-  summary: string | null
-  tags: string[] | null
-  raw_content: string | null
-  chunk_count: number
-  file_url: string | null
 }
 
 export const shareReadApi = {
@@ -59,7 +49,7 @@ export const shareReadApi = {
   getSourceContent: async (
     token: string,
     sourceId: string,
-  ): Promise<SourceContentDto> => {
+  ): Promise<SourceContent> => {
     const res = await shareClient.get(
       `${shareRoot(token)}/sources/${sourceId}/content`,
     )

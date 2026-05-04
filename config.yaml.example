@@ -145,6 +145,18 @@ deep_searcher:
   deep_searcher_base_url: http://127.0.0.1:8000
 
 # =============================================================================
+# MinerU (external PDF → Markdown HTTP service)
+# =============================================================================
+mineru:
+  # Base URL of the sidecar, e.g. http://mineru:8080 — leave empty to fail PDFs.
+  mineru_base_url: $MINERU_BASE_URL
+  mineru_api_key: $MINERU_API_KEY
+  mineru_parse_path: /v1/parse
+  mineru_timeout_seconds: 600
+  mineru_oss_presign_seconds: 7200
+  mineru_use_multipart: false
+
+# =============================================================================
 # DeerFlow (Deep Research gateway)
 # =============================================================================
 deer_flow:

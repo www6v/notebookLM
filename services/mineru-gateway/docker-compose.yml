@@ -1,0 +1,16 @@
+services:
+  mineru-gateway:
+    build: .
+    image: notebooklm-mineru-gateway:latest
+    ports:
+      - "${MINERU_GATEWAY_PORT:-8765}:8765"
+    environment:
+      # Prefer ModelScope when Hugging Face Hub is unreachable (common in CN / strict egress).
+      MINERU_MODEL_SOURCE: ${MINERU_MODEL_SOURCE:-modelscope}
+      MINERU_GATEWAY_API_KEY: ${MINERU_GATEWAY_API_KEY:-}
+      MINERU_GATEWAY_TIMEOUT_SEC: ${MINERU_GATEWAY_TIMEOUT_SEC:-600}
+      MINERU_CLI_BIN: ${MINERU_CLI_BIN:-mineru}
+      # CPU-only hosts: pipeline device (see mineru ``-d`` / ``MINERU_DEVICE_MODE``).
+      MINERU_CLI_EXTRA_ARGS: ${MINERU_CLI_EXTRA_ARGS:--d cpu}
+      MINERU_DEVICE_MODE: ${MINERU_DEVICE_MODE:-cpu}
+    restart: unless-stopped

@@ -223,8 +223,28 @@
                 Failed to load image
               </v-alert>
             </div>
+            <v-alert
+              v-if="isPdfParsingPending"
+              class="mb-3"
+              type="info"
+              variant="tonal"
+            >
+              PDF is being converted to Markdown. Please wait until the source
+              status is ready, then open again.
+            </v-alert>
             <div
-              v-if="sourceStore.currentContent.raw_content"
+              v-else-if="isPdfMarkdownView"
+              ref="contentTextRef"
+              class="content-text content-text-markdown"
+              :class="{ 'content-text-with-image': Boolean(sourceStore.currentContent.file_url) }"
+            >
+              <MarkdownRenderer
+                :content="pdfDisplayMarkdown"
+                allow-html
+              />
+            </div>
+            <div
+              v-else-if="sourceStore.currentContent.raw_content"
               ref="contentTextRef"
               class="content-text"
               :class="{ 'content-text-with-image': Boolean(sourceStore.currentContent.file_url) }"
@@ -253,8 +273,11 @@ import { useConfirmStore } from '@/stores/useConfirmStore'
 import { shareReadApi } from '@/api/shareRead'
 import { sourceApi, type Source } from '@/api/source'
 import { importDeepResearchAsSource } from '@/api/deepResearch'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import DeepResearchCard from './DeepResearchCard.vue'
 import type { DeepResearchReport } from './deepResearchTypes'
+
+const PDF_PENDING_PLACEHOLDER = '[pdf parsing pending]'
 
 const props = withDefaults(
   defineProps<{
@@ -314,6 +337,34 @@ watch(() => sourceStore.showContentViewer, (val) => {
     sourceStore.showContentViewer = false
     nextTick(() => scrollToHighlight())
   }
+})
+
+const isPdfParsingPending = computed(() => {
+  const c = sourceStore.currentContent
+  return c?.type === 'pdf' && c?.raw_content === PDF_PENDING_PLACEHOLDER
+})
+
+const isPdfMarkdownView = computed(() => {
+  const c = sourceStore.currentContent
+  return Boolean(
+    c?.type === 'pdf' && c?.raw_content && !isPdfParsingPending.value,
+  )
+})
+
+const pdfDisplayMarkdown = computed(() => {
+  const raw = sourceStore.currentContent?.raw_content || ''
+  const hl = sourceStore.highlightRequest
+  if (!hl?.content?.trim()) {
+    return raw
+  }
+  const searchText = hl.content.trim().substring(0, 100)
+  const idx = raw.indexOf(searchText)
+  if (idx === -1) {
+    return raw
+  }
+  return (
+    `${raw.slice(0, idx)}<mark class="citation-highlight" id="citation-highlight-target">${searchText}</mark>${raw.slice(idx + hl.content.length)}`
+  )
 })
 
 const highlightedContent = computed(() => {
@@ -674,6 +725,11 @@ async function onDeepResearchImportReport(report: DeepResearchReport) {
   margin-top: 12px;
   max-height: 35vh;
   overflow-y: auto;
+}
+
+.content-text-markdown {
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .content-text :deep(pre) {

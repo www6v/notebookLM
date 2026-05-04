@@ -22,6 +22,7 @@ from app.schemas.source import (
 )
 from app.services.infra.obs_storage import (
     delete_file_from_obs,
+    delete_parsed_assets_for_source,
     download_file_from_obs,
     generate_presigned_url,
     get_file_url,
@@ -30,6 +31,7 @@ from app.services.infra.obs_storage import (
 # from app.ai.milvus_client import delete_by_source_id
 from app.services.task_event_service import publish_task_event
 from app.services.source.source_service import (
+    PDF_SOURCE_PENDING_PLACEHOLDER,
     extract_text,
     finalize_uploaded_image,
     get_source,
@@ -238,10 +240,11 @@ async def upload_source(
         ) from exc
 
     raw_content = None
-    if file_type in (
+    if file_type == "pdf":
+        raw_content = PDF_SOURCE_PENDING_PLACEHOLDER
+    elif file_type in (
         "txt",
         "markdown",
-        "pdf",
         "docx",
         "csv",
         "pptx",
@@ -266,7 +269,7 @@ async def upload_source(
     await db.commit()
     await db.refresh(source)
 
-    if file_type in ("video", "image", "audio") or (
+    if file_type in ("video", "image", "audio", "pdf") or (
         raw_content and raw_content.strip()
     ):
         await publish_task_event("source", source.id, source.status)
@@ -342,6 +345,15 @@ async def delete_source(
                 source.file_path,
             )
 
+    if source.type == "pdf":
+        try:
+            delete_parsed_assets_for_source(source_id)
+        except RuntimeError:
+            logger.warning(
+                "Failed to delete parsed OSS assets for source %s",
+                source_id,
+            )
+
     # try:
     #     delete_by_source_id(source_id)
     # except Exception as exc:
@@ -391,7 +403,7 @@ async def get_source_content(
     elif (
         raw_content is None
         and source.file_path
-        and source.type not in ("image", "video", "audio")
+        and source.type not in ("image", "video", "audio", "pdf")
     ):
         # For non-image sources, download from OSS and extract text if needed
         try:
@@ -405,6 +417,7 @@ async def get_source_content(
     return SourceContentResponse(
         id=source.id,
         title=source.title,
+        type=source.type,
         summary=source.summary,
         tags=source.tags,
         raw_content=raw_content,

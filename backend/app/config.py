@@ -90,6 +90,7 @@ _NESTED_BLOCK_KEYS = frozenset(
         "embedding",
         "milvus",
         "deep_searcher",
+        "mineru",
         "deer_flow",
         "langfuse",
         "alipay",
@@ -256,6 +257,18 @@ def _flatten_yaml_tree(
         out,
         _yaml_section(raw, "deep_searcher"),
         {"deep_searcher_base_url": "deep_searcher_base_url"},
+    )
+    _merge_yaml_map(
+        out,
+        _yaml_section(raw, "mineru"),
+        {
+            "mineru_base_url": "mineru_base_url",
+            "mineru_api_key": "mineru_api_key",
+            "mineru_parse_path": "mineru_parse_path",
+            "mineru_timeout_seconds": "mineru_timeout_seconds",
+            "mineru_oss_presign_seconds": "mineru_oss_presign_seconds",
+            "mineru_use_multipart": "mineru_use_multipart",
+        },
     )
     _merge_yaml_map(
         out,
@@ -832,6 +845,54 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "DEEP_SEARCHER_BASE_URL",
             "deep_searcher_base_url",
+        ),
+    )
+
+    # External MinerU HTTP service (PDF → Markdown + assets).
+    mineru_base_url: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "MINERU_BASE_URL",
+            "mineru_base_url",
+        ),
+    )
+    mineru_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "MINERU_API_KEY",
+            "mineru_api_key",
+        ),
+    )
+    mineru_parse_path: str = Field(
+        default="/v1/parse",
+        validation_alias=AliasChoices(
+            "MINERU_PARSE_PATH",
+            "mineru_parse_path",
+        ),
+    )
+    mineru_timeout_seconds: float = Field(
+        default=600.0,
+        ge=10.0,
+        le=7200.0,
+        validation_alias=AliasChoices(
+            "MINERU_TIMEOUT_SECONDS",
+            "mineru_timeout_seconds",
+        ),
+    )
+    mineru_oss_presign_seconds: int = Field(
+        default=7200,
+        ge=60,
+        le=604800,
+        validation_alias=AliasChoices(
+            "MINERU_OSS_PRESIGN_SECONDS",
+            "mineru_oss_presign_seconds",
+        ),
+    )
+    mineru_use_multipart: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "MINERU_USE_MULTIPART",
+            "mineru_use_multipart",
         ),
     )
 

@@ -1,0 +1,16 @@
+# Gateway + MinerU CLI. Default CLI backend (hybrid-auto-engine) needs
+# local pipeline deps (torch, layout, etc.); plain ``mineru`` is too light.
+#
+# Pin torch/torchvision *before* mineru: a partial install leaves an empty
+# ``torch`` namespace and breaks ``safetensors.torch`` (no ``torch.Tensor``).
+# Versions satisfy mineru[pipeline]: torch>=2.2.2,<3,!=2.5.0,!=2.5.1.
+# 2.2.2 pairs with 0.17.2 and is widely mirrored (e.g. Tsinghua PyPI).
+torch==2.2.2
+torchvision==0.17.2
+# macOS wheels for torch 2.2.x expect NumPy 1.x; keep below 2 for opencv/torch stack.
+numpy>=1.21.6,<2
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+httpx>=0.28.0
+python-multipart>=0.0.9
+mineru[pipeline]>=2.0.0

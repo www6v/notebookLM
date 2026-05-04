@@ -18,12 +18,22 @@ from app.parsers.web_parser import fetch_web_markdown_via_jina
 from app.parsers.youtube_parser import extract_youtube_transcript
 from app.models.notebook import Notebook
 from app.models.source import Source
+from app.services.infra.deep_searcher import call_load_files, call_upload
+from app.services.infra.mineru_client import (
+    MinerUClientError,
+    apply_asset_urls_to_markdown,
+    call_mineru_parse,
+    guess_content_type,
+)
 from app.services.infra.obs_storage import (
+    delete_parsed_assets_for_source,
+    download_file_from_obs,
     generate_presigned_url,
     get_file_url,
+    sources_parsed_prefix,
+    upload_bytes_at_key,
     upload_file_to_obs,
 )
-from app.services.infra.deep_searcher import call_load_files, call_upload
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +42,9 @@ _MAX_CONTENT_PER_SOURCE = 10000
 
 # Upload path stores this for images (see extract_text); not usable for LLM.
 _IMAGE_PLACEHOLDER_TEXT = "[Image]"
+
+# Stored until Celery finishes MinerU parsing for PDF uploads.
+PDF_SOURCE_PENDING_PLACEHOLDER = "[pdf parsing pending]"
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
 _SOURCE_MARKDOWN_ROOT = _PROJECT_ROOT / "files"
@@ -254,6 +267,51 @@ def _persist_source_markdown_and_upload(source: Source, content: str) -> str:
     return oss_url
 
 
+def _build_pdf_markdown_via_mineru(source: Source) -> str:
+    """Sync helper (Celery thread): MinerU → OSS parsed assets → markdown."""
+    fp = (source.file_path or "").strip()
+    if not fp:
+        raise MinerUClientError("source has no file_path")
+
+    try:
+        delete_parsed_assets_for_source(source.id)
+    except RuntimeError:
+        logger.warning(
+            "Could not clear prior parsed OSS assets for %s", source.id
+        )
+
+    pdf_bytes = download_file_from_obs(fp)
+    presigned = None
+    if not settings.mineru_use_multipart:
+        presigned = generate_presigned_url(
+            fp,
+            expiration=int(settings.mineru_oss_presign_seconds),
+        )
+
+    title = source.title or "document.pdf"
+    if not title.lower().endswith(".pdf"):
+        title = f"{title}.pdf"
+
+    result = call_mineru_parse(
+        pdf_presigned_url=presigned,
+        pdf_bytes=pdf_bytes if settings.mineru_use_multipart else None,
+        original_filename=title,
+    )
+
+    prefix = sources_parsed_prefix(source.id)
+    path_to_url: dict[str, str] = {}
+    for rel_path, data in result.files:
+        norm = rel_path.replace("\\", "/").lstrip("/")
+        if not norm or ".." in norm.split("/"):
+            continue
+        object_key = f"{prefix}{norm}"
+        ctype = guess_content_type(norm)
+        upload_bytes_at_key(object_key, data, ctype)
+        path_to_url[norm] = get_file_url(object_key)
+
+    return apply_asset_urls_to_markdown(result.markdown, path_to_url)
+
+
 async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
     """Process source and persist raw_content as markdown in local + OSS."""
     result = await db.execute(select(Source).where(Source.id == source_id))
@@ -265,11 +323,45 @@ async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:
     await db.flush()
 
     try:
-        content = source.raw_content or ""
-        if not content:
-            source.status = "error"
+        if source.type == "pdf":
+            if not (source.file_path or "").strip():
+                source.status = "error"
+                source.raw_content = "[PDF] Missing file in object storage."
+                await db.flush()
+                return None
+            if not (settings.mineru_base_url or "").strip():
+                source.status = "error"
+                source.raw_content = (
+                    "[PDF] MinerU is not configured (mineru_base_url)."
+                )
+                await db.flush()
+                return None
+            try:
+                pdf_md = await asyncio.to_thread(
+                    _build_pdf_markdown_via_mineru,
+                    source,
+                )
+            except MinerUClientError as exc:
+                logger.warning("MinerU failed for %s: %s", source.id, exc)
+                source.status = "error"
+                source.raw_content = f"[PDF parsing failed] {exc}"
+                await db.flush()
+                return None
+            stripped = (pdf_md or "").strip()
+            if not stripped:
+                source.status = "error"
+                source.raw_content = "[PDF parsing produced empty content]"
+                await db.flush()
+                return None
+            source.raw_content = stripped
             await db.flush()
-            return None
+            content = stripped
+        else:
+            content = source.raw_content or ""
+            if not content.strip():
+                source.status = "error"
+                await db.flush()
+                return None
 
         notebook_id = source.notebook_id
         markdown_oss_url = _persist_source_markdown_and_upload(source, content)

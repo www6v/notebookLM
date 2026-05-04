@@ -16,6 +16,7 @@ export interface Source {
 export interface SourceContent {
   id: string
   title: string
+  type: string
   summary: string | null
   tags: string[] | null
   raw_content: string | null

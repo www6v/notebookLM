@@ -195,3 +195,64 @@ def delete_file_from_obs(object_key: str) -> None:
         raise RuntimeError(
             f"Object storage delete failed: {exc}"
         ) from exc
+
+
+def sources_parsed_prefix(source_id: str) -> str:
+    """OSS key prefix for MinerU output (markdown assets) for one source."""
+    safe_id = source_id.replace("/", "").replace("\\", "")
+    base = f"sources/parsed/{safe_id}/"
+    prefix = settings.oss_path_prefix.strip().rstrip("/")
+    return f"{prefix}/{base}" if prefix else base
+
+
+def upload_bytes_at_key(
+    object_key: str,
+    file_content: bytes,
+    content_type: str = "application/octet-stream",
+    cache_control: str | None = None,
+) -> str:
+    """Upload bytes to a caller-chosen object key (full key including path prefix).
+
+    Returns:
+        The same object_key on success.
+    """
+    bucket = _require_oss_bucket()
+    try:
+        headers = {"Content-Type": content_type}
+        if cache_control:
+            headers["Cache-Control"] = cache_control
+        bucket.put_object(object_key, file_content, headers=headers)
+        logger.info("Uploaded file to OSS at key: %s", object_key)
+        return object_key
+    except Exception as exc:
+        logger.error("Failed to upload file to OSS: %s", exc)
+        raise RuntimeError(f"Object storage upload failed: {exc}") from exc
+
+
+def delete_objects_under_prefix(prefix: str) -> None:
+    """Delete all objects whose key starts with ``prefix`` (best-effort).
+
+    Used to remove MinerU parse artifacts when a source is deleted.
+    """
+    bucket = _require_oss_bucket()
+    try:
+        import oss2
+
+        deleted = 0
+        for obj in oss2.ObjectIterator(bucket, prefix=prefix):
+            bucket.delete_object(obj.key)
+            deleted += 1
+        if deleted:
+            logger.info(
+                "Deleted %s OSS objects under prefix %s", deleted, prefix
+            )
+    except Exception as exc:
+        logger.error("Failed to delete OSS prefix %s: %s", prefix, exc)
+        raise RuntimeError(
+            f"Object storage batch delete failed: {exc}"
+        ) from exc
+
+
+def delete_parsed_assets_for_source(source_id: str) -> None:
+    """Remove all MinerU-derived objects for ``source_id``."""
+    delete_objects_under_prefix(sources_parsed_prefix(source_id))

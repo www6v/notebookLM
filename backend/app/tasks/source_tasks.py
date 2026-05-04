@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
     retry_backoff=True,
     retry_jitter=True,
     max_retries=3,
+    soft_time_limit=3300,
+    time_limit=3600,
 )
 def process_source_task(source_id: str):
     """Background task to process a source document.
