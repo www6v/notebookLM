@@ -1,13 +1,25 @@
 <template>
   <div class="landing-page">
+
+    <a
+      class="skip-link"
+      href="#landing-main"
+    >
+      {{ t('common.skipToContent') }}
+    </a>
     <div
       class="landing-stars"
       aria-hidden="true"
     />
     <div
-      class="landing-glow"
+      class="landing-atmosphere"
       aria-hidden="true"
     />
+    <div
+      class="landing-grain"
+      aria-hidden="true"
+    />
+
     <header class="landing-header">
       <AppLogo />
       <div class="landing-header-actions">
@@ -78,94 +90,169 @@
       </div>
     </header>
 
-    <main class="landing-main">
-      <section class="hero">
-        <h2 class="hero-title">
-          <span class="hero-title-accent">{{ t('landing.heroTitleAccent') }}</span><span class="hero-title-plain">{{ t('landing.heroTitlePlain') }}</span>
-        </h2>
-        <p class="hero-subtitle">
-          {{ t('landing.heroSubtitle') }}
-        </p>
-        <div class="hero-actions">
-          <router-link
-            :to="toLogin"
-            class="btn-hero-pill"
+    <main
+      id="landing-main"
+      class="landing-main"
+    >
+      <section
+        class="hero"
+        aria-labelledby="hero-title"
+      >
+        <div class="hero-layout">
+          <div class="hero-copy">
+            <p class="hero-kicker">
+              {{ t('landing.heroKicker') }}
+            </p>
+            <h1
+              id="hero-title"
+              class="hero-title"
+            >
+              <span class="hero-title-accent">{{ t('landing.heroTitleAccent') }}</span><span class="hero-title-plain">{{ t('landing.heroTitlePlain') }}</span>
+            </h1>
+            <p class="hero-subtitle">
+              {{ t('landing.heroSubtitle') }}
+            </p>
+            <div class="hero-actions">
+              <router-link
+                :to="toLogin"
+                class="btn-hero-primary"
+              >
+                {{ t('landing.getStarted') }}
+              </router-link>
+              <router-link
+                :to="toPricing"
+                class="btn-hero-ghost"
+              >
+                {{ t('landing.getStartedSecondary') }}
+              </router-link>
+            </div>
+          </div>
+          <div
+            class="hero-visual"
+            aria-hidden="true"
           >
-            {{ t('landing.getStarted') }}
-            <span class="btn-hero-pill-chevron">›</span>
-          </router-link>
-        </div>
-      </section>
-
-      <section class="section features">
-        <h3 class="section-title">{{ t('landing.featuresTitle') }}</h3>
-        <div class="feature-grid">
-          <div class="feature-card">
-            <div class="feature-icon">📄</div>
-            <h4 class="feature-heading">{{ t('landing.featureUploadTitle') }}</h4>
-            <p class="feature-desc">
-              {{ t('landing.featureUploadDesc') }}
-            </p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">✨</div>
-            <h4 class="feature-heading">{{ t('landing.featureInsightTitle') }}</h4>
-            <p class="feature-desc">
-              {{ t('landing.featureInsightDesc') }}
-            </p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">📎</div>
-            <h4 class="feature-heading">{{ t('landing.featureCitationsTitle') }}</h4>
-            <p class="feature-desc">
-              {{ t('landing.featureCitationsDesc') }}
-            </p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🎧</div>
-            <h4 class="feature-heading">{{ t('landing.featureAudioTitle') }}</h4>
-            <p class="feature-desc">
-              {{ t('landing.featureAudioDesc') }}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section use-cases">
-        <h3 class="section-title">{{ t('landing.useCasesTitle') }}</h3>
-        <div class="use-case-grid">
-          <div class="use-case-card">
-            <h4 class="use-case-heading">{{ t('landing.useCaseStudyTitle') }}</h4>
-            <p class="use-case-desc">
-              {{ t('landing.useCaseStudyDesc') }}
-            </p>
-          </div>
-          <div class="use-case-card">
-            <h4 class="use-case-heading">{{ t('landing.useCaseOrganizeTitle') }}</h4>
-            <p class="use-case-desc">
-              {{ t('landing.useCaseOrganizeDesc') }}
-            </p>
-          </div>
-          <div class="use-case-card">
-            <h4 class="use-case-heading">{{ t('landing.useCaseCreateTitle') }}</h4>
-            <p class="use-case-desc">
-              {{ t('landing.useCaseCreateDesc') }}
-            </p>
+            <div class="hero-showcase">
+              <div class="hero-showcase__ambient" />
+              <div class="hero-showcase__stack">
+                <div class="hero-deck-card hero-deck-card--rear" />
+                <div class="hero-deck-card hero-deck-card--mid" />
+                <article class="hero-panel">
+                  <div class="hero-panel__chrome">
+                    <span class="hero-panel__chrome-dot" />
+                    <span class="hero-panel__chrome-dot" />
+                    <span class="hero-panel__chrome-dot" />
+                  </div>
+                  <div class="hero-panel__toolbar">
+                    <span class="hero-panel__toolbar-pill" />
+                    <span class="hero-panel__toolbar-pill hero-panel__toolbar-pill--short" />
+                  </div>
+                  <div class="hero-panel__body">
+                    <span class="hero-panel__line hero-panel__line--title" />
+                    <span class="hero-panel__line" />
+                    <span class="hero-panel__line hero-panel__line--dim" />
+                    <span class="hero-panel__cite">
+                      <span class="hero-panel__cite-mark" />
+                      <span class="hero-panel__cite-text" />
+                    </span>
+                    <span class="hero-panel__line hero-panel__line--medium" />
+                    <span class="hero-panel__line hero-panel__line--short" />
+                  </div>
+                  <div class="hero-panel__foot">
+                    <span class="hero-panel__status">
+                      <span class="hero-panel__status-dot" />
+                    </span>
+                    <span class="hero-panel__meta" />
+                  </div>
+                </article>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="section cta-section">
-        <h3 class="section-title">{{ t('landing.ctaTitle') }}</h3>
+      <section
+        class="section section-features"
+        aria-labelledby="features-heading"
+      >
+        <header class="section-intro">
+          <p class="section-eyebrow">
+            {{ t('landing.featuresEyebrow') }}
+          </p>
+          <h2
+            id="features-heading"
+            class="section-heading"
+          >
+            {{ t('landing.featuresTitle') }}
+          </h2>
+        </header>
+        <ul class="feature-list">
+          <li
+            v-for="item of featureItems"
+            :key="item.index"
+            class="feature-row"
+          >
+            <span class="feature-row__index">{{ item.index }}</span>
+            <div class="feature-row__body">
+              <h3 class="feature-row__title">
+                {{ item.title }}
+              </h3>
+              <p class="feature-row__desc">
+                {{ item.body }}
+              </p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        class="section section-use-cases"
+        aria-labelledby="use-cases-heading"
+      >
+        <header class="section-intro section-intro--offset">
+          <p class="section-eyebrow">
+            {{ t('landing.useCasesEyebrow') }}
+          </p>
+          <h2
+            id="use-cases-heading"
+            class="section-heading"
+          >
+            {{ t('landing.useCasesTitle') }}
+          </h2>
+        </header>
+        <ul class="use-case-grid">
+          <li
+            v-for="item of useCaseItems"
+            :key="item.id"
+            class="use-case-card"
+          >
+            <h3 class="use-case-heading">
+              {{ item.title }}
+            </h3>
+            <p class="use-case-desc">
+              {{ item.body }}
+            </p>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        class="section cta-section"
+        aria-labelledby="cta-heading"
+      >
+        <h2
+          id="cta-heading"
+          class="cta-heading"
+        >
+          {{ t('landing.ctaTitle') }}
+        </h2>
         <p class="cta-desc">
           {{ t('landing.ctaDesc') }}
         </p>
         <router-link
           :to="toLogin"
-          class="btn-hero-pill btn-hero-pill-large"
+          class="btn-hero-primary btn-hero-primary--large"
         >
           {{ t('landing.ctaSignIn') }}
-          <span class="btn-hero-pill-chevron">›</span>
         </router-link>
       </section>
     </main>
@@ -174,7 +261,10 @@
       <p class="footer-note">
         {{ t('landing.footerPrivacy') }}
       </p>
-      <div class="footer-links">
+      <nav
+        class="footer-links"
+        :aria-label="t('common.footerNavigation')"
+      >
         <router-link
           :to="toLogin"
           class="footer-link"
@@ -187,7 +277,7 @@
         >
           {{ t('home.pricing') }}
         </router-link>
-      </div>
+      </nav>
     </footer>
   </div>
 </template>
@@ -217,6 +307,47 @@ const toLogin = computed(() => ({
   name: 'Login' as const,
   params: { locale: locale.value },
 }))
+
+const featureItems = computed(() => [
+  {
+    index: '01',
+    title: t('landing.featureUploadTitle'),
+    body: t('landing.featureUploadDesc'),
+  },
+  {
+    index: '02',
+    title: t('landing.featureInsightTitle'),
+    body: t('landing.featureInsightDesc'),
+  },
+  {
+    index: '03',
+    title: t('landing.featureCitationsTitle'),
+    body: t('landing.featureCitationsDesc'),
+  },
+  {
+    index: '04',
+    title: t('landing.featureAudioTitle'),
+    body: t('landing.featureAudioDesc'),
+  },
+])
+
+const useCaseItems = computed(() => [
+  {
+    id: 'study',
+    title: t('landing.useCaseStudyTitle'),
+    body: t('landing.useCaseStudyDesc'),
+  },
+  {
+    id: 'organize',
+    title: t('landing.useCaseOrganizeTitle'),
+    body: t('landing.useCaseOrganizeDesc'),
+  },
+  {
+    id: 'create',
+    title: t('landing.useCaseCreateTitle'),
+    body: t('landing.useCaseCreateDesc'),
+  },
+])
 
 const MAC_DESKTOP_DOWNLOAD_URL =
   'https://github.com/www6v/notebookLM/releases/download/v0.8.0/NotebookLM_0.1.0_x64.dmg'
@@ -257,21 +388,50 @@ function handleLocaleChange(event: Event) {
 
 <style scoped>
 .landing-page {
-  --home-bg: #000000;
-  --home-surface: rgba(255, 255, 255, 0.05);
-  --home-border: rgba(255, 255, 255, 0.12);
-  --home-text: #ffffff;
-  --home-text-secondary: #d1d5db;
-  --home-primary: #facc15;
-  --landing-gold: #facc15;
-  --landing-gold-dim: #eab308;
+  --lp-bg: #0e0c0a;
+  --lp-bg-soft: #161311;
+  --lp-elevated: rgba(255, 248, 240, 0.04);
+  --lp-border: rgba(255, 245, 232, 0.09);
+  --lp-border-strong: rgba(255, 245, 232, 0.14);
+  --lp-text: #f7f2ea;
+  --lp-muted: #a39a8c;
+  --lp-accent: #c4a574;
+  --lp-accent-dim: #a68452;
+  --lp-shadow: 0 28px 80px rgba(12, 8, 4, 0.45);
+  --lp-font-display: 'Fraunces', 'Noto Serif SC', Georgia, serif;
+  --lp-font-sans: 'Outfit', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --home-text: var(--lp-text);
+  --home-text-secondary: var(--lp-muted);
   position: relative;
+  min-height: 100dvh;
   min-height: 100vh;
-  background: var(--home-bg);
-  color: var(--home-text);
+  background: var(--lp-bg);
+  color: var(--lp-text);
   display: flex;
   flex-direction: column;
   isolation: isolate;
+  font-family: var(--lp-font-sans);
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -120px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--lp-text);
+  color: var(--lp-bg);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 12px;
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 3px;
 }
 
 .landing-stars {
@@ -279,20 +439,18 @@ function handleLocaleChange(event: Event) {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: #000000;
+  background-color: var(--lp-bg);
   background-image:
-    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.9), transparent),
-    radial-gradient(1px 1px at 25% 45%, rgba(255, 255, 255, 0.55), transparent),
-    radial-gradient(1.5px 1.5px at 40% 12%, rgba(255, 255, 255, 0.75), transparent),
-    radial-gradient(1px 1px at 55% 78%, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(2px 2px at 72% 30%, rgba(255, 255, 255, 0.85), transparent),
-    radial-gradient(1px 1px at 88% 65%, rgba(255, 255, 255, 0.45), transparent),
-    radial-gradient(1.5px 1.5px at 15% 82%, rgba(255, 255, 255, 0.65), transparent),
-    radial-gradient(1px 1px at 33% 8%, rgba(255, 255, 255, 0.4), transparent),
-    radial-gradient(1.5px 1.5px at 62% 55%, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1px 1px at 95% 22%, rgba(255, 255, 255, 0.55), transparent),
-    radial-gradient(1px 1px at 48% 92%, rgba(255, 255, 255, 0.35), transparent),
-    radial-gradient(2px 2px at 8% 58%, rgba(255, 253, 240, 0.95), transparent);
+    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 250, 242, 0.55), transparent),
+    radial-gradient(1px 1px at 25% 45%, rgba(255, 250, 242, 0.32), transparent),
+    radial-gradient(1.5px 1.5px at 40% 12%, rgba(255, 250, 242, 0.42), transparent),
+    radial-gradient(1px 1px at 55% 78%, rgba(255, 250, 242, 0.28), transparent),
+    radial-gradient(2px 2px at 72% 30%, rgba(255, 250, 242, 0.5), transparent),
+    radial-gradient(1px 1px at 88% 65%, rgba(255, 250, 242, 0.22), transparent),
+    radial-gradient(1.5px 1.5px at 15% 82%, rgba(255, 250, 242, 0.38), transparent),
+    radial-gradient(1px 1px at 33% 8%, rgba(255, 250, 242, 0.2), transparent),
+    radial-gradient(1.5px 1.5px at 62% 55%, rgba(255, 250, 242, 0.36), transparent),
+    radial-gradient(1px 1px at 95% 22%, rgba(255, 250, 242, 0.26), transparent);
   background-size:
     420px 420px,
     380px 380px,
@@ -303,9 +461,7 @@ function handleLocaleChange(event: Event) {
     400px 400px,
     340px 340px,
     460px 460px,
-    390px 390px,
-    410px 410px,
-    500px 500px;
+    390px 390px;
   background-position:
     0 0,
     80px 120px,
@@ -316,39 +472,61 @@ function handleLocaleChange(event: Event) {
     400px 160px,
     60px 320px,
     240px 100px,
-    500px 60px,
-    180px 400px,
-    20px 80px;
+    500px 60px;
 }
 
-.landing-glow {
+.landing-atmosphere {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
     radial-gradient(
-      ellipse 55% 45% at 50% 42%,
-      rgba(255, 255, 255, 0.07) 0%,
+      ellipse 70% 55% at 18% 12%,
+      rgba(196, 165, 116, 0.07) 0%,
       transparent 55%
     ),
     radial-gradient(
-      circle at 50% 48%,
-      rgba(250, 204, 21, 0.04) 0%,
+      ellipse 50% 40% at 88% 72%,
+      rgba(120, 90, 60, 0.12) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 108%,
+      rgba(196, 165, 116, 0.06) 0%,
       transparent 42%
     );
+}
+
+.landing-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.055;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .landing-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 28px;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px 28px;
+  margin: 12px 20px 0;
+  max-width: 1280px;
+  width: calc(100% - 40px);
+  align-self: center;
+  background: rgba(14, 12, 10, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 240, 0.06),
+    0 18px 48px rgba(8, 5, 2, 0.35);
   position: sticky;
-  top: 0;
+  top: 12px;
   z-index: 10;
 }
 
@@ -357,41 +535,54 @@ function handleLocaleChange(event: Event) {
 }
 
 .landing-header :deep(.app-logo__text) {
-  font-family:
-    Georgia,
-    'Times New Roman',
-    'Noto Serif SC',
-    serif;
+  font-family: var(--lp-font-display);
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color: #ffffff;
+  letter-spacing: -0.02em;
+  font-size: 21px;
 }
 
 .landing-header :deep(.app-logo__icon) {
-  color: #ffffff;
+  color: var(--lp-accent);
 }
 
 .landing-header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .header-github-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px 12px;
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 999px;
+  padding: 8px 12px;
+  color: rgba(247, 242, 234, 0.88);
+  border: 1px solid var(--lp-border-strong);
+  border-radius: 10px;
   text-decoration: none;
   flex-shrink: 0;
+  transition:
+    color 0.22s ease,
+    border-color 0.22s ease,
+    transform 0.22s ease,
+    background 0.22s ease;
 }
 
 .header-github-link:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--lp-text);
+  border-color: rgba(196, 165, 116, 0.45);
+  background: rgba(196, 165, 116, 0.06);
+}
+
+.header-github-link:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.header-github-link:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
 }
 
 .header-github-icon {
@@ -424,290 +615,759 @@ function handleLocaleChange(event: Event) {
   padding: 8px 28px 8px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  font-family: var(--lp-font-sans);
+  color: rgba(247, 242, 234, 0.92);
   background-color: transparent;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='rgba(255,255,255,0.65)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='rgba(247,242,234,0.55)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 999px;
+  border: 1px solid var(--lp-border-strong);
+  border-radius: 10px;
   cursor: pointer;
+  transition:
+    border-color 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
 .header-lang-select:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  color: #ffffff;
+  border-color: rgba(196, 165, 116, 0.4);
+  color: var(--lp-text);
 }
 
-.header-lang-select:focus {
+.header-lang-select:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.35);
+  box-shadow: 0 0 0 2px rgba(196, 165, 116, 0.35);
 }
 
 .header-lang-select option {
-  color: #111111;
-  background: #ffffff;
-}
-
-.header-link {
-  color: rgba(255, 255, 255, 0.75);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 999px;
-  background: transparent;
-}
-
-.header-link:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.45);
-  text-decoration: none;
+  color: #1a1816;
+  background: #f7f2ea;
 }
 
 .header-cta {
   display: inline-block;
-  padding: 8px 20px;
+  padding: 9px 18px;
   background: transparent;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
+  color: var(--lp-text);
+  border: 1px solid var(--lp-border-strong);
+  border-radius: 10px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
+  transition:
+    background 0.22s ease,
+    border-color 0.22s ease,
+    transform 0.22s ease;
 }
 
 .header-cta:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(196, 165, 116, 0.08);
+  border-color: rgba(196, 165, 116, 0.45);
   text-decoration: none;
+}
+
+.header-cta:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.header-cta:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
 }
 
 .landing-main {
   position: relative;
   z-index: 1;
   flex: 1;
-  max-width: 1080px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 48px 24px 64px;
+  padding: 40px 28px 88px;
   width: 100%;
 }
 
 .hero {
-  text-align: center;
-  padding: 56px 0 72px;
+  padding: 48px 0 72px;
+}
+
+.hero-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 48px;
+  align-items: center;
+}
+
+.hero-copy {
+  text-align: left;
+}
+
+.hero-kicker {
+  font-size: 14px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--lp-muted);
+  margin: 0 0 16px;
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 6vw, 3.75rem);
-  font-weight: 700;
-  margin: 0 0 24px;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--lp-font-display);
+  font-size: clamp(2.75rem, 5.5vw, 4rem);
+  font-weight: 600;
+  margin: 0 0 20px;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  text-wrap: balance;
 }
 
 .hero-title-accent {
-  color: var(--landing-gold);
+  color: var(--lp-accent);
+  font-style: italic;
+  font-weight: 500;
 }
 
 .hero-title-plain {
-  color: #ffffff;
+  color: var(--lp-text);
 }
 
 .hero-subtitle {
-  font-size: clamp(1.0625rem, 2vw, 1.25rem);
-  color: var(--home-text-secondary);
-  max-width: 640px;
-  margin: 0 auto 36px;
-  line-height: 1.65;
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
   font-weight: 400;
+  color: var(--lp-muted);
+  max-width: 38rem;
+  margin: 0 0 32px;
+  line-height: 1.7;
+  text-wrap: pretty;
 }
 
 .hero-actions {
   display: flex;
-  justify-content: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
 }
 
-.btn-hero-pill {
+.btn-hero-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 14px 32px;
-  background: #ffffff;
-  color: #000000;
-  border-radius: 999px;
+  padding: 14px 26px;
+  background: var(--lp-accent);
+  color: #14110e;
+  border-radius: 11px;
   text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid rgba(20, 17, 14, 0.08);
+  box-shadow: var(--lp-shadow);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    background 0.22s ease,
+    filter 0.22s ease;
+}
+
+.btn-hero-primary:hover {
+  filter: brightness(1.04);
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.btn-hero-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-hero-primary:focus-visible {
+  outline: 2px solid var(--lp-text);
+  outline-offset: 3px;
+}
+
+.btn-hero-primary--large {
+  padding: 16px 32px;
   font-size: 16px;
-  font-weight: 700;
-  border: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 12px;
 }
 
-.btn-hero-pill:hover {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 12px 40px rgba(0, 0, 0, 0.35);
+.btn-hero-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 18px;
+  color: var(--lp-text);
   text-decoration: none;
-  transform: translateY(-1px);
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  transition:
+    color 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease,
+    transform 0.22s ease;
 }
 
-.btn-hero-pill-chevron {
-  font-size: 1.15em;
-  line-height: 1;
-  opacity: 0.85;
+.btn-hero-ghost:hover {
+  border-color: var(--lp-border-strong);
+  background: rgba(255, 248, 240, 0.04);
+  text-decoration: none;
 }
 
-.btn-hero-pill-large {
-  padding: 16px 36px;
-  font-size: 17px;
+.btn-hero-ghost:active {
+  transform: scale(0.98);
+}
+
+.btn-hero-ghost:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
+}
+
+.hero-visual {
+  position: relative;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.hero-showcase {
+  position: relative;
+  width: min(100%, 380px);
+  aspect-ratio: 1 / 1.05;
+  max-height: 360px;
+}
+
+.hero-showcase__ambient {
+  position: absolute;
+  inset: 8% 4% 12%;
+  border-radius: 28px;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 45%,
+    rgba(196, 165, 116, 0.14) 0%,
+    transparent 68%
+  );
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.hero-showcase__stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-deck-card {
+  position: absolute;
+  width: 86%;
+  height: 78%;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 245, 232, 0.07);
+  background: rgba(22, 19, 16, 0.65);
+  box-shadow: 0 24px 48px rgba(6, 4, 2, 0.45);
+}
+
+.hero-deck-card--rear {
+  transform: rotate(-9deg) translate(-18px, 14px);
+  opacity: 0.55;
+}
+
+.hero-deck-card--mid {
+  width: 88%;
+  height: 80%;
+  transform: rotate(5deg) translate(14px, -8px);
+  opacity: 0.72;
+  border-color: rgba(196, 165, 116, 0.1);
+}
+
+.hero-panel {
+  position: relative;
+  width: min(100%, 320px);
+  padding: 0;
+  border-radius: 20px;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 248, 240, 0.09) 0%,
+    rgba(22, 19, 17, 0.55) 45%,
+    rgba(14, 12, 10, 0.75) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 245, 232, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 240, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 32px 64px rgba(8, 5, 2, 0.5),
+    0 0 0 1px rgba(196, 165, 116, 0.06);
+  overflow: hidden;
+}
+
+.hero-panel__chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255, 245, 232, 0.06);
+}
+
+.hero-panel__chrome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(163, 154, 140, 0.35);
+}
+
+.hero-panel__chrome-dot:first-child {
+  background: rgba(196, 120, 92, 0.55);
+}
+
+.hero-panel__chrome-dot:nth-child(2) {
+  background: rgba(196, 165, 116, 0.45);
+}
+
+.hero-panel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+
+.hero-panel__toolbar-pill {
+  height: 6px;
+  width: 42%;
+  border-radius: 4px;
+  background: rgba(255, 248, 240, 0.1);
+}
+
+.hero-panel__toolbar-pill--short {
+  width: 22%;
+  opacity: 0.65;
+}
+
+.hero-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 20px 20px;
+}
+
+.hero-panel__line {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 248, 240, 0.08);
+  width: 100%;
+}
+
+.hero-panel__line--title {
+  width: 58%;
+  height: 9px;
+  background: rgba(255, 248, 240, 0.14);
+}
+
+.hero-panel__line--dim {
+  opacity: 0.55;
+  width: 92%;
+}
+
+.hero-panel__line--medium {
+  width: 78%;
+}
+
+.hero-panel__line--short {
+  width: 44%;
+  opacity: 0.5;
+}
+
+.hero-panel__cite {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 12px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: rgba(196, 165, 116, 0.1);
+  border: 1px solid rgba(196, 165, 116, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 240, 0.06);
+}
+
+.hero-panel__cite-mark {
+  width: 3px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(196, 165, 116, 0.95) 0%,
+    rgba(166, 132, 82, 0.65) 100%
+  );
+}
+
+.hero-panel__cite-text {
+  flex: 1;
+  height: 36px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 248, 240, 0.12) 0%,
+    rgba(255, 248, 240, 0.05) 55%,
+    rgba(255, 248, 240, 0.09) 100%
+  );
+}
+
+.hero-panel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid rgba(255, 245, 232, 0.06);
+}
+
+.hero-panel__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-panel__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(196, 165, 116, 0.85);
+  box-shadow: 0 0 12px rgba(196, 165, 116, 0.45);
+  animation: hero-panel-pulse 2.4s ease-in-out infinite;
+}
+
+.hero-panel__meta {
+  flex: 1;
+  max-width: 120px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 4px;
+  background: rgba(255, 248, 240, 0.07);
+}
+
+@keyframes hero-panel-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-panel__status-dot {
+    animation: none;
+    opacity: 0.85;
+  }
 }
 
 .section {
-  margin-bottom: 64px;
+  margin-bottom: 88px;
 }
 
-.section-title {
-  font-size: clamp(1.5rem, 3vw, 1.875rem);
+.section-intro {
+  max-width: 36rem;
+  margin-bottom: 40px;
+}
+
+.section-intro--offset {
+  margin-left: clamp(0px, 4vw, 48px);
+}
+
+.section-eyebrow {
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--lp-muted);
+  margin: 0 0 10px;
+  letter-spacing: 0.01em;
+}
+
+.section-heading {
+  font-family: var(--lp-font-display);
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
   font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 32px;
-  text-align: center;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--lp-text);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 28px 36px;
+  padding: 36px 0;
+  border-top: 1px solid var(--lp-border);
+  align-items: start;
+}
+
+.feature-row:last-child {
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.feature-row__index {
+  font-family: var(--lp-font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: rgba(196, 165, 116, 0.55);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.feature-row__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--lp-text);
+  margin: 0 0 10px;
   letter-spacing: -0.02em;
 }
 
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px 32px;
-}
-
-.feature-card {
-  display: flex;
-  flex-direction: column;
-  min-height: 240px;
-  padding: 32px 36px;
-  background: var(--home-surface);
-  border: 1px solid var(--home-border);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(8px);
-}
-
-.feature-icon {
-  font-size: 40px;
-  margin-bottom: 16px;
-  line-height: 1;
-}
-
-.feature-heading {
-  font-size: 20px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 12px;
-}
-
-.feature-desc {
+.feature-row__desc {
   font-size: 15px;
-  color: var(--home-text-secondary);
-  line-height: 1.65;
-  flex: 1;
-}
-
-@media (max-width: 640px) {
-  .feature-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .feature-card {
-    min-height: 0;
-    padding: 24px;
-  }
+  color: var(--lp-muted);
+  line-height: 1.72;
+  margin: 0;
+  max-width: 62ch;
+  text-wrap: pretty;
 }
 
 .use-case-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 }
 
 .use-case-card {
-  padding: 24px;
-  background: var(--home-surface);
-  border: 1px solid var(--home-border);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(8px);
+  padding: 28px 30px 32px;
+  background: var(--lp-elevated);
+  border: 1px solid var(--lp-border);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 240, 0.05);
+  transition:
+    border-color 0.22s ease,
+    transform 0.22s ease,
+    background 0.22s ease;
+}
+
+.use-case-card:hover {
+  border-color: rgba(196, 165, 116, 0.28);
+  background: rgba(255, 248, 240, 0.055);
+  transform: translateY(-2px);
+}
+
+.use-case-card:nth-child(3) {
+  grid-column: 1 / -1;
+  max-width: min(100%, 52rem);
+  border-radius: 20px;
 }
 
 .use-case-heading {
-  font-size: 18px;
+  font-family: var(--lp-font-display);
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 8px;
+  color: var(--lp-text);
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
 }
 
 .use-case-desc {
   font-size: 14px;
-  color: var(--home-text-secondary);
-  line-height: 1.6;
+  color: var(--lp-muted);
+  line-height: 1.68;
+  margin: 0;
+  max-width: 62ch;
+  text-wrap: pretty;
 }
 
 .cta-section {
-  text-align: center;
-  padding: 48px 24px;
-  background: var(--home-surface);
-  border: 1px solid var(--home-border);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(10px);
+  text-align: left;
+  padding: 48px 40px 52px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 248, 240, 0.05) 0%,
+    rgba(22, 19, 17, 0.85) 48%,
+    rgba(14, 12, 10, 0.95) 100%
+  );
+  border: 1px solid var(--lp-border);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 240, 0.06),
+    0 24px 64px rgba(8, 5, 2, 0.4);
+}
+
+.cta-heading {
+  font-family: var(--lp-font-display);
+  font-size: clamp(1.65rem, 2.8vw, 2.1rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 14px;
+  color: var(--lp-text);
+  text-wrap: balance;
 }
 
 .cta-desc {
-  font-size: 17px;
-  color: var(--home-text-secondary);
-  margin-bottom: 28px;
-  max-width: 520px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.65;
+  font-size: 16px;
+  color: var(--lp-muted);
+  margin: 0 0 28px;
+  max-width: 40rem;
+  line-height: 1.68;
+  text-wrap: pretty;
 }
 
 .landing-footer {
   position: relative;
   z-index: 1;
-  padding: 28px 24px;
-  text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
+  padding: 36px 28px 44px;
+  margin-top: auto;
+  border-top: 1px solid var(--lp-border);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 12, 10, 0.2) 0%,
+    rgba(10, 8, 6, 0.92) 100%
+  );
+  backdrop-filter: blur(12px);
 }
 
 .footer-note {
   font-size: 13px;
-  color: rgba(209, 213, 219, 0.85);
-  margin-bottom: 12px;
+  color: rgba(163, 154, 140, 0.92);
+  margin: 0 auto 16px;
+  max-width: 520px;
+  text-align: center;
+  line-height: 1.55;
+  text-wrap: pretty;
 }
 
 .footer-links {
   display: flex;
   justify-content: center;
-  gap: 24px;
+  gap: 28px;
 }
 
 .footer-link {
   font-size: 14px;
-  color: var(--landing-gold);
+  color: var(--lp-muted);
   text-decoration: none;
   font-weight: 500;
+  transition: color 0.22s ease;
 }
 
 .footer-link:hover {
-  color: var(--landing-gold-dim);
-  text-decoration: underline;
+  color: var(--lp-accent);
+  text-decoration: none;
+}
+
+.footer-link:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (max-width: 900px) {
+  .hero-layout {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .hero-visual {
+    order: -1;
+    min-height: 220px;
+  }
+
+  .section-intro--offset {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-header {
+    margin: 8px 12px 0;
+    width: calc(100% - 24px);
+    padding: 12px 16px;
+    border-radius: 12px;
+  }
+
+  .landing-main {
+    padding: 28px 18px 72px;
+  }
+
+  .hero {
+    padding: 28px 0 48px;
+  }
+
+  .hero-copy {
+    text-align: left;
+  }
+
+  .hero-kicker {
+    font-size: 12px;
+  }
+
+  .feature-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 28px 0;
+  }
+
+  .feature-row__index {
+    font-size: 1.15rem;
+  }
+
+  .use-case-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .use-case-card:nth-child(3) {
+    grid-column: auto;
+    max-width: none;
+  }
+
+  .cta-section {
+    padding: 36px 22px 40px;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
+
+  .header-github-link,
+  .header-cta,
+  .btn-hero-primary,
+  .btn-hero-ghost,
+  .use-case-card {
+    transition: none;
+  }
+
+  .btn-hero-primary:hover,
+  .use-case-card:hover {
+    transform: none;
+  }
 }
 </style>

@@ -15,6 +15,8 @@ export default {
     githubRepository: 'View project on GitHub',
     download: 'Download',
     downloadMenuLabel: 'Choose a download platform',
+    skipToContent: 'Skip to main content',
+    footerNavigation: 'Footer navigation',
   },
   home: {
     admin: 'Admin',
@@ -54,11 +56,15 @@ export default {
     deleteSuccess: 'Notebook deleted',
   },
   landing: {
+    heroKicker: 'Document-grounded AI workspace',
     heroTitleAccent: 'Understand',
     heroTitlePlain: ' everything',
     heroSubtitle:
       'Your AI partner for research and thinking—built on sources you trust, powered by advanced multimodal understanding.',
     getStarted: 'Get started',
+    featuresEyebrow: 'Built on your sources',
+    useCasesEyebrow: 'Typical workflows',
+    getStartedSecondary: 'View pricing',
     featuresTitle: 'Your AI research partner',
     featureUploadTitle: 'Upload your materials',
     featureUploadDesc:

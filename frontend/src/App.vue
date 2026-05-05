@@ -108,6 +108,16 @@ const confirm = useConfirmStore()
   --list-row-hover-bg: rgba(255, 255, 255, 0.04);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;

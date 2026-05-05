@@ -15,6 +15,8 @@ export default {
     githubRepository: '在 GitHub 上查看项目',
     download: '下载',
     downloadMenuLabel: '选择下载平台',
+    skipToContent: '跳到主要内容',
+    footerNavigation: '页脚导航',
   },
   home: {
     admin: '管理',
@@ -53,11 +55,15 @@ export default {
     deleteSuccess: '笔记本已删除',
   },
   landing: {
+    heroKicker: '基于资料库的 AI 工作区',
     heroTitleAccent: '理解',
     heroTitlePlain: '一切',
     heroSubtitle:
       '基于你信任的信息进行研究与思考的 AI 伙伴，由先进的多模态理解能力驱动。',
     getStarted: '开始使用',
+    featuresEyebrow: '以你的资料为中心',
+    useCasesEyebrow: '典型用法',
+    getStartedSecondary: '查看定价',
     featuresTitle: '你的 AI 研究伙伴',
     featureUploadTitle: '上传你的资料',
     featureUploadDesc:
