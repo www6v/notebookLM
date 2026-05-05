@@ -1,8 +1,8 @@
-# NoteWork - Open NotebookLM
+# NoteWorks - Open NotebookLM
 
 [中文文档](./README.zh-CN.md)
 
-NoteWork is an AI research workspace built with Vue 3 and FastAPI. It
+NoteWorks is an AI research workspace built with Vue 3 and FastAPI. It
 organizes content around notebooks, lets users upload or link sources, chats
 with retrieval grounding and citations, and generates studio artifacts such as
 mind maps, slide decks, infographics, reports, and deep research briefs.
@@ -13,12 +13,15 @@ mind maps, slide decks, infographics, reports, and deep research briefs.
   generated assets.
 - **Source ingestion from URLs or file uploads** with support for `pdf`,
   `docx`, `doc`, `txt`, `md`, `csv`, `pptx`, images, audio, and video.
+- **Optional MinerU integration** for higher-quality PDF → Markdown parsing
+  when `MINERU_API_KEY` and related settings are configured.
 - **Multimodal preprocessing**:
   - images are summarized with vision models
   - audio is transcribed with Qwen ASR, including long-audio fallback
   - video is summarized with Qwen VL
-- **Grounded chat with citations** plus SSE streaming for search steps and
-  final answers.
+- **Grounded chat with citations** via the **Deep Searcher** HTTP service
+  (upload / load-files / query); long-running work uses **SSE** on task-event
+  endpoints (sources, studio, and similar jobs).
 - **Studio generation** for mind maps, slide decks, infographics, reports, and
   Deep Research tasks.
 - **User notes and settings**, including model selection controls for paid
@@ -37,9 +40,9 @@ mind maps, slide decks, infographics, reports, and deep research briefs.
 | Frontend | Vue 3, Vite, TypeScript, Vuetify, Pinia, Vue Router, Vue I18n, Axios |
 | Backend | FastAPI, SQLAlchemy async, Pydantic Settings, Alembic |
 | App Data | MySQL via `aiomysql` |
-| Vector Search | Milvus |
+| Retrieval / indexing | Deep Searcher (remote HTTP); embeddings via DashScope; Milvus optional in middleware compose (legacy companion) |
 | Queue / Realtime | Celery, Redis, SSE |
-| AI | LiteLLM, DashScope / Qwen3-Max, Qwen3-VL, Qwen ASR |
+| AI | LiteLLM router, DashScope (Qwen chat / VL / ASR / embeddings), optional OpenAI / Gemini keys |
 | Storage | Alibaba Cloud OSS |
 | Infra | Docker, Nginx |
 
@@ -49,22 +52,28 @@ mind maps, slide decks, infographics, reports, and deep research briefs.
    settings, payments, and studio generation.
 2. Uploaded files are stored in object storage; parsed content and notebook
    metadata are stored in the application database.
-3. Vector data is stored in Milvus rather than in the relational database.
+3. **Source indexing and chat Q&A** go through the configured **Deep Searcher**
+   base URL (see `deep_searcher` in `config.yaml`). The sample
+   `config.yaml.example` keeps the Milvus block commented; Milvus may still
+   appear in middleware Compose for other or legacy setups.
 4. Long-running source and studio jobs are dispatched to Celery and streamed
    back to the UI through task-event SSE endpoints.
 5. Deep Research is an optional integration that calls a separately deployed
-   DeerFlow gateway.
+   DeerFlow gateway (`deer_flow` in `config.yaml`).
 
 ## Repository Layout
 
 ```text
 notebookLM/
+├── config.yaml.example          # Application config template (copy to config.yaml)
+├── .env.example                 # Secrets for $VAR expansion in config.yaml
 ├── frontend/                    # Vue 3 + Vite application
 │   ├── src/api/                 # HTTP clients
 │   ├── src/components/          # Source/chat/studio/payment UI
 │   ├── src/stores/              # Pinia stores
 │   ├── src/views/               # Landing, home, notebook, login, pricing, settings
 │   └── src/router/              # Route definitions
+├── src-tauri/                   # Optional Tauri desktop shell (see package.json scripts)
 ├── backend/
 │   ├── app/api/                 # FastAPI route modules
 │   ├── app/ai/                  # LLM, vision, ASR, retrieval integrations
@@ -76,9 +85,10 @@ notebookLM/
 ├── backend.sh                   # Local FastAPI (sources optional backend-env.sh)
 ├── backend-celery.sh            # Local Celery worker
 ├── frontend.sh                  # Local Vite dev server
-├── backend-env.sh               # Optional local env overrides (Redis, DB, Milvus, …)
-├── makefile                     # Unified entrypoint for deploy/dev commands
+├── backend-env.sh               # Optional local env overrides (Redis, DB, …)
+├── makefile                     # make install / dev / up-middleware / up-ha
 ├── deploy/
+│   ├── core/                    # Core compose helpers
 │   ├── middleware/              # Middleware compose + deploy-middleware.sh
 │   └── ha/                      # App HA compose + deploy-app-ha.sh
 ├── nginx/                       # Reverse proxy configs
@@ -89,42 +99,49 @@ notebookLM/
 
 - Docker and Docker Compose
 - Node.js 20+
-- Python 3.11 recommended
-- A reachable MySQL instance configured through `DATABASE_URL`
+- Python 3.11 recommended ([uv](https://github.com/astral-sh/uv) optional; `make install` uses `uv sync`)
+- A reachable MySQL instance (referenced from `config.yaml` → `database.url`, usually via `DATABASE_URL` in `.env`)
+- A running **Deep Searcher** compatible service for source indexing and chat (`deep_searcher.deep_searcher_base_url`)
 - Access to required model and object-storage credentials
 
 ## Quick Start
 
-### 1. Configure the environment
+### 1. Configure `config.yaml` and `.env`
+
+The backend loads **`config.yaml`** at the repo root (override with
+`NOTEBOOKLM_CONFIG_PATH`). The **`.env`** file is **not** a parallel settings
+source: it is loaded into the process environment so YAML values can use
+`$VAR` / `${VAR}` substitution (same pattern as ByteDance DeerFlow).
 
 ```bash
+cp config.yaml.example config.yaml
 cp .env.example .env
 ```
 
-At minimum, review and set these values:
+Edit `config.yaml` for non-secret defaults (CORS, DeerFlow URL, OAuth redirect
+bases, OSS bucket, etc.). Put secrets and connection strings in `.env`, for
+example:
 
 - `SECRET_KEY`
 - `DATABASE_URL`
-- `REDIS_URL`
-- `CELERY_BROKER_URL`
-- `CELERY_RESULT_BACKEND_URL`
-- `TASK_EVENT_REDIS_URL`
-- `MILVUS_URI`
-- `QWEN_API_KEY` or compatible DashScope credentials
-- `OSS_*` (including optional `OSS_PATH_PREFIX`)
-- `CORS_ORIGINS`
+- `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND_URL`
+- `CACHE_REDIS_URL`, `TASK_EVENT_REDIS_URL`, `GENERATION_RATE_LIMIT_REDIS_URL`
+- `QWEN_API_KEY` (and optional `DASHSCOPE_API_KEY_SECONDARY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` for the LiteLLM router)
+- `DEEP_SEARCHER_BASE_URL` (required for typical chat and source pipelines)
+- `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET` (and bucket/endpoint in `config.yaml` under `oss`)
+- Optional: `MINERU_BASE_URL`, `MINERU_API_KEY` for MinerU PDF parsing
+- Optional: `LANGFUSE_*` for traces
+- Optional: `GOOGLE_OAUTH_*`, `WEIBO_OAUTH_*`, `QQ_OAUTH_*`, `ALIPAY_*`, WeChat Pay fields
+- Optional: `YTDLP_COOKIES_FILE` for Bilibili / yt-dlp
 
-Optional integrations:
-
-- `DEER_FLOW_BASE_URL` for Deep Research
-- `LANGFUSE_*` for traces
-- `GOOGLE_OAUTH_*`, `WEIBO_OAUTH_*`, `QQ_OAUTH_*`, `ALIPAY_*`
-- WeChat / Alipay payment callback settings
+Deep Research uses the **`deer_flow`** section in `config.yaml` (default
+`deer_flow_base_url` points at localhost; adjust for your DeerFlow deployment).
 
 > `deploy/middleware/docker-compose-middleware.yml` still contains a `postgres` service,
-> but the application runtime is currently configured around `DATABASE_URL`
-> and the default dependency set uses MySQL via `aiomysql`. Vector retrieval
-> is handled by Milvus.
+> but the application runtime is configured for **MySQL** via `database.url` /
+> `DATABASE_URL`. The sample `config.yaml.example` comments out the Milvus block;
+> retrieval is expected to go through **Deep Searcher**, not local Milvus, unless
+> you customize the stack.
 
 ### 2. Deploy with Docker (recommended Make targets)
 
@@ -155,8 +172,8 @@ and `deploy/ha/docker-compose.workers-ha.yml`, syncs to `origin/master`, builds
 `NO_CACHE=true`, `DEPLOY_DIR` for a non-default repo root.
 
 For manual composition or older layouts, Compose files also live under
-`deploy/` (for example `docker-compose-core.yml`). For HA and worker scaling
-details, see `docs/production-scaling-blueprint.md`.
+`deploy/` (for example `deploy/core/docker-compose-core.yml`). For HA and worker
+scaling details, see `docs/production-scaling-blueprint.md`.
 
 Useful endpoints after startup:
 
@@ -165,7 +182,7 @@ Useful endpoints after startup:
 - Backend API docs: `http://localhost:8000/docs`
 - Health checks: `http://localhost:8000/api/health/live`,
   `http://localhost:8000/api/health/ready`
-- Attu for Milvus inspection: `http://localhost:8080`
+- Attu (only if you start Milvus + Attu from middleware): `http://localhost:8080`
 
 ## Local Development
 
@@ -185,10 +202,20 @@ Or use the full middleware script when you want the same stack as server deploy
 bash deploy/middleware/deploy-middleware.sh
 ```
 
-Make sure `DATABASE_URL` points to a reachable MySQL instance before starting
-the backend.
+Make sure `DATABASE_URL` in `.env` (and `database.url` in `config.yaml`) points
+to a reachable MySQL instance before starting the backend, and that Deep
+Searcher is reachable at `deep_searcher_base_url`.
 
 ### 2. One-time backend setup
+
+From the repo root (recommended):
+
+```bash
+make install
+```
+
+This runs `uv sync` in `backend/` and `npm install` in `frontend/`. Equivalent
+manual setup:
 
 ```bash
 cd backend
@@ -200,8 +227,8 @@ alembic upgrade head
 
 ### 3. Run the backend, Celery worker, and frontend (repo root)
 
-From the **repository root**, after `.env` (and optionally `backend-env.sh`) is
-configured:
+From the **repository root**, after `config.yaml`, `.env`, and optionally
+`backend-env.sh` are configured:
 
 ```bash
 make dev
@@ -224,7 +251,10 @@ These Make targets wrap `backend.sh`, `backend-celery.sh`, and `frontend.sh`.
 `cd` into `backend`, and source optional `backend-env.sh` at the repo root for
 local overrides (for example Redis and MySQL URLs pointing at `127.0.0.1` or a
 remote host). `frontend.sh` runs `npm run dev` from `frontend/` (run
-`npm install` there first).
+`npm install` or `make install` first).
+
+**Desktop (optional):** with Tauri CLI available, `npm run desktop:dev` from the
+repo root starts the desktop shell defined under `src-tauri/`.
 
 Install **`yt-dlp`** on the Celery worker host (`pip install -r requirements.txt`
 also installs the `yt-dlp` package; the backend uses the CLI on `PATH` or
@@ -265,33 +295,20 @@ The current role limits in code are:
 The pricing UI currently advertises paid subscription flows through Alipay and
 WeChat Pay.
 
-## API Overview
-
-Representative endpoints:
-
-| Area | Endpoints |
-| --- | --- |
-| Auth | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
-| OAuth | `/api/auth/oauth/{provider}/start`, `/api/auth/oauth/{provider}/callback` |
-| Settings | `GET /api/settings`, `PATCH /api/settings` |
-| Notebooks | `GET /api/notebooks`, `POST /api/notebooks`, `GET/PUT/DELETE /api/notebooks/{notebook_id}` |
-| Sources | `POST /api/notebooks/{notebook_id}/sources`, `POST /api/notebooks/{notebook_id}/sources/upload`, `GET /api/notebooks/{notebook_id}/sources` |
-| Chat | `POST /api/notebooks/{notebook_id}/chat/sessions`, `POST /api/chat/{session_id}/messages`, `POST /api/chat/{session_id}/messages/stream`, `GET /api/chat/{session_id}/messages` |
-| Notes | Notebook-scoped note CRUD under `/api/notebooks/{notebook_id}/notes` |
-| Studio | Mind maps, slides, infographics, and reports under notebook-scoped studio endpoints |
-| Deep Research | `POST /api/notebooks/{notebook_id}/deep-research`, `GET /api/notebooks/{notebook_id}/deep-research`, `GET /api/deep-research/{report_id}` |
-| Task Events | `GET /api/task-events/{resource_type}/{resource_id}/stream` |
-| Payments | `POST /api/payment/create`, `GET /api/payment/status/{order_id}` |
-| Health | `GET /api/health`, `GET /api/health/live`, `GET /api/health/ready` |
-
 ## Operational Notes
 
 - Source files are stored in object storage; generated slide and infographic
   assets are also served from storage through signed URLs or proxy endpoints.
 - Source parsing and studio generation are asynchronous. The frontend should
   either poll resource endpoints or subscribe to task-event SSE streams.
-- Deep Research requires a separate DeerFlow deployment. See
-  `backend/docs/DEEP_RESEARCH_DEERFLOW.md` for setup details.
+- **Deep Searcher** must be available at `deep_searcher_base_url` for typical
+  source processing and chat; tune timeouts and deployment to match your
+  environment.
+- Optional **MinerU** improves PDF extraction when API keys and
+  `mineru` settings are set in `config.yaml` / `.env`.
+- Deep Research uses the `deer_flow` block in `config.yaml` and a separate
+  DeerFlow deployment. See `backend/docs/DEEP_RESEARCH_DEERFLOW.md` for setup
+  details.
 - The backend also initializes tables on startup, but running
   `alembic upgrade head` is still recommended for keeping schema changes in
   sync.
