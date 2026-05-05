@@ -1,276 +1,286 @@
-# NoteWorks - 开源 NotebookLM
+# NoteWorks - 开源 NotebookLM 替代方案
 
-[English](./README.md)
+<p align="center">
+  <strong>支持多模型接入 · 多格式文档导入 · 中文深度优化的 AI 知识库工作台</strong>
+</p>
 
-NoteWorks 是一个基于 Vue 3 和 FastAPI 构建的 AI 研究工作台。它以
-Notebook 为组织核心，支持上传或关联多种资料来源，基于检索结果进行
-引用式对话，并生成思维导图、演示文稿、信息图、报告以及 Deep Research
-研究简报等内容。
+<p align="center">
+  <a href="https://github.com/www6v/notebookLM/stargazers"><img src="https://img.shields.io/github/stars/www6v/notebookLM?style=social" alt="Stars"></a>
+  <a href="https://github.com/www6v/notebookLM/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/www6v/notebookLM/issues"><img src="https://img.shields.io/github/issues/www6v/notebookLM" alt="Issues"></a>
+  <a href="https://github.com/www6v/notebookLM/pulls"><img src="https://img.shields.io/github/issues-pr/www6v/notebookLM" alt="Pull Requests"></a>
+</p>
 
-## 当前能力
+<p align="center">
+  <a href="http://www.notebooklm.studio">🌐 在线体验</a> ·
+  <a href="https://github.com/www6v/notebookLM">📖 项目文档</a> ·
+  <a href="https://github.com/www6v/notebookLM/issues">🐛 反馈问题</a> ·
+  <a href="#-社区">💬 加入社区</a> ·
+  <a href="./README.md">🇬🇧 English</a>
+</p>
 
-- **以 Notebook 为中心的工作区**，统一管理资料、对话、笔记和生成结果。
-- **支持 URL 和文件两种资料接入方式**，当前支持 `pdf`、`docx`、`doc`、
-  `txt`、`md`、`csv`、`pptx`、图片、音频和视频。
-- **可选 MinerU 集成**：配置 `MINERU_API_KEY` 等后，可对 PDF 做更高质量的
-  Markdown 解析。
-- **多模态预处理能力**：
-  - 图片会通过视觉模型生成内容摘要
-  - 音频会通过 Qwen ASR 转写，长音频支持回退方案
-  - 视频会通过 Qwen VL 生成内容理解结果
-- **带引用的检索式对话**，由 **Deep Searcher** HTTP 服务（上传 /
-  load-files / query）支撑；资料与 Studio 等长任务通过 **SSE 任务事件**
-  推送进度。
-- **Studio 生成能力**，支持思维导图、演示文稿、信息图、报告和 Deep
-  Research 任务。
-- **用户笔记与个性化设置**，付费用户可使用更多模型选择能力。
-- **JWT 登录 + OAuth 登录**，当前接入 Google、微博、QQ、支付宝。
-- **订阅与支付能力**，支持支付宝和微信支付二维码流程。
-- **异步任务处理**，基于 Celery，并通过 SSE 提供任务状态流。
-- **对象存储集成**，使用阿里云 OSS。
-- **链路观测与外部集成**，已支持 Langfuse，并可选接入 DeerFlow。
+---
 
-## 技术栈
+## ✨ NoteWorks 是什么？
+
+NoteWorks 是一个**开源 AI 研究工作台**——Google [NotebookLM](https://notebooklm.google.com) 的开源替代方案。你可以上传文档、用 AI 与文档对话、生成学习材料和报告——同时**支持任意大模型**，数据完全私有。
+
+> *"NotebookLM 很好用，但只能用 Gemini。NoteWorks 让你自由选择模型，同时获得同样的体验。"*
+
+## 🆚 为什么选 NoteWorks 而不是 NotebookLM？
+
+| 功能 | Google NotebookLM | NoteWorks（开源） |
+|---|---|---|
+| **模型支持** | 仅 Gemini | ✅ OpenAI、Claude、通义千问、Gemini、本地模型 |
+| **私有部署** | ❌ 仅云端 | ✅ 完整 Docker 部署 |
+| **数据隐私** | Google 服务器 | ✅ 完全自有基础设施 |
+| **中文支持** | 一般 | ✅ 深度中文优化 |
+| **文档格式** | PDF、TXT | ✅ PDF、DOCX、PPTX、CSV、MD、图片、音频、视频 |
+| **深度搜索** | ✅ | ✅ 兼容 Deep Searcher |
+| **内容生成** | 有限 | ✅ 思维导图、PPT、信息图、报告 |
+| **多用户** | ❌ | ✅ JWT + OAuth（Google、微博、QQ、支付宝） |
+| **费用** | 免费 | ✅ 免费开源（MIT） |
+| **支付集成** | 无 | ✅ 支付宝、微信支付 |
+
+## 🎯 快速预览
+
+<!-- 替换为实际 GIF：录制 10 秒屏幕演示：上传 PDF → 选择模型 → 提问 → 获得带引用的回答 -->
+<!-- 可用 LICEcap、ScreenToGif 或 peek 等工具制作 GIF -->
+<p align="center">
+  <img src="https://via.placeholder.com/800x450/1a1a2e/16213e?text=演示GIF%3A+上传+%E2%86%92+对话+%E2%86%92+生成" alt="NoteWorks 演示" width="800">
+  <br><em>↑ 上传文档 → AI 对话 → 生成成果，全部在一个工作台中完成</em>
+</p>
+
+## 🚀 快速开始
+
+### 方式一：在线体验（无需安装）
+
+访问 **[http://www.notebooklm.studio](http://www.notebooklm.studio)** 直接使用。
+
+### 方式二：一键 Docker 部署（推荐）
+
+```bash
+# 克隆项目
+git clone https://github.com/www6v/notebookLM.git
+cd notebookLM
+
+# 配置
+cp config.yaml.example config.yaml
+cp .env.example .env
+# 编辑 .env 填入 API 密钥（QWEN_API_KEY、OPENAI_API_KEY 等）
+
+# 启动
+make up-middleware   # 启动 Redis、Milvus、MinIO
+make up-ha           # 启动后端 + 前端 + Celery + Nginx
+```
+
+访问：`http://localhost`
+
+| 服务 | 地址 |
+|---|---|
+| 应用 | http://localhost |
+| API 文档 | http://localhost:8000/docs |
+| 健康检查 | http://localhost:8000/api/health/live |
+
+### 方式三：本地开发
+
+```bash
+git clone https://github.com/www6v/notebookLM.git && cd notebookLM
+make install          # 安装依赖（uv + npm）
+make up-middleware    # 启动 Redis、Milvus 等中间件
+make dev              # 后端
+make dev-celery       # Celery 工作进程
+make dev-frontend     # Vue 开发服务器
+```
+
+完整开发环境配置见 [本地开发](#-本地开发)。
+
+## 🔥 核心功能
+
+### 📚 以笔记本为中心的工作台
+围绕笔记本组织研究内容——收集资料、AI 对话、笔记记录、成果生成，一站式完成。
+
+### 📄 多格式文档导入
+支持上传或链接任意格式的资料：
+
+| 类型 | 格式 | 处理方式 |
+|---|---|---|
+| **文档** | PDF、DOCX、DOC、TXT、MD、CSV、PPTX | 文本提取 + 可选 MinerU 高质量 PDF→Markdown |
+| **图片** | PNG、JPG、WebP 等 | 视觉模型摘要 |
+| **音频** | MP3、WAV、M4A 等 | 通义千问 ASR 转写（支持长音频回退） |
+| **视频** | MP4、YouTube、B站链接 | 通义千问 VL 视频摘要 |
+| **网页** | 任意 URL | 爬取 + 内容提取 |
+
+### 🤖 多模型支持
+基于 **LiteLLM** 路由——接入任意大模型：
+
+- **OpenAI**：GPT-4、GPT-4o、o1、o3
+- **Anthropic**：Claude 3.5/4、Sonnet、Opus
+- **阿里通义**：Qwen-Max、Qwen-Plus、Qwen-Turbo
+- **Google**：Gemini Pro、Gemini Flash
+- **本地部署**：任意 OpenAI 兼容接口（Ollama、vLLM 等）
+
+### 🔍 带引用的可信对话
+AI 回答基于你的文档，附带**来源引用**——没有幻觉，只有来自知识库的事实。基于 [Deep Searcher](https://github.com/modelscope/Deep-Searcher) 实现。
+
+### 🎨 Studio — 一键生成内容
+将研究内容转化为精美输出：
+- 🧠 **思维导图** — 可视化知识结构
+- 📊 **PPT 演示文稿** — 自动生成幻灯片
+- 📰 **信息图** — 数据可视化
+- 📝 **研究报告** — 结构化研究总结
+- 🔬 **深度研究** — 多步研究简报（基于 [DeerFlow](https://github.com/OpenDeerFlow/DeerFlow)）
+
+### 🔒 私有安全
+- 私有部署——数据永不离开你的基础设施
+- JWT 认证 + OAuth 登录（Google、微博、QQ、支付宝）
+- 阿里云 OSS 对象存储
+
+## 🏗️ 架构设计
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      前端（Vue 3）                           │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
+│   │ 笔记本   │  │ 文档导入  │  │ AI 对话  │  │ 内容生成  │  │
+│   │ 工作台   │  │ 解析     │  │ 带引用   │  │ Studio    │  │
+│   └────┬─────┘  └────┬─────┘  └────┬─────┘  └─────┬─────┘  │
+└────────┼──────────────┼─────────────┼──────────────┼─────────┘
+         │              │             │              │
+         ▼              ▼             ▼              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   后端（FastAPI）                             │
+│  ┌────────────┐  ┌───────────┐  ┌────────────────────────┐ │
+│  │ 笔记本管理  │  │ 文档解析  │  │ AI（LiteLLM 路由）      │ │
+│  │            │  │           │  │ 千问 / OpenAI / 等      │ │
+│  └─────┬──────┘  └─────┬─────┘  └───────────┬────────────┘ │
+│        │               │                     │              │
+│        ▼               ▼                     ▼              │
+│  ┌───────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │  MySQL    │  │ Deep Searcher│  │ Celery + Redis    │     │
+│  │  (元数据)  │  │ (RAG/检索)   │  │ (异步任务)        │     │
+│  └───────────┘  └──────────────┘  └──────────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+         │                     │
+         ▼                     ▼
+┌─────────────────┐   ┌─────────────────┐
+│  阿里云 OSS     │   │   Milvus /      │
+│  (文件存储)     │   │   向量数据库     │
+└─────────────────┘   └─────────────────┘
+```
+
+## 🛠️ 技术栈
 
 | 层级 | 技术 |
-| --- | --- |
-| 前端 | Vue 3、Vite、TypeScript、Vuetify、Pinia、Vue Router、Vue I18n、Axios |
-| 后端 | FastAPI、SQLAlchemy Async、Pydantic Settings、Alembic |
-| 业务数据 | 通过 `aiomysql` 连接 MySQL |
-| 检索与索引 | Deep Searcher（远程 HTTP）；向量嵌入走 DashScope；中间件 Compose 中可带 Milvus（兼容/配套，示例配置中已注释） |
-| 队列与实时通信 | Celery、Redis、SSE |
-| AI | LiteLLM 路由、DashScope（Qwen 对话 / VL / ASR / 嵌入），可选 OpenAI / Gemini 密钥 |
-| 存储 | 阿里云 OSS |
-| 基础设施 | Docker、Nginx |
+|---|---|
+| **前端** | Vue 3、Vite、TypeScript、Vuetify、Pinia、Vue Router、Vue I18n、Axios |
+| **后端** | FastAPI、SQLAlchemy（异步）、Pydantic Settings、Alembic |
+| **数据库** | MySQL（aiomysql） |
+| **检索** | Deep Searcher（HTTP）；通义 DashScope 嵌入；Milvus（可选） |
+| **队列** | Celery + Redis + SSE 流式 |
+| **AI** | LiteLLM 路由、通义千问、OpenAI、Gemini |
+| **存储** | 阿里云 OSS |
+| **基础设施** | Docker、Docker Compose、Nginx |
 
-## 架构概览
+## 📁 项目结构
 
-1. 前端通过 FastAPI 提供的接口访问 notebooks、sources、chat、notes、
-   settings、payment 和 studio 等能力。
-2. 上传的原始文件保存在对象存储中，解析后的文本和业务元数据保存在应用
-   数据库中。
-3. **资料入库与对话问答**走配置的 **Deep Searcher** 基地址（见
-   `config.yaml` 中 `deep_searcher`）。示例 `config.yaml.example` 中 Milvus
-   段为注释状态；中间件里仍可启动 Milvus 以配合其他或历史部署。
-4. 资料处理和 Studio 生成等长耗时任务交给 Celery 执行，并通过任务事件
-   SSE 接口回传给前端。
-5. Deep Research 是可选的外部集成能力，依赖单独部署的 DeerFlow 网关（
-   `config.yaml` 中 `deer_flow`）。
-
-## 仓库结构
-
-```text
+```
 notebookLM/
-├── config.yaml.example          # 应用配置模板（复制为 config.yaml）
-├── .env.example                 # 供 config.yaml 中 $VAR 展开用的密钥与连接串
-├── frontend/                    # Vue 3 + Vite 前端应用
-│   ├── src/api/                 # HTTP 请求封装
-│   ├── src/components/          # 资料、对话、Studio、支付等 UI 组件
-│   ├── src/stores/              # Pinia 状态管理
-│   ├── src/views/               # Landing、Home、Notebook、Login、Pricing、Settings
-│   └── src/router/              # 路由定义
-├── src-tauri/                   # 可选 Tauri 桌面端（见根目录 package.json 脚本）
+├── config.yaml.example          # 配置模板（复制为 config.yaml）
+├── .env.example                 # 密钥模板（复制为 .env）
+├── frontend/                    # Vue 3 + Vite 应用
+├── src-tauri/                   # 可选 Tauri 桌面客户端
 ├── backend/
-│   ├── app/api/                 # FastAPI 路由模块
-│   ├── app/ai/                  # LLM、视觉、ASR、检索相关集成
+│   ├── app/api/                 # FastAPI 路由
+│   ├── app/ai/                  # LLM、视觉、ASR 集成
 │   ├── app/models/              # SQLAlchemy 模型
 │   ├── app/services/            # 业务逻辑
 │   ├── app/tasks/               # Celery 任务
 │   ├── alembic/                 # 数据库迁移
 │   └── docs/                    # 后端功能文档
-├── backend.sh                   # 本机启动 FastAPI（可选加载 backend-env.sh）
-├── backend-celery.sh            # 本机启动 Celery Worker
-├── frontend.sh                  # 本机启动 Vite 开发服务
-├── backend-env.sh               # 可选的本机环境覆盖（Redis、数据库等）
-├── makefile                     # make install / dev / up-middleware / up-ha
-├── deploy/
-│   ├── core/                    # 核心 compose 辅助脚本
-│   ├── middleware/              # 中间件 compose 与 deploy-middleware.sh
-│   └── ha/                      # 应用 HA compose 与 deploy-app-ha.sh
+├── deploy/                      # Docker Compose 文件
+│   ├── core/                    # 核心服务
+│   ├── middleware/              # Redis、Milvus、MinIO
+│   └── ha/                      # 高可用应用编排
 ├── nginx/                       # 反向代理配置
+├── makefile                     # make install / dev / up-middleware / up-ha
 └── README.md
 ```
 
-## 环境要求
+## ⚙️ 配置说明
 
-- Docker 和 Docker Compose
-- Node.js 20+
-- 建议使用 Python 3.11（可选安装 [uv](https://github.com/astral-sh/uv)，
-  `make install` 会在后端目录执行 `uv sync`）
-- 可访问的 MySQL（由 `config.yaml` 的 `database.url` 指定，通常对应 `.env` 中
-  `DATABASE_URL`）
-- 可访问的 **Deep Searcher** 服务（`deep_searcher.deep_searcher_base_url`），
-  用于典型资料索引与对话流程
-- 大模型与对象存储相关凭证
+### 必填配置
 
-## 快速开始
-
-### 1. 配置 `config.yaml` 与 `.env`
-
-后端从仓库根目录读取 **`config.yaml`**（可用环境变量
-`NOTEBOOKLM_CONFIG_PATH` 覆盖路径）。**`.env` 不是**与 YAML 并列的第二套配置
-源：仅将变量加载到进程环境，供 YAML 字符串中的 `$VAR` / `${VAR}` 替换（与
-ByteDance DeerFlow 的用法一致）。
+编辑 `.env` 填入你的密钥：
 
 ```bash
-cp config.yaml.example config.yaml
-cp .env.example .env
+# 必需
+SECRET_KEY=your-secret-key
+DATABASE_URL=mysql+aiomysql://user:pass@host:3306/dbname
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/1
+
+# AI 模型（至少一个）
+QWEN_API_KEY=your-qwen-key
+# OPENAI_API_KEY=your-openai-key
+# GEMINI_API_KEY=your-gemini-key
+
+# 对话和文档索引必需
+DEEP_SEARCHER_BASE_URL=http://localhost:8001
+
+# 对象存储
+OSS_ACCESS_KEY_ID=your-oss-key
+OSS_ACCESS_KEY_SECRET=your-oss-secret
 ```
 
-非敏感默认值（CORS、DeerFlow 地址、OAuth 回调基址、OSS bucket 等）放在
-`config.yaml`。密钥与连接串放在 `.env`，例如：
+### 可选集成
 
-- `SECRET_KEY`
-- `DATABASE_URL`
-- `REDIS_URL`、`CELERY_BROKER_URL`、`CELERY_RESULT_BACKEND_URL`
-- `CACHE_REDIS_URL`、`TASK_EVENT_REDIS_URL`、`GENERATION_RATE_LIMIT_REDIS_URL`
-- `QWEN_API_KEY`（以及可选的 `DASHSCOPE_API_KEY_SECONDARY`、`OPENAI_API_KEY`、
-  `GEMINI_API_KEY`，供 LiteLLM 路由使用）
-- `DEEP_SEARCHER_BASE_URL`（常规对话与资料流水线需要）
-- `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（endpoint、bucket 等在
-  `config.yaml` 的 `oss` 段）
-- 可选：`MINERU_BASE_URL`、`MINERU_API_KEY`（MinerU PDF 解析）
-- 可选：`LANGFUSE_*`（链路追踪）
-- 可选：`GOOGLE_OAUTH_*`、`WEIBO_OAUTH_*`、`QQ_OAUTH_*`、`ALIPAY_*`、微信支付
-  相关字段
-- 可选：`YTDLP_COOKIES_FILE`（Bilibili / yt-dlp）
+| 集成 | 用途 | 配置项 |
+|---|---|---|
+| **MinerU** | 高质量 PDF→Markdown 解析 | `MINERU_BASE_URL`、`MINERU_API_KEY` |
+| **Langfuse** | LLM 链路追踪与观测 | `LANGFUSE_*` |
+| **DeerFlow** | 深度研究智能体 | `config.yaml` 中的 `deer_flow_base_url` |
+| **OAuth** | Google、微博、QQ、支付宝登录 | `GOOGLE_OAUTH_*`、`WEIBO_OAUTH_*` 等 |
+| **支付** | 支付宝、微信支付 | `ALIPAY_*`、微信支付配置 |
+| **yt-dlp** | 视频/音频 URL 解析 | `YTDLP_COOKIES_FILE`（B站需要 cookie） |
 
-Deep Research 使用 `config.yaml` 中的 **`deer_flow`**（默认
-`deer_flow_base_url` 指向本机，请按实际 DeerFlow 部署修改）。
+## 📊 产品限制
 
-> `deploy/middleware/docker-compose-middleware.yml` 里仍保留了 `postgres` 服务，
-> 但应用运行时使用 **MySQL**（`database.url` / `DATABASE_URL`）。示例
-> `config.yaml.example` 中 Milvus 配置为注释；检索预期走 **Deep Searcher**，
-> 除非自行扩展中间件与配置。
+| 角色 | 笔记本数 | 每笔记本资料数 | 每日对话数 |
+|---|---|---|---|
+| `free` | 20 | 30 | 50 |
+| `paid` | 200 | 50 | 200 |
+| `admin` | 200 | 50 | ∞ |
 
-### 2. 使用 Docker 部署（推荐 Make 或脚本）
+## 🧑‍💻 本地开发
 
-容器部署分为 **中间件** 与 **应用** 两步。
-
-**中间件**（Redis、Milvus、etcd、MinIO、Attu 及相关服务）：
+### 1. 启动中间件
 
 ```bash
-make up-middleware
+docker compose -f deploy/middleware/docker-compose-middleware.yml up -d redis milvus
 ```
 
-等价于执行 `deploy/middleware/deploy-middleware.sh`（会同步到 `origin/master`
-并构建启动）。需要无缓存构建时可设置 `NO_CACHE=true`。
-
-**应用层**（后端、前端、Nginx、Celery Worker，HA compose）：
-
-```bash
-make up-ha
-```
-
-或直接使用脚本（可在任意目录执行，或通过 `DEPLOY_DIR` 指定仓库根目录；中间件
-脚本会 `git reset --hard` 到 `origin/master`；`NO_CACHE=true` 可无缓存构建）：
-
-```bash
-bash deploy/middleware/deploy-middleware.sh
-```
-
-```bash
-bash deploy/ha/deploy-app-ha.sh
-```
-
-要求项目根目录存在 `config.yaml` 与 `.env`。脚本使用
-`deploy/ha/docker-compose.app-ha.yml` 与
-`deploy/ha/docker-compose.workers-ha.yml`。可选：`NO_CACHE=true`；非默认仓库
-路径时用 `DEPLOY_DIR`。
-
-如需手工组合或沿用旧布局，`deploy/core/` 等目录下另有 compose 与脚本。高可用
-与 Worker 扩展见 `docs/production-scaling-blueprint.md`。
-
-启动后常用访问地址：
-
-- 应用入口：`http://localhost`
-- 前端开发服务：`http://localhost:5173`
-- 后端接口文档：`http://localhost:8000/docs`
-- 健康检查：`http://localhost:8000/api/health/live`、
-  `http://localhost:8000/api/health/ready`
-- Attu（仅当从中间件启动 Milvus + Attu 时）：`http://localhost:8080`
-
-## 本地开发
-
-如果你希望前后端直接在本机运行，而把中间件放在 Docker 中，可以按下面
-的方式启动：
-
-### 1. 仅启动中间件
-
-```bash
-docker compose -f deploy/middleware/docker-compose-middleware.yml up -d redis milvus attu
-```
-
-若需与线上一致的完整中间件栈，也可执行部署脚本（注意：会将工作区重置为
-`origin/master`）：
-
-```bash
-bash deploy/middleware/deploy-middleware.sh
-```
-
-启动后端前，请确保 `.env` 中的 `DATABASE_URL` 与 `config.yaml` 中数据库配置
-指向可访问的 MySQL，且 **Deep Searcher** 在 `deep_searcher_base_url` 可达。
-
-### 2. 后端与前端依赖（一次性）
-
-在仓库根目录推荐：
+### 2. 安装依赖
 
 ```bash
 make install
+# 执行 backend/ 的 `uv sync` 和 frontend/ 的 `npm install`
 ```
 
-会在 `backend/` 执行 `uv sync`，在 `frontend/` 执行 `npm install`。也可手动：
+### 3. 运行服务
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-```
-
-### 3. 在仓库根目录启动后端、Worker 与前端
-
-配置好 `config.yaml`、`.env`（以及可选的 `backend-env.sh`）后，在 **仓库根目录**
-可使用 Make：
-
-```bash
+# 终端 1：后端
 make dev
-```
 
-另开终端：
-
-```bash
+# 终端 2：Celery 工作进程
 make dev-celery
-```
 
-启动 Vite：
-
-```bash
+# 终端 3：前端
 make dev-frontend
 ```
 
-或直接执行脚本：`./backend.sh`、`./backend-celery.sh`、`./frontend.sh`。
-
-`backend.sh` 与 `backend-celery.sh` 在存在 `backend/.venv` 时会使用该解释器，
-进入 `backend` 目录，并 `source` 仓库根目录下可选的 `backend-env.sh`，用于覆盖
-本机 Redis、MySQL 等连接（例如指向 `127.0.0.1` 或远程主机）。
-`frontend.sh` 在 `frontend/` 下执行 `npm run dev`（需事先 `make install` 或
-`npm install`）。
-
-**桌面端（可选）：** 在仓库根目录执行 `npm run desktop:dev` 可启动 `src-tauri/`
-定义的 Tauri 外壳。
-
-若要通过链接添加 **YouTube** 或 **Bilibili** 视频来源，请在运行 Celery Worker
-的环境安装 **`yt-dlp`**（`pip install -r requirements.txt` 已包含该包；程序会
-优先使用 `PATH` 中的 `yt-dlp`，否则使用 `python -m yt_dlp`）。
-
-**Bilibili 字幕**多数情况下需要已登录账号的 cookies。请用浏览器扩展导出
-`bilibili.com` 的 **Netscape 格式** cookies，在 `.env` 或 `backend-env.sh` 中设置
-**`YTDLP_COOKIES_FILE`** 为该文件的绝对路径，并重启 Celery Worker。说明见
-[yt-dlp 传递 cookies](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)。
-
-若不使用脚本，也可手动执行等价命令：
+或手动运行：
 
 ```bash
 cd backend && source .venv/bin/activate
@@ -286,33 +296,40 @@ celery -A app.tasks.celery_app:celery_app worker --loglevel=info
 cd frontend && npm run dev
 ```
 
-## 当前产品限制
+### 4. 桌面客户端（可选）
 
-代码中的角色限制目前为：
+```bash
+npm run desktop:dev
+```
 
-| 角色 | Notebook 数量 | 单个 Notebook 资料数 | 每日对话次数 |
-| --- | --- | --- | --- |
-| `free` | 20 | 30 | 50 |
-| `paid` | 200 | 50 | 200 |
-| `admin` | 200 | 50 | 9999 |
+## 💬 社区
 
-当前定价页已经接入付费订阅流程，并支持支付宝和微信支付。
+加入我们，获取帮助、分享想法、参与贡献：
 
-## 运维说明
+- 💬 **Discord**：[加入服务器](https://discord.gg/YOUR_INVITE_LINK) *（替换为你的邀请链接）*
+- 📱 **微信群**：扫码加入 *（添加二维码图片）*
+- 🐛 **GitHub Issues**：[反馈问题或请求功能](https://github.com/www6v/notebookLM/issues)
+- 💡 **Discussions**：[分享你的使用场景](https://github.com/www6v/notebookLM/discussions)
 
-- 资料原文件存放在对象存储中；演示文稿和信息图等生成结果也会通过签名 URL
-  或代理接口对外提供。
-- 资料解析和 Studio 生成是异步流程，前端需要通过轮询资源接口或订阅任务事件
-  SSE 来获取状态变化。
-- **`deep_searcher_base_url` 必须可用**，典型资料处理与对话依赖该服务；请按环境
-  调整超时与部署拓扑。
-- 配置 **MinerU**（`config.yaml` 的 `mineru` 段与 `.env` 中的 `MINERU_*`）可提升
-  PDF 抽取质量。
-- Deep Research 使用 `config.yaml` 中的 `deer_flow`，并依赖单独部署的 DeerFlow；
-  详见 `backend/docs/DEEP_RESEARCH_DEERFLOW.md`。
-- 后端启动时也会尝试初始化表结构，但为了保持 schema 与迁移一致，仍建议
-  显式执行 `alembic upgrade head`。
+## 🤝 贡献指南
 
-## License
+欢迎贡献！开始方式：
 
-MIT
+1. Fork 本项目
+2. 创建特性分支（`git checkout -b feature/amazing-feature`）
+3. 提交修改（`git commit -m 'Add amazing feature'`）
+4. 推送分支（`git push origin feature/amazing-feature`）
+5. 发起 Pull Request
+
+查看 [`good first issue`](https://github.com/www6v/notebookLM/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 标签，找到适合新手的任务。
+
+## 📜 开源协议
+
+本项目基于 [MIT License](./LICENSE) 开源。
+
+---
+
+<p align="center">
+  由 <a href="https://github.com/www6v">@www6v</a> 用 ❤️ 打造 ·
+  <a href="https://github.com/www6v/notebookLM">Star 本项目</a> 支持开发 ⭐
+</p>

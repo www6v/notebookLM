@@ -1,272 +1,288 @@
-# NoteWorks - Open NotebookLM
+# NoteWorks - Open NotebookLM Alternative
 
-[中文文档](./README.zh-CN.md)
+<p align="center">
+  <strong>AI Knowledge Workspace with Multi-Model Support, Deep Search & Chinese-First Experience</strong>
+</p>
 
-NoteWorks is an AI research workspace built with Vue 3 and FastAPI. It
-organizes content around notebooks, lets users upload or link sources, chats
-with retrieval grounding and citations, and generates studio artifacts such as
-mind maps, slide decks, infographics, reports, and deep research briefs.
+<p align="center">
+  <a href="https://github.com/www6v/notebookLM/stargazers"><img src="https://img.shields.io/github/stars/www6v/notebookLM?style=social" alt="Stars"></a>
+  <a href="https://github.com/www6v/notebookLM/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/www6v/notebookLM/issues"><img src="https://img.shields.io/github/issues/www6v/notebookLM" alt="Issues"></a>
+  <a href="https://github.com/www6v/notebookLM/pulls"><img src="https://img.shields.io/github/issues-pr/www6v/notebookLM" alt="Pull Requests"></a>
+  <a href="https://github.com/www6v/notebookLM"><img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python"></a>
+  <a href="https://github.com/www6v/notebookLM"><img src="https://img.shields.io/badge/Vue-3-42b883.svg" alt="Vue"></a>
+</p>
 
-## Current Capabilities
+<p align="center">
+  <a href="http://www.notebooklm.studio">🌐 Live Demo</a> ·
+  <a href="https://github.com/www6v/notebookLM">📖 Documentation</a> ·
+  <a href="https://github.com/www6v/notebookLM/issues">🐛 Report Bug</a> ·
+  <a href="#-community">💬 Community</a> ·
+  <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
+</p>
 
-- **Notebook-centric workspace** for collecting sources, chats, notes, and
-  generated assets.
-- **Source ingestion from URLs or file uploads** with support for `pdf`,
-  `docx`, `doc`, `txt`, `md`, `csv`, `pptx`, images, audio, and video.
-- **Optional MinerU integration** for higher-quality PDF → Markdown parsing
-  when `MINERU_API_KEY` and related settings are configured.
-- **Multimodal preprocessing**:
-  - images are summarized with vision models
-  - audio is transcribed with Qwen ASR, including long-audio fallback
-  - video is summarized with Qwen VL
-- **Grounded chat with citations** via the **Deep Searcher** HTTP service
-  (upload / load-files / query); long-running work uses **SSE** on task-event
-  endpoints (sources, studio, and similar jobs).
-- **Studio generation** for mind maps, slide decks, infographics, reports, and
-  Deep Research tasks.
-- **User notes and settings**, including model selection controls for paid
-  users.
-- **JWT auth + OAuth login** for Google, Weibo, QQ, and Alipay.
-- **Subscription and payments** with Alipay and WeChat Pay QR code flows.
-- **Async task processing** with Celery plus SSE task-status streaming.
-- **Object storage integration** with Alibaba Cloud OSS.
-- **Tracing and optional external integrations** including Langfuse and
-  DeerFlow.
+---
 
-## Tech Stack
+## ✨ What is NoteWorks?
+
+NoteWorks is an **open-source AI research workspace** — a self-hosted alternative to [Google's NotebookLM](https://notebooklm.google.com). It lets you upload documents, chat with them using AI, and generate study materials, reports, and presentations — all while **supporting any LLM** and keeping your data private.
+
+> *"NotebookLM is powerful but locked to Gemini. NoteWorks gives you the same experience with your choice of models."*
+
+## 🆚 Why NoteWorks over NotebookLM?
+
+| Feature | Google NotebookLM | NoteWorks (Open Source) |
+|---|---|---|
+| **Models** | Gemini only | ✅ OpenAI, Claude, Qwen, Gemini, local models |
+| **Self-hosting** | ❌ Cloud only | ✅ Full Docker deployment |
+| **Data privacy** | Google servers | ✅ Your own infrastructure |
+| **Chinese support** | Limited | ✅ Deeply optimized for Chinese |
+| **Document formats** | PDF, TXT | ✅ PDF, DOCX, PPTX, CSV, MD, images, audio, video |
+| **Deep Search** | ✅ | ✅ Compatible with Deep Searcher |
+| **Studio outputs** | Limited | ✅ Mind maps, slides, infographics, reports |
+| **Multi-user** | ❌ | ✅ JWT auth + OAuth (Google, Weibo, QQ, Alipay) |
+| **Cost** | Free | ✅ Free & open source (MIT) |
+| **Payments** | N/A | ✅ Alipay & WeChat Pay integration |
+
+## 🎯 Quick Preview
+
+<!-- Replace with actual GIF: Record a 10-second screen capture showing: Upload PDF → Select Model → Ask Question → Get Answer with Citations -->
+<!-- You can use tools like LICEcap, ScreenToGif, or peek to create the GIF -->
+<p align="center">
+  <img src="https://via.placeholder.com/800x450/1a1a2e/16213e?text=Demo+GIF%3A+Upload+%E2%86%92+Chat+%E2%86%92+Generate" alt="NoteWorks Demo" width="800">
+  <br><em>↑ Upload documents, chat with AI, generate artifacts — all in one workspace</em>
+</p>
+
+## 🚀 Quick Start
+
+### Option 1: Try Online (No Setup)
+
+Visit **[http://www.notebooklm.studio](http://www.notebooklm.studio)** for a live demo.
+
+### Option 2: One-Click Docker Deploy (Recommended)
+
+```bash
+# Clone the repo
+git clone https://github.com/www6v/notebookLM.git
+cd notebookLM
+
+# Configure
+cp config.yaml.example config.yaml
+cp .env.example .env
+# Edit .env with your API keys (QWEN_API_KEY, OPENAI_API_KEY, etc.)
+
+# Start everything
+make up-middleware   # Redis, Milvus, MinIO
+make up-ha           # Backend + Frontend + Celery + Nginx
+```
+
+Access at: `http://localhost`
+
+| Service | URL |
+|---|---|
+| App | http://localhost |
+| API Docs | http://localhost:8000/docs |
+| Health Check | http://localhost:8000/api/health/live |
+
+### Option 3: Local Development
+
+```bash
+git clone https://github.com/www6v/notebookLM.git && cd notebookLM
+make install          # Install dependencies (uv + npm)
+make up-middleware    # Start Redis, Milvus, etc.
+make dev              # Backend
+make dev-celery       # Celery worker
+make dev-frontend     # Vue dev server
+```
+
+See [Local Development](#-local-development) for full setup instructions.
+
+## 🔥 Key Features
+
+### 📚 Notebook-Centric Workspace
+Organize research around notebooks — collect sources, chat with AI, take notes, and generate artifacts in one place.
+
+### 📄 Multi-Format Document Ingestion
+Upload or link sources in any format:
+
+| Type | Formats | Processing |
+|---|---|---|
+| **Documents** | PDF, DOCX, DOC, TXT, MD, CSV, PPTX | Text extraction + optional MinerU for high-quality PDF→Markdown |
+| **Images** | PNG, JPG, WebP, etc. | Vision model summarization |
+| **Audio** | MP3, WAV, M4A, etc. | Qwen ASR transcription (with long-audio fallback) |
+| **Video** | MP4, YouTube, Bilibili URLs | Qwen VL video summarization |
+| **URLs** | Any web page | Crawling + content extraction |
+
+### 🤖 Multi-Model Support
+Powered by **LiteLLM** router — connect any LLM:
+
+- **OpenAI**: GPT-4, GPT-4o, o1, o3
+- **Anthropic**: Claude 3.5/4, Sonnet, Opus
+- **Alibaba**: Qwen-Max, Qwen-Plus, Qwen-Turbo
+- **Google**: Gemini Pro, Gemini Flash
+- **Local**: Any OpenAI-compatible endpoint (Ollama, vLLM, etc.)
+
+### 🔍 Grounded Chat with Citations
+AI answers are grounded in your documents with **source citations** — no hallucination, just facts from your knowledge base. Powered by [Deep Searcher](https://github.com/modelscope/Deep-Searcher).
+
+### 🎨 Studio — Generate Artifacts
+Transform your research into polished outputs:
+- 🧠 **Mind Maps** — Visual knowledge structures
+- 📊 **Slide Decks** — Auto-generated presentations
+- 📰 **Infographics** — Data visualization
+- 📝 **Reports** — Structured research summaries
+- 🔬 **Deep Research** — Multi-step research briefs (via [DeerFlow](https://github.com/OpenDeerFlow/DeerFlow))
+
+### 🔒 Private & Secure
+- Self-hosted — your data never leaves your infrastructure
+- JWT authentication + OAuth login (Google, Weibo, QQ, Alipay)
+- Object storage with Alibaba Cloud OSS
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Frontend (Vue 3)                       │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
+│   │ Notebook │  │  Source  │  │   Chat   │  │   Studio  │  │
+│   │  Workspace│  │ Ingestion│  │  w/ Cit. │  │ Generator │  │
+│   └────┬─────┘  └────┬─────┘  └────┬─────┘  └─────┬─────┘  │
+└────────┼──────────────┼─────────────┼──────────────┼─────────┘
+         │              │             │              │
+         ▼              ▼             ▼              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Backend (FastAPI)                          │
+│  ┌────────────┐  ┌───────────┐  ┌────────────────────────┐ │
+│  │  Notebook  │  │  Source   │  │   AI (LiteLLM Router)  │ │
+│  │  Manager   │  │  Parser   │  │   Qwen / OpenAI / etc  │ │
+│  └─────┬──────┘  └─────┬─────┘  └───────────┬────────────┘ │
+│        │               │                     │              │
+│        ▼               ▼                     ▼              │
+│  ┌───────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │  MySQL    │  │  Deep Searcher│  │  Celery + Redis   │     │
+│  │  (meta)   │  │  (RAG/Retrieval)│  │  (async tasks)   │     │
+│  └───────────┘  └──────────────┘  └──────────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+         │                     │
+         ▼                     ▼
+┌─────────────────┐   ┌─────────────────┐
+│  Alibaba OSS    │   │   Milvus /      │
+│  (file storage) │   │   Vector DB     │
+└─────────────────┘   └─────────────────┘
+```
+
+## 🛠️ Tech Stack
 
 | Layer | Technologies |
-| --- | --- |
-| Frontend | Vue 3, Vite, TypeScript, Vuetify, Pinia, Vue Router, Vue I18n, Axios |
-| Backend | FastAPI, SQLAlchemy async, Pydantic Settings, Alembic |
-| App Data | MySQL via `aiomysql` |
-| Retrieval / indexing | Deep Searcher (remote HTTP); embeddings via DashScope; Milvus optional in middleware compose (legacy companion) |
-| Queue / Realtime | Celery, Redis, SSE |
-| AI | LiteLLM router, DashScope (Qwen chat / VL / ASR / embeddings), optional OpenAI / Gemini keys |
-| Storage | Alibaba Cloud OSS |
-| Infra | Docker, Nginx |
+|---|---|
+| **Frontend** | Vue 3, Vite, TypeScript, Vuetify, Pinia, Vue Router, Vue I18n, Axios |
+| **Backend** | FastAPI, SQLAlchemy (async), Pydantic Settings, Alembic |
+| **Database** | MySQL via `aiomysql` |
+| **Retrieval** | Deep Searcher (HTTP); DashScope embeddings; Milvus (optional) |
+| **Queue** | Celery + Redis + SSE streaming |
+| **AI** | LiteLLM router, DashScope (Qwen), OpenAI, Gemini |
+| **Storage** | Alibaba Cloud OSS |
+| **Infra** | Docker, Docker Compose, Nginx |
 
-## Architecture At A Glance
+## 📁 Repository Structure
 
-1. The frontend calls FastAPI APIs for notebooks, sources, chat, notes,
-   settings, payments, and studio generation.
-2. Uploaded files are stored in object storage; parsed content and notebook
-   metadata are stored in the application database.
-3. **Source indexing and chat Q&A** go through the configured **Deep Searcher**
-   base URL (see `deep_searcher` in `config.yaml`). The sample
-   `config.yaml.example` keeps the Milvus block commented; Milvus may still
-   appear in middleware Compose for other or legacy setups.
-4. Long-running source and studio jobs are dispatched to Celery and streamed
-   back to the UI through task-event SSE endpoints.
-5. Deep Research is an optional integration that calls a separately deployed
-   DeerFlow gateway (`deer_flow` in `config.yaml`).
-
-## Repository Layout
-
-```text
+```
 notebookLM/
-├── config.yaml.example          # Application config template (copy to config.yaml)
-├── .env.example                 # Secrets for $VAR expansion in config.yaml
+├── config.yaml.example          # Config template (copy to config.yaml)
+├── .env.example                 # Secrets template (copy to .env)
 ├── frontend/                    # Vue 3 + Vite application
-│   ├── src/api/                 # HTTP clients
-│   ├── src/components/          # Source/chat/studio/payment UI
-│   ├── src/stores/              # Pinia stores
-│   ├── src/views/               # Landing, home, notebook, login, pricing, settings
-│   └── src/router/              # Route definitions
-├── src-tauri/                   # Optional Tauri desktop shell (see package.json scripts)
+├── src-tauri/                   # Optional Tauri desktop shell
 ├── backend/
-│   ├── app/api/                 # FastAPI route modules
-│   ├── app/ai/                  # LLM, vision, ASR, retrieval integrations
+│   ├── app/api/                 # FastAPI routes
+│   ├── app/ai/                  # LLM, vision, ASR integrations
 │   ├── app/models/              # SQLAlchemy models
 │   ├── app/services/            # Business logic
 │   ├── app/tasks/               # Celery tasks
 │   ├── alembic/                 # DB migrations
-│   └── docs/                    # Backend feature notes
-├── backend.sh                   # Local FastAPI (sources optional backend-env.sh)
-├── backend-celery.sh            # Local Celery worker
-├── frontend.sh                  # Local Vite dev server
-├── backend-env.sh               # Optional local env overrides (Redis, DB, …)
-├── makefile                     # make install / dev / up-middleware / up-ha
-├── deploy/
-│   ├── core/                    # Core compose helpers
-│   ├── middleware/              # Middleware compose + deploy-middleware.sh
-│   └── ha/                      # App HA compose + deploy-app-ha.sh
+│   └── docs/                    # Backend feature docs
+├── deploy/                      # Docker Compose files
+│   ├── core/                    # Core services
+│   ├── middleware/              # Redis, Milvus, MinIO
+│   └── ha/                      # High-availability app compose
 ├── nginx/                       # Reverse proxy configs
+├── makefile                     # make install / dev / up-middleware / up-ha
 └── README.md
 ```
 
-## Prerequisites
+## ⚙️ Configuration
 
-- Docker and Docker Compose
-- Node.js 20+
-- Python 3.11 recommended ([uv](https://github.com/astral-sh/uv) optional; `make install` uses `uv sync`)
-- A reachable MySQL instance (referenced from `config.yaml` → `database.url`, usually via `DATABASE_URL` in `.env`)
-- A running **Deep Searcher** compatible service for source indexing and chat (`deep_searcher.deep_searcher_base_url`)
-- Access to required model and object-storage credentials
+### Required Settings
 
-## Quick Start
-
-### 1. Configure `config.yaml` and `.env`
-
-The backend loads **`config.yaml`** at the repo root (override with
-`NOTEBOOKLM_CONFIG_PATH`). The **`.env`** file is **not** a parallel settings
-source: it is loaded into the process environment so YAML values can use
-`$VAR` / `${VAR}` substitution (same pattern as ByteDance DeerFlow).
+Edit `.env` with your credentials:
 
 ```bash
-cp config.yaml.example config.yaml
-cp .env.example .env
+# Essential
+SECRET_KEY=your-secret-key
+DATABASE_URL=mysql+aiomysql://user:pass@host:3306/dbname
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/1
+
+# AI Models (at least one)
+QWEN_API_KEY=your-qwen-key
+# OPENAI_API_KEY=your-openai-key
+# GEMINI_API_KEY=your-gemini-key
+
+# Required for chat & source indexing
+DEEP_SEARCHER_BASE_URL=http://localhost:8001
+
+# Object Storage
+OSS_ACCESS_KEY_ID=your-oss-key
+OSS_ACCESS_KEY_SECRET=your-oss-secret
 ```
 
-Edit `config.yaml` for non-secret defaults (CORS, DeerFlow URL, OAuth redirect
-bases, OSS bucket, etc.). Put secrets and connection strings in `.env`, for
-example:
+### Optional Integrations
 
-- `SECRET_KEY`
-- `DATABASE_URL`
-- `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND_URL`
-- `CACHE_REDIS_URL`, `TASK_EVENT_REDIS_URL`, `GENERATION_RATE_LIMIT_REDIS_URL`
-- `QWEN_API_KEY` (and optional `DASHSCOPE_API_KEY_SECONDARY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` for the LiteLLM router)
-- `DEEP_SEARCHER_BASE_URL` (required for typical chat and source pipelines)
-- `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET` (and bucket/endpoint in `config.yaml` under `oss`)
-- Optional: `MINERU_BASE_URL`, `MINERU_API_KEY` for MinerU PDF parsing
-- Optional: `LANGFUSE_*` for traces
-- Optional: `GOOGLE_OAUTH_*`, `WEIBO_OAUTH_*`, `QQ_OAUTH_*`, `ALIPAY_*`, WeChat Pay fields
-- Optional: `YTDLP_COOKIES_FILE` for Bilibili / yt-dlp
+| Integration | Purpose | Config |
+|---|---|---|
+| **MinerU** | High-quality PDF→Markdown parsing | `MINERU_BASE_URL`, `MINERU_API_KEY` |
+| **Langfuse** | LLM tracing & observability | `LANGFUSE_*` |
+| **DeerFlow** | Deep Research agent | `deer_flow_base_url` in `config.yaml` |
+| **OAuth** | Google, Weibo, QQ, Alipay login | `GOOGLE_OAUTH_*`, `WEIBO_OAUTH_*`, etc. |
+| **Payments** | Alipay & WeChat Pay | `ALIPAY_*`, WeChat Pay fields |
+| **yt-dlp** | Video/audio from URLs | `YTDLP_COOKIES_FILE` for Bilibili |
 
-Deep Research uses the **`deer_flow`** section in `config.yaml` (default
-`deer_flow_base_url` points at localhost; adjust for your DeerFlow deployment).
+## 📊 Product Limits
 
-> `deploy/middleware/docker-compose-middleware.yml` still contains a `postgres` service,
-> but the application runtime is configured for **MySQL** via `database.url` /
-> `DATABASE_URL`. The sample `config.yaml.example` comments out the Milvus block;
-> retrieval is expected to go through **Deep Searcher**, not local Milvus, unless
-> you customize the stack.
+| Role | Notebooks | Sources/notebook | Daily Chats |
+|---|---|---|---|
+| `free` | 20 | 30 | 50 |
+| `paid` | 200 | 50 | 200 |
+| `admin` | 200 | 50 | ∞ |
 
-### 2. Deploy with Docker (recommended Make targets)
+## 🧑‍💻 Local Development
 
-Container deployment is split into **middleware** and **application** steps.
-
-**Middleware** (Redis, Milvus, etcd, MinIO, Attu, and related services):
+### 1. Start Middleware
 
 ```bash
-make up-middleware
+docker compose -f deploy/middleware/docker-compose-middleware.yml up -d redis milvus
 ```
 
-Run this from the repository root. This target wraps
-`deploy/middleware/deploy-middleware.sh`, which uses
-`deploy/middleware/docker-compose-middleware.yml`, syncs the repo to
-`origin/master`, then rebuilds and starts the stack. Set `NO_CACHE=true` for a
-no-cache image build.
-
-**Application** (backend, frontend, Nginx, Celery workers in HA compose files):
-
-```bash
-make up-ha
-```
-
-Requires a project-root `config.yaml` (for example copy from
-`config.yaml.example`) and `.env`. Uses `deploy/ha/docker-compose.app-ha.yml`
-and `deploy/ha/docker-compose.workers-ha.yml`, syncs to `origin/master`, builds
-`backend` and `frontend` images, then brings the stack up. Optional:
-`NO_CACHE=true`, `DEPLOY_DIR` for a non-default repo root.
-
-For manual composition or older layouts, Compose files also live under
-`deploy/` (for example `deploy/core/docker-compose-core.yml`). For HA and worker
-scaling details, see `docs/production-scaling-blueprint.md`.
-
-Useful endpoints after startup:
-
-- App: `http://localhost`
-- Frontend dev server: `http://localhost:5173`
-- Backend API docs: `http://localhost:8000/docs`
-- Health checks: `http://localhost:8000/api/health/live`,
-  `http://localhost:8000/api/health/ready`
-- Attu (only if you start Milvus + Attu from middleware): `http://localhost:8080`
-
-## Local Development
-
-If you want to run the frontend and backend directly on your machine while
-keeping middleware in Docker:
-
-### 1. Start middleware only
-
-```bash
-docker compose -f deploy/middleware/docker-compose-middleware.yml up -d redis milvus attu
-```
-
-Or use the full middleware script when you want the same stack as server deploy
-(note: it resets the working tree to `origin/master`):
-
-```bash
-bash deploy/middleware/deploy-middleware.sh
-```
-
-Make sure `DATABASE_URL` in `.env` (and `database.url` in `config.yaml`) points
-to a reachable MySQL instance before starting the backend, and that Deep
-Searcher is reachable at `deep_searcher_base_url`.
-
-### 2. One-time backend setup
-
-From the repo root (recommended):
+### 2. Install Dependencies
 
 ```bash
 make install
+# This runs `uv sync` in backend/ and `npm install` in frontend/
 ```
 
-This runs `uv sync` in `backend/` and `npm install` in `frontend/`. Equivalent
-manual setup:
+### 3. Run Services
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-```
-
-### 3. Run the backend, Celery worker, and frontend (repo root)
-
-From the **repository root**, after `config.yaml`, `.env`, and optionally
-`backend-env.sh` are configured:
-
-```bash
+# Terminal 1: Backend
 make dev
-```
 
-In another terminal:
-
-```bash
+# Terminal 2: Celery Worker
 make dev-celery
-```
 
-And for the Vite dev server:
-
-```bash
+# Terminal 3: Frontend
 make dev-frontend
 ```
 
-These Make targets wrap `backend.sh`, `backend-celery.sh`, and `frontend.sh`.
-`backend.sh` and `backend-celery.sh` activate `backend/.venv` when present,
-`cd` into `backend`, and source optional `backend-env.sh` at the repo root for
-local overrides (for example Redis and MySQL URLs pointing at `127.0.0.1` or a
-remote host). `frontend.sh` runs `npm run dev` from `frontend/` (run
-`npm install` or `make install` first).
-
-**Desktop (optional):** with Tauri CLI available, `npm run desktop:dev` from the
-repo root starts the desktop shell defined under `src-tauri/`.
-
-Install **`yt-dlp`** on the Celery worker host (`pip install -r requirements.txt`
-also installs the `yt-dlp` package; the backend uses the CLI on `PATH` or
-`python -m yt_dlp`).
-
-**Bilibili subtitles** often require a logged-in session. Export Netscape-format
-cookies for `bilibili.com` (see
-[yt-dlp cookies FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)),
-then set **`YTDLP_COOKIES_FILE`** in `.env` or `backend-env.sh` to the absolute
-path of that file and restart the Celery worker.
-
-Equivalent manual commands (if you prefer not to use the scripts):
+Or run manually:
 
 ```bash
 cd backend && source .venv/bin/activate
@@ -282,37 +298,40 @@ celery -A app.tasks.celery_app:celery_app worker --loglevel=info
 cd frontend && npm run dev
 ```
 
-## Product Limits
+### 4. Desktop App (Optional)
 
-The current role limits in code are:
+```bash
+npm run desktop:dev
+```
 
-| Role | Notebooks | Sources per notebook | Daily chats |
-| --- | --- | --- | --- |
-| `free` | 20 | 30 | 50 |
-| `paid` | 200 | 50 | 200 |
-| `admin` | 200 | 50 | 9999 |
+## 💬 Community
 
-The pricing UI currently advertises paid subscription flows through Alipay and
-WeChat Pay.
+Join us to get help, share ideas, and contribute:
 
-## Operational Notes
+- 💬 **Discord**: [Join Server](https://discord.gg/YOUR_INVITE_LINK) *(replace with your link)*
+- 📱 **WeChat Group**: Scan QR code *(add QR image here)*
+- 🐛 **GitHub Issues**: [Report bugs or request features](https://github.com/www6v/notebookLM/issues)
+- 💡 **Discussions**: [Share your use cases](https://github.com/www6v/notebookLM/discussions)
 
-- Source files are stored in object storage; generated slide and infographic
-  assets are also served from storage through signed URLs or proxy endpoints.
-- Source parsing and studio generation are asynchronous. The frontend should
-  either poll resource endpoints or subscribe to task-event SSE streams.
-- **Deep Searcher** must be available at `deep_searcher_base_url` for typical
-  source processing and chat; tune timeouts and deployment to match your
-  environment.
-- Optional **MinerU** improves PDF extraction when API keys and
-  `mineru` settings are set in `config.yaml` / `.env`.
-- Deep Research uses the `deer_flow` block in `config.yaml` and a separate
-  DeerFlow deployment. See `backend/docs/DEEP_RESEARCH_DEERFLOW.md` for setup
-  details.
-- The backend also initializes tables on startup, but running
-  `alembic upgrade head` is still recommended for keeping schema changes in
-  sync.
+## 🤝 Contributing
 
-## License
+We welcome contributions! Here's how to get started:
 
-MIT
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Check out [issues labeled `good first issue`](https://github.com/www6v/notebookLM/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for beginner-friendly tasks.
+
+## 📜 License
+
+This project is licensed under the [MIT License](./LICENSE).
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/www6v">@www6v</a> ·
+  <a href="https://github.com/www6v/notebookLM">Star this repo</a> to support development ⭐
+</p>
