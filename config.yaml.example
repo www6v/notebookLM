@@ -124,8 +124,8 @@ ytdlp:
 oss:
   oss_access_key_id: $OSS_ACCESS_KEY_ID
   oss_access_key_secret: $OSS_ACCESS_KEY_SECRET
-  oss_endpoint: https://oss-cn-hangzhou.aliyuncs.com
-  oss_bucket_name: your-oss-bucket-name
+  oss_endpoint: https://oss-cn-shanghai.aliyuncs.com
+  oss_bucket_name: notebookllm
   oss_path_prefix: txt2imgcn
 
 # =============================================================================
@@ -133,38 +133,24 @@ oss:
 # =============================================================================
 # milvus:
 #   milvus_uri: $MILVUS_URI
-#   # RAG retrieve/reflect rounds; 2 is faster; use 3+ for deeper multi-hop search
-#   deep_search_max_iterations: 2
+#   deep_search_max_iterations: 3
 #   deep_search_top_k: 10
+
 
 # =============================================================================
 # Deep Searcher
 # =============================================================================
 deep_searcher:
   # Remote deep-searcher HTTP API (upload / load-files / query).
-  deep_searcher_base_url: http://127.0.0.1:8000
+  deep_searcher_base_url: $DEEP_SEARCHER_BASE_URL
 
 # =============================================================================
-# MinerU (PDF → Markdown)
+# MinerU（官方精准解析：/api/v4/extract/task；Token 放 .env MINERU_API_KEY）
 # =============================================================================
-# Option A — Official API (async URL + ZIP): set base to https://mineru.net,
-# path to /api/v4/extract/task, and mineru_api_key to your mineru.net token.
-# The PDF must be reachable at a public HTTPS URL (same host as oss_endpoint
-# bucket URL from get_file_url); MinerU does not use OSS access keys.
-#
-# Option B — Self-hosted gateway: base e.g. http://mineru:8080, path /v1/parse.
 mineru:
   mineru_base_url: $MINERU_BASE_URL
   mineru_api_key: $MINERU_API_KEY
   mineru_parse_path: /api/v4/extract/task
-  mineru_timeout_seconds: 600
-  mineru_oss_presign_seconds: 7200
-  # Images etc. embedded in PDF markdown: presigned OSS GET (private bucket).
-  mineru_parsed_assets_use_presigned_urls: true
-  mineru_parsed_asset_presign_seconds: 604800
-  mineru_use_multipart: false
-  mineru_model_version: vlm
-  mineru_poll_interval_seconds: 3
 
 # =============================================================================
 # DeerFlow (Deep Research gateway)
