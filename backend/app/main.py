@@ -20,6 +20,7 @@ from app.api import (
     notebooks,
     notes,
     oauth,
+    ocr_layout,
     payment,
     public_config,
     settings,
@@ -78,6 +79,7 @@ app.include_router(public_config.router)
 app.include_router(settings.router)
 app.include_router(notebooks.router)
 app.include_router(share_read.router)
+app.include_router(ocr_layout.router)
 app.include_router(sources.router)
 app.include_router(chat.router)
 app.include_router(notes.router)

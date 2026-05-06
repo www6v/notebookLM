@@ -85,6 +85,15 @@ export const useChatStore = defineStore('chat', () => {
     if (settings.answerLength !== undefined) conversationSettings.answerLength = settings.answerLength
   }
 
+  /** Bump to push text into ChatPanel composer (see ChatPanel watch). */
+  const pendingComposerTick = ref(0)
+  const pendingComposerText = ref('')
+
+  const injectComposerText = (text: string) => {
+    pendingComposerText.value = text
+    pendingComposerTick.value += 1
+  }
+
   return {
     sessions,
     currentSession,
@@ -99,5 +108,8 @@ export const useChatStore = defineStore('chat', () => {
     addAssistantMessage,
     updateLastAssistantMessage,
     updateConversationSettings,
+    pendingComposerTick,
+    pendingComposerText,
+    injectComposerText,
   }
 })

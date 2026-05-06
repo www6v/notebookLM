@@ -237,6 +237,12 @@ export default {
       save: 'Save',
     },
   },
+  slideOcr: {
+    recognize: 'Recognize',
+    failed: 'Text recognition failed. Please try again.',
+    readOnlyInject: 'Shared view cannot fill the chat input.',
+    noText: 'No recognized text in this area.',
+  },
   pricing: {
     title: 'Pricing',
     subtitle: 'Plans for individuals, teams and enterprises. Choose what fits.',

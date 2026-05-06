@@ -34,6 +34,22 @@
             </v-icon>
             打开 PDF
           </v-btn>
+          <v-btn
+            variant="text"
+            size="small"
+            class="text-none"
+            :disabled="!mainImageUrl || ocrBusy"
+            :loading="ocrBusy"
+            @click="runSlideOcr"
+          >
+            <v-icon
+              :size="18"
+              class="mr-1"
+            >
+              mdi-text-recognition
+            </v-icon>
+            {{ $t('slideOcr.recognize') }}
+          </v-btn>
           <v-menu
             v-model="downloadMenuOpen"
             location="bottom"
@@ -125,15 +141,34 @@
                 class="slide-deck-preview-main-inner"
                 :style="mainTransformStyle"
               >
-                <img
+                <div
                   v-if="mainImageUrl"
-                  :src="mainImageUrl"
-                  :alt="slideLabel(selectedIndex)"
-                  class="slide-deck-preview-main-img"
-                  loading="eager"
-                  decoding="async"
-                  @error="handlePreviewError"
-                />
+                  ref="slideFrameRef"
+                  class="slide-deck-preview-slide-frame"
+                >
+                  <img
+                    ref="mainImgRef"
+                    :src="mainImageUrl"
+                    :alt="slideLabel(selectedIndex)"
+                    class="slide-deck-preview-main-img"
+                    loading="eager"
+                    decoding="async"
+                    @error="handlePreviewError"
+                  />
+                  <div
+                    v-if="ocrRegions.length > 0"
+                    class="slide-deck-ocr-overlay"
+                    @mousemove="onOcrOverlayMouseMove"
+                    @mouseleave="onOcrOverlayMouseLeave"
+                    @dblclick.prevent="onOcrOverlayDblClick"
+                  >
+                    <div
+                      v-if="hoveredRegion"
+                      class="slide-deck-ocr-highlight"
+                      :style="hoveredHighlightStyle"
+                    />
+                  </div>
+                </div>
                 <div
                   v-else
                   class="slide-deck-preview-main-placeholder"
@@ -208,13 +243,17 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, withDefaults } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type {
   SlideDeckData,
   SlideDeckImageData,
   SlideDeckImagesManifest,
 } from '@/api/studio'
+import { postSlideImageLayoutOcr, type SlideOcrRegion } from '@/api/ocrLayout'
 import { shareReadApi } from '@/api/shareRead'
 import { studioApi } from '@/api/studio'
+import { useChatStore } from '@/stores/useChatStore'
+import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import { triggerBlobDownload } from '@/utils/exportZip'
 import {
   downloadSlidePdfWithFallback,
@@ -228,13 +267,18 @@ defineOptions({
 
 const CLOSE_RESET_MS = 350
 
+const { t } = useI18n()
+const snackbar = useSnackbarStore()
+const chatStore = useChatStore()
+
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
     deck: SlideDeckData | null
     shareToken?: string | null
+    readOnly?: boolean
   }>(),
-  { shareToken: null },
+  { shareToken: null, readOnly: false },
 )
 
 const slidePdfMode = computed<SlidePdfMode | undefined>(() =>
@@ -262,6 +306,12 @@ const thumbnailUrls = ref<Array<string | null>>([])
 const previewUrls = ref<Array<string | null>>([])
 const selectedIndex = ref(0)
 const zoomLevel = ref(1)
+
+const mainImgRef = ref<HTMLImageElement | null>(null)
+const slideFrameRef = ref<HTMLElement | null>(null)
+const ocrRegions = ref<SlideOcrRegion[]>([])
+const ocrBusy = ref(false)
+const hoveredRegionIndex = ref<number | null>(null)
 
 let loadGeneration = 0
 let closeResetTimer: ReturnType<typeof setTimeout> | null = null
@@ -308,6 +358,114 @@ const mainImageUrl = computed(() => {
   )
 })
 
+const hoveredRegion = computed(() => {
+  const idx = hoveredRegionIndex.value
+  if (idx == null) {
+    return null
+  }
+  return ocrRegions.value[idx] ?? null
+})
+
+const hoveredHighlightStyle = computed((): Record<string, string> => {
+  const region = hoveredRegion.value
+  const img = mainImgRef.value
+  if (!region || !img?.naturalWidth || !img.naturalHeight) {
+    return {}
+  }
+  const w = img.naturalWidth
+  const h = img.naturalHeight
+  return {
+    left: `${(region.x / w) * 100}%`,
+    top: `${(region.y / h) * 100}%`,
+    width: `${(region.w / w) * 100}%`,
+    height: `${(region.h / h) * 100}%`,
+  }
+})
+
+function clearOcrLayout() {
+  ocrRegions.value = []
+  hoveredRegionIndex.value = null
+}
+
+function pickRegionIndexAt(nx: number, ny: number): number | null {
+  const hits: { index: number; area: number }[] = []
+  ocrRegions.value.forEach((region, index) => {
+    const insideX = nx >= region.x && nx <= region.x + region.w
+    const insideY = ny >= region.y && ny <= region.y + region.h
+    if (insideX && insideY) {
+      hits.push({ index, area: region.w * region.h })
+    }
+  })
+  if (hits.length === 0) {
+    return null
+  }
+  hits.sort((a, b) => a.area - b.area)
+  return hits[0].index
+}
+
+function onOcrOverlayMouseMove(event: MouseEvent) {
+  const img = mainImgRef.value
+  if (!img?.naturalWidth) {
+    return
+  }
+  const rect = img.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    return
+  }
+  const nx = ((event.clientX - rect.left) / rect.width) * img.naturalWidth
+  const ny = ((event.clientY - rect.top) / rect.height) * img.naturalHeight
+  hoveredRegionIndex.value = pickRegionIndexAt(nx, ny)
+}
+
+function onOcrOverlayMouseLeave() {
+  hoveredRegionIndex.value = null
+}
+
+function extractOcrErrorMessage(err: unknown): string {
+  const ax = err as { response?: { data?: { detail?: unknown } } }
+  const detail = ax.response?.data?.detail
+  return typeof detail === 'string' ? detail : t('slideOcr.failed')
+}
+
+async function runSlideOcr() {
+  const url = mainImageUrl.value
+  if (!url || ocrBusy.value) {
+    return
+  }
+  const indexAtStart = selectedIndex.value
+  const deckId = props.deck?.id
+  ocrBusy.value = true
+  hoveredRegionIndex.value = null
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const data = await postSlideImageLayoutOcr(blob, props.shareToken)
+    if (deckId !== props.deck?.id || indexAtStart !== selectedIndex.value) {
+      return
+    }
+    ocrRegions.value = data.regions
+  } catch (err) {
+    snackbar.error(extractOcrErrorMessage(err))
+    clearOcrLayout()
+  } finally {
+    ocrBusy.value = false
+  }
+}
+
+function onOcrOverlayDblClick() {
+  const region = hoveredRegion.value
+  const text = region?.text?.trim()
+  if (!text) {
+    snackbar.info(t('slideOcr.noText'))
+    return
+  }
+  if (props.readOnly) {
+    snackbar.info(t('slideOcr.readOnlyInject'))
+    return
+  }
+  chatStore.injectComposerText(text)
+}
+
 function closeDialog() {
   emit('update:modelValue', false)
 }
@@ -345,6 +503,8 @@ function resetState() {
   downloadBusy.value = false
   selectedIndex.value = 0
   zoomLevel.value = 1
+  ocrBusy.value = false
+  clearOcrLayout()
 }
 
 function slideTitle(index: number): string {
@@ -389,6 +549,7 @@ function getManifestImage(index: number): SlideDeckImageData | null {
 }
 
 function selectSlide(index: number) {
+  clearOcrLayout()
   selectedIndex.value = index
   if (props.modelValue) {
     void ensurePreviewReady(index, loadGeneration)
@@ -839,6 +1000,26 @@ watch(
     0 1px 3px rgba(0, 0, 0, 0.08),
     0 8px 24px rgba(0, 0, 0, 0.06);
   background: #fff;
+}
+
+.slide-deck-preview-slide-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.slide-deck-ocr-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.slide-deck-ocr-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #e53935;
+  pointer-events: none;
+  border-radius: 4px;
 }
 
 .slide-deck-preview-main-placeholder {

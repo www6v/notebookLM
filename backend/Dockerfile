@@ -26,6 +26,9 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     ca-certificates \
     curl \
     libpq-dev \
+    tesseract-ocr \
+    tesseract-ocr-chi-sim \
+    tesseract-ocr-eng \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 

@@ -857,6 +857,7 @@
       v-model="showSlideDeckPreviewDialog"
       :deck="slideDeckPreview"
       :share-token="shareToken"
+      :read-only="readOnly"
       @after-leave="onSlideDeckPreviewAfterLeave"
     />
 

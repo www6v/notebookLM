@@ -235,6 +235,12 @@ export default {
       save: '保存',
     },
   },
+  slideOcr: {
+    recognize: '识别',
+    failed: '文字识别失败，请稍后重试',
+    readOnlyInject: '分享视图无法填入对话',
+    noText: '此区域没有可识别的文字',
+  },
   pricing: {
     title: '定价',
     subtitle: '面向个人创作者、团队与企业的方案，按需选择',

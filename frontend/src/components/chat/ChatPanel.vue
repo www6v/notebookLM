@@ -231,6 +231,7 @@
     >
       <div class="input-wrapper">
         <v-textarea
+          ref="composerFieldRef"
           v-model="inputText"
           :placeholder="$t('chat.configDialog.styleDefaultDesc')"
           rows="1"
@@ -339,7 +340,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount, withDefaults } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount, withDefaults, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import MarkdownIt from 'markdown-it'
@@ -360,6 +361,7 @@ const chatStore = useChatStore()
 const sourceStore = useSourceStore()
 const snackbar = useSnackbarStore()
 const inputText = ref('')
+const composerFieldRef = ref<{ $el?: HTMLElement } | null>(null)
 const messagesContainer = ref<HTMLElement>()
 const streamOutputContainer = ref<HTMLElement>()
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
@@ -451,6 +453,25 @@ onMounted(async () => {
     await chatStore.selectSession(chatStore.sessions[0].id)
   }
 })
+
+watch(
+  () => chatStore.pendingComposerTick,
+  () => {
+    if (props.readOnly) {
+      return
+    }
+    const text = chatStore.pendingComposerText?.trim()
+    if (!text) {
+      return
+    }
+    inputText.value = text
+    nextTick(() => {
+      const root = composerFieldRef.value?.$el
+      const ta = root?.querySelector?.('textarea') as HTMLTextAreaElement | null
+      ta?.focus()
+    })
+  },
+)
 
 const formatStep = (step: Record<string, unknown>): string => {
   const type = step.step as string

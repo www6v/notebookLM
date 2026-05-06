@@ -7,11 +7,12 @@ import logging
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.ocr_layout import build_slide_layout_ocr_response
 from app.api.studio.slide_deck import (
     _build_content_disposition,
     _build_media_headers,
@@ -44,6 +45,7 @@ from app.models.studio import (
     Report,
     SlideDeck,
 )
+from app.schemas.ocr_layout import SlideImageLayoutOcrResponse
 from app.schemas.notebook import SharedNotebookView
 from app.schemas.note import NoteResponse
 from app.schemas.source import (
@@ -474,6 +476,20 @@ async def share_get_slide_images_manifest(
     return _rewrite_slide_manifest_proxy_urls(
         manifest, share_token, slide.id
     )
+
+
+@router.post(
+    "/ocr/slide-image-layout",
+    response_model=SlideImageLayoutOcrResponse,
+)
+async def share_ocr_slide_image_layout(
+    share_token: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Anonymous OCR for slide preview when share link is valid."""
+    await _notebook_for_share(db, share_token)
+    return await build_slide_layout_ocr_response(file)
 
 
 @router.get("/slides/{slide_id}/pdf-url")
