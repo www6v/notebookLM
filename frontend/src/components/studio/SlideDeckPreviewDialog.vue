@@ -242,7 +242,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, withDefaults } from 'vue'
+import { computed, nextTick, ref, watch, withDefaults } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type {
   SlideDeckData,
@@ -437,13 +437,34 @@ async function runSlideOcr() {
   ocrBusy.value = true
   hoveredRegionIndex.value = null
   try {
-    const res = await fetch(url)
-    const blob = await res.blob()
+    const blob = await fetchSlideImageBlobForOcrPreferred(url)
     const data = await postSlideImageLayoutOcr(blob, props.shareToken)
     if (deckId !== props.deck?.id || indexAtStart !== selectedIndex.value) {
       return
     }
-    ocrRegions.value = data.regions
+    await nextTick()
+    const imgEl = mainImgRef.value
+    const pw = imgEl?.naturalWidth
+    const ph = imgEl?.naturalHeight
+    if (
+      pw
+      && ph
+      && data.width > 0
+      && data.height > 0
+      && (data.width !== pw || data.height !== ph)
+    ) {
+      const sx = pw / data.width
+      const sy = ph / data.height
+      ocrRegions.value = data.regions.map((r) => ({
+        ...r,
+        x: Math.round(r.x * sx),
+        y: Math.round(r.y * sy),
+        w: Math.max(1, Math.round(r.w * sx)),
+        h: Math.max(1, Math.round(r.h * sy)),
+      }))
+    } else {
+      ocrRegions.value = data.regions
+    }
   } catch (err) {
     snackbar.error(extractOcrErrorMessage(err))
     clearOcrLayout()
@@ -476,6 +497,63 @@ function isBlobUrl(url: string | null | undefined): boolean {
 
 function isApiProxyUrl(url: string | null | undefined): boolean {
   return typeof url === 'string' && url.startsWith('/api/')
+}
+
+/**
+ * True when fetch(url) would be cross-origin (e.g. OSS presigned URL).
+ * Display via <img src> does not need CORS; reading bytes with fetch does.
+ */
+function isCrossOriginUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.href)
+    if (parsed.protocol === 'blob:') {
+      return false
+    }
+    return parsed.origin !== window.location.origin
+  } catch {
+    return true
+  }
+}
+
+type SlideImageVariant = 'export' | 'preview' | 'thumb'
+
+/**
+ * Prefer high-res export for OCR; map regions back to on-screen preview in runSlideOcr.
+ */
+async function fetchSlideImageBlobForOcrPreferred(url: string): Promise<Blob> {
+  const deck = props.deck
+  const index = selectedIndex.value
+  if (deck?.id) {
+    const variants: SlideImageVariant[] = ['export', 'preview', 'thumb']
+    const tok = props.shareToken
+    let lastErr: unknown
+    for (const variant of variants) {
+      try {
+        const buffer = tok
+          ? await shareReadApi.getSlideImageArrayBuffer(
+            tok,
+            deck.id,
+            index,
+            variant,
+          )
+          : await studioApi.getSlideImageArrayBuffer(deck.id, index, variant)
+        return new Blob([buffer])
+      } catch (err) {
+        lastErr = err
+      }
+    }
+    if (lastErr) {
+      throw lastErr
+    }
+  }
+  if (!isCrossOriginUrl(url)) {
+    const res = await fetch(url)
+    if (!res.ok) {
+      throw new Error(`Image fetch failed: ${res.status}`)
+    }
+    return await res.blob()
+  }
+  throw new Error('Slide deck not found')
 }
 
 function revokeUrl(url: string | null | undefined) {
@@ -626,7 +704,7 @@ async function loadAuthenticatedProxyVariant(
       index,
       variant
     )
-  return URL.createObjectURL(new Blob([buffer]))
+  return URL.createObjectURL(new Blob([buffer], { type: 'image/webp' }))
 }
 
 async function resolveVariantUrl(

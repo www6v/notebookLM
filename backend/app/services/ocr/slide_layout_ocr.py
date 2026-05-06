@@ -7,29 +7,87 @@ import logging
 from collections import defaultdict
 from typing import Any
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageFilter, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
 
-_MAX_OCR_DIMENSION = 2000
+# Slides are often exported below ideal size for CJK; upscaling improves glyphs.
+_MIN_LONGEST_EDGE_FOR_OCR = 1680
+# Cap decode cost while keeping enough detail for mixed CN/EN slides.
+_MAX_LONGEST_EDGE_FOR_OCR = 2800
 _MIN_REGION_AREA = 120
 _MIN_REGION_SIDE = 8
+
+# LSTM + auto page layout; 11 (sparse) often mis-merges multi-column slides.
+_TESSERACT_CONFIG = '--oem 1 --psm 3'
+_TESSERACT_LANG = 'chi_sim+eng'
 
 
 class SlideLayoutOcrError(Exception):
     """Raised when OCR cannot complete."""
 
 
-def _maybe_resize_for_ocr(image: Image.Image) -> tuple[Image.Image, float]:
-    w, h = image.size
+def _contains_cjk(text: str) -> bool:
+    return any('\u4e00' <= ch <= '\u9fff' for ch in text)
+
+
+def _merge_word_strings(parts: list[str]) -> str:
+    """Join OCR words: tight CJK runs; spaces between Latin tokens and script edges."""
+    cleaned = [p.strip() for p in parts if p.strip()]
+    if not cleaned:
+        return ''
+    if not any(_contains_cjk(p) for p in cleaned):
+        return ' '.join(cleaned)
+    merged: list[str] = [cleaned[0]]
+    for piece in cleaned[1:]:
+        prev = merged[-1]
+        prev_cjk = _contains_cjk(prev)
+        piece_cjk = _contains_cjk(piece)
+        gap = ''
+        if prev_cjk and piece_cjk:
+            gap = ''
+        elif prev_cjk ^ piece_cjk:
+            gap = ' '
+        elif prev[-1:].isalnum() and piece[:1].isalnum():
+            gap = ' '
+        merged.append(gap)
+        merged.append(piece)
+    return ''.join(merged)
+
+
+def _enhance_slide_for_ocr(rgb: Image.Image) -> Image.Image:
+    """Mild contrast/sharpen to help antialiased slide text (esp. CJK on gradients)."""
+    work = rgb.filter(ImageFilter.UnsharpMask(radius=1.2, percent=80, threshold=3))
+    work = ImageEnhance.Contrast(work).enhance(1.22)
+    work = ImageEnhance.Sharpness(work).enhance(1.12)
+    return work
+
+
+def _resize_to_ocr_window(rgb: Image.Image) -> tuple[Image.Image, float]:
+    """
+    Scale image so longest edge is in [MIN, MAX] for Tesseract.
+
+    Returns (work_image, scale_from_work_pixels_to_original_pixels).
+    """
+    ow, oh = rgb.size
+    if ow < 1 or oh < 1:
+        return rgb, 1.0
+    w, h = ow, oh
+    img = rgb
     longest = max(w, h)
-    if longest <= _MAX_OCR_DIMENSION:
-        return image, 1.0
-    factor = _MAX_OCR_DIMENSION / longest
-    new_w = max(1, int(round(w * factor)))
-    new_h = max(1, int(round(h * factor)))
-    resized = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-    return resized, 1.0 / factor
+    if longest < _MIN_LONGEST_EDGE_FOR_OCR:
+        scale_up = _MIN_LONGEST_EDGE_FOR_OCR / longest
+        w = max(1, int(round(ow * scale_up)))
+        h = max(1, int(round(oh * scale_up)))
+        img = img.resize((w, h), Image.Resampling.LANCZOS)
+        longest = max(w, h)
+    if longest > _MAX_LONGEST_EDGE_FOR_OCR:
+        scale_dn = _MAX_LONGEST_EDGE_FOR_OCR / longest
+        w = max(1, int(round(w * scale_dn)))
+        h = max(1, int(round(h * scale_dn)))
+        img = img.resize((w, h), Image.Resampling.LANCZOS)
+    scale_back = ow / img.size[0]
+    return img, scale_back
 
 
 def _regions_from_data(
@@ -72,7 +130,7 @@ def _regions_from_data(
         max_r = max(p[2] for p in parts)
         max_b = max(p[3] for p in parts)
         texts = [p[4] for p in parts]
-        merged = ' '.join(texts).strip()
+        merged = _merge_word_strings(texts).strip()
         if not merged:
             continue
         x = int(round(min_l * scale_back))
@@ -106,12 +164,14 @@ def run_slide_layout_ocr(image_bytes: bytes) -> dict[str, Any]:
 
     rgb = image.convert('RGB')
     orig_w, orig_h = rgb.size
-    work, scale_back = _maybe_resize_for_ocr(rgb)
+    sized, scale_back = _resize_to_ocr_window(rgb)
+    work = _enhance_slide_for_ocr(sized)
 
     try:
         data = pytesseract.image_to_data(
             work,
-            lang='chi_sim+eng',
+            lang=_TESSERACT_LANG,
+            config=_TESSERACT_CONFIG,
             output_type=pytesseract.Output.DICT,
         )
     except pytesseract.TesseractNotFoundError as exc:
