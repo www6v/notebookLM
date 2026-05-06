@@ -25,10 +25,9 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     build-essential \
     ca-certificates \
     curl \
+    libglib2.0-0 \
+    libgomp1 \
     libpq-dev \
-    tesseract-ocr \
-    tesseract-ocr-chi-sim \
-    tesseract-ocr-eng \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 

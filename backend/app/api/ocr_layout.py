@@ -26,13 +26,23 @@ _ALLOWED_TYPES = frozenset(
 )
 
 
+def _sniff_image_content_type(payload: bytes) -> str | None:
+    """Infer image/* from magic bytes when multipart omits Content-Type."""
+    if len(payload) >= 8 and payload.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'image/png'
+    if len(payload) >= 3 and payload.startswith(b'\xff\xd8\xff'):
+        return 'image/jpeg'
+    if (
+        len(payload) >= 12
+        and payload.startswith(b'RIFF')
+        and payload[8:12] == b'WEBP'
+    ):
+        return 'image/webp'
+    return None
+
+
 async def read_upload_image_bytes(upload: UploadFile) -> bytes:
     """Validate upload and return raw bytes. Raises HTTPException."""
-    if upload.content_type not in _ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Only PNG, JPEG, and WebP images are supported',
-        )
     data = await upload.read()
     if len(data) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
@@ -44,7 +54,16 @@ async def read_upload_image_bytes(upload: UploadFile) -> bytes:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Image payload is empty',
         )
-    return data
+    declared = upload.content_type
+    if declared in _ALLOWED_TYPES:
+        return data
+    sniffed = _sniff_image_content_type(data)
+    if sniffed in _ALLOWED_TYPES:
+        return data
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail='Only PNG, JPEG, and WebP images are supported',
+    )
 
 
 async def build_slide_layout_ocr_response(
@@ -75,5 +94,5 @@ async def ocr_slide_image_layout(
     file: UploadFile = File(...),
     _user: User = Depends(get_current_user),
 ):
-    """Run OCR on a slide raster; return paragraph-level regions."""
+    """Run OCR on a slide raster; return line-level regions (RapidOCR)."""
     return await build_slide_layout_ocr_response(file)

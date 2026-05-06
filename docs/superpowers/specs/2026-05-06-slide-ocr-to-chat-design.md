@@ -18,7 +18,7 @@
 **Out of scope（本阶段不做）**
 
 - 矢量 PDF 文字层直接抽取（当前预览为 **`<img>` 位图**，与本 spec 一致）。
-- 像素级「通用实例分割」（如 SAM）或独立 ML 服务；本阶段以 **Tesseract 段落/块级几何** 近似「组件」。
+- 像素级「通用实例分割」（如 SAM）或独立 ML 服务；本阶段以 **RapidOCR 文本行框** 近似「组件」（每行一条区域，便于悬停选中）。
 - 自动发送消息：仅 **填入输入框**，是否发送由用户决定。
 - 多语言 OCR 包动态切换（首版固定 `chi_sim+eng`）。
 
@@ -50,17 +50,17 @@
 
 ### 4.1 依赖与运行环境
 
-- **Python**：`pytesseract` + **系统安装** `tesseract-ocr`，语言包 **`chi_sim`**、**`eng`**（`chi_sim+eng`）。
-- **镜像**：`backend/Dockerfile` 的 `apt-get` 需增加上述包（当前 slim 镜像未包含）。
-- **失败**：若未检测到 Tesseract 可执行文件，接口返回 **503**，`detail` 明确为服务端未配置 OCR（便于运维排查）。
+- **Python**：[RapidOCR](https://rapidai.github.io/RapidOCRDocs/latest/install_usage/rapidocr/install/)（`rapidocr` + **`onnxruntime`** CPU 推理；默认 PP-OCRv4 中英文模型，随包或首次运行时拉取）。
+- **镜像**：无需 `tesseract-ocr`；建议保留 `libglib2.0-0`、`libgomp1` 等以兼容 `opencv-python` / ONNX Runtime 在 slim 下的运行（见当前 `backend/Dockerfile`）。
+- **失败**：若 `rapidocr` / `onnxruntime` 未安装或初始化失败，接口返回 **503**，`detail` 说明原因（便于运维排查）。
 
 ### 4.2 处理管线
 
 1. 校验 `Content-Type` ∈ `{ image/png, image/jpeg, image/webp }`。
 2. 限制请求体大小（建议 **≤ 12MB**，与 nginx `client_max_body_size` 对齐或略小）。
-3. `Pillow` 打开图像 → RGB；若长边超过阈值（建议 **2000px**），**等比缩小** 再送 Tesseract，最终将框坐标 **乘逆缩放** 映射回 **原图像素**，与前端展示一致。
-4. `pytesseract.image_to_data(..., lang='chi_sim+eng')`，按 **`(block_num, par_num)`** 聚合词级框为 **段落级区域**（比整页单块更贴近「卡片上一段字」）。
-5. 过滤极小噪点框（建议最小面积与最小边长阈值，可配置常量）。
+3. `Pillow` 打开图像 → RGB；按实现可做 **适度缩放/增强** 后送 RapidOCR；将检测框坐标 **映射回** **原图像素**，与前端展示一致。
+4. RapidOCR **检测 + 方向分类 + 识别**；每条文本行对应 **一个矩形区域**（由四边形框取轴对齐外接矩形）及 `text`。
+5. 过滤低置信度行与极小噪点框（最小面积、最小边长、分数阈值等常量）。
 6. 返回 JSON：
 
 ```json
@@ -90,7 +90,7 @@
 |------|------|
 | 格式不支持 / 空文件 | 400 |
 | 超过大小限制 | 413 |
-| Tesseract 未安装或 OCR 内部失败 | 503 |
+| RapidOCR / ONNX 未就绪或推理失败 | 503 |
 | 分享 token 无效 | 404（与现有 share 行为一致） |
 
 ---
@@ -150,15 +150,15 @@
 1. 登录用户在笔记本中打开幻灯片预览，**点击「识别」并完成 OCR 后**，悬停在某段文字区域可见 **稳定高亮框**（与识别区域一致 order of magnitude）；未点击「识别」前 **不会** 向后端发起 OCR 请求。
 2. 双击该区域后，中间栏对话 **输入框**出现对应文字（trim 后），光标可聚焦。
 3. 缩放 0.5x～3x 时，悬停与双击仍命中正确区域（允许 ± 几个像素误差）。
-4. 后端未装 Tesseract 时，前端收到 503，有 **明确错误提示**。
+4. 后端 OCR 依赖未就绪时，前端收到 503，有 **明确错误提示**。
 5. 有效 `share_token` 下可完成 OCR；`readOnly` 且无输入框时不注入并有提示。
 
 ---
 
 ## 8. 依赖与运维清单
 
-- [ ] 生产/测试 Docker 镜像安装 `tesseract-ocr`、`tesseract-ocr-chi-sim`、`tesseract-ocr-eng`。
-- [ ] `pyproject.toml` 增加 `pytesseract`。
+- [ ] 生产/测试镜像安装 `rapidocr`、`onnxruntime`（及 Dockerfile 中 OCR 所需系统库）。
+- [ ] 离线环境需预置 RapidOCR ONNX 模型或允许容器访问模型下载地址。
 - [ ] `main.py` 注册 `ocr_layout` 路由；`share_read.py` 注册分享 OCR 子路由。
 - [ ] 若有 nginx，`client_max_body_size` ≥ OCR 上传上限。
 
