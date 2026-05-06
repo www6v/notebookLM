@@ -1157,12 +1157,16 @@ function handleLocaleChange(event: Event) {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
+  align-items: stretch;
 }
 
 .use-case-card {
-  padding: 28px 30px 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 28px 22px 32px;
   background: var(--lp-elevated);
   border: 1px solid var(--lp-border);
   border-radius: 16px;
@@ -1179,12 +1183,6 @@ function handleLocaleChange(event: Event) {
   transform: translateY(-2px);
 }
 
-.use-case-card:nth-child(3) {
-  grid-column: 1 / -1;
-  max-width: min(100%, 52rem);
-  border-radius: 20px;
-}
-
 .use-case-heading {
   font-family: var(--lp-font-display);
   font-size: 1.2rem;
@@ -1199,7 +1197,8 @@ function handleLocaleChange(event: Event) {
   color: var(--lp-muted);
   line-height: 1.68;
   margin: 0;
-  max-width: 62ch;
+  flex: 1;
+  max-width: none;
   text-wrap: pretty;
 }
 
@@ -1301,6 +1300,10 @@ function handleLocaleChange(event: Event) {
   .section-intro--offset {
     margin-left: 0;
   }
+
+  .use-case-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1335,15 +1338,6 @@ function handleLocaleChange(event: Event) {
 
   .feature-row__index {
     font-size: 1.15rem;
-  }
-
-  .use-case-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .use-case-card:nth-child(3) {
-    grid-column: auto;
-    max-width: none;
   }
 
   .cta-section {
