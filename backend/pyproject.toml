@@ -32,9 +32,9 @@ dependencies = [
     # Cap below 1.24: 1.24+ ships macOS wheels only for arm64 / macOS 14+,
     # breaking Intel macOS 13 (macosx_13_0_x86_64) local installs.
     "onnxruntime>=1.16.0,<1.24",
-    # 4.13+ Intel wheels target macosx_14_0_x86_64 only (rapidocr pulls
-    # opencv-python); keep installable on Ventura Intel.
-    "opencv-python>=4.8.0,<4.13",
+    # 4.13+ Intel wheels target macosx_14_0_x86_64 only; headless drops GUI
+    # stack and shrinks Linux images vs opencv-python.
+    "opencv-python-headless>=4.8.0,<4.13",
     "python-pptx>=0.6.21",
     "pymupdf>=1.23.0",
     "celery[redis]>=5.3.0",

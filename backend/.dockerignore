@@ -1,0 +1,37 @@
+# Python / tooling caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Virtualenvs (never copy into image)
+.venv/
+venv/
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+
+# VCS / editor
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Docs and tests not needed at runtime (do not ignore *.md globally:
+# agent/skills rely on SKILL.md and reference markdown.)
+docs/
+tests/
+
+# Local dev files
+.python-version
+*.log
