@@ -221,6 +221,92 @@ def generate_slide_deck_task(
     run_async_in_worker(_run())
 
 
+@celery_app.task(bind=True, name="revise_slide_deck")
+def revise_slide_deck_task(self, slide_deck_id: str, edits: list[dict]):
+    """Background task: qwen-image-edit per slide, re-merge PDF/PPTX."""
+    from app.database import async_session
+    from app.models.studio import SlideDeck
+    from app.services.studio.slide_deck_revision_service import (
+        run_slide_deck_prompt_revision,
+    )
+    from app.services.studio.studio_storage_cleanup import (
+        delete_studio_objects_best_effort,
+        slide_deck_storage_keys,
+    )
+    from app.services.studio.studio_status_service import mark_generation_as_error
+    from sqlalchemy import select
+
+    async def _run():
+        await publish_task_event("slide", slide_deck_id, "processing")
+        old_keys: list[str] = []
+        async with async_session() as session:
+            try:
+                result = await session.execute(
+                    select(SlideDeck).where(SlideDeck.id == slide_deck_id)
+                )
+                slide = result.scalar_one_or_none()
+                if slide is None:
+                    return
+                old_keys = slide_deck_storage_keys(
+                    slide.slides_data,
+                    slide.file_path,
+                )
+                edit_tuples = [
+                    (int(e["slide_index"]), str(e["prompt"]))
+                    for e in edits
+                ]
+                await run_slide_deck_prompt_revision(
+                    session,
+                    slide_deck_id,
+                    edit_tuples,
+                )
+                await session.commit()
+                delete_studio_objects_best_effort(old_keys)
+                result = await session.execute(
+                    select(SlideDeck).where(SlideDeck.id == slide_deck_id)
+                )
+                slide_deck = result.scalar_one_or_none()
+                if slide_deck is not None:
+                    await publish_task_event(
+                        "slide",
+                        slide_deck_id,
+                        slide_deck.status,
+                        getattr(slide_deck, "error_message", None),
+                    )
+            except Exception as exc:
+                await session.rollback()
+                if _is_retryable_studio_exception(exc):
+                    retry_delay = _next_retry_delay(self.request.retries)
+                    if retry_delay is not None:
+                        logger.warning(
+                            "Slide deck revision retrying for %s in %ss after %s",
+                            slide_deck_id,
+                            retry_delay,
+                            type(exc).__name__,
+                        )
+                        raise self.retry(exc=exc, countdown=retry_delay)
+                logger.exception(
+                    "Slide deck revision failed for %s",
+                    slide_deck_id,
+                )
+                result = await session.execute(
+                    select(SlideDeck).where(SlideDeck.id == slide_deck_id)
+                )
+                slide_deck = result.scalar_one_or_none()
+                await _persist_generation_failure(
+                    session=session,
+                    record=slide_deck,
+                    output_kind="slide",
+                    record_id=slide_deck_id,
+                    reason="slide deck revision failed in worker task",
+                    error_message=str(exc),
+                    mark_generation_as_error=mark_generation_as_error,
+                )
+                raise
+
+    run_async_in_worker(_run())
+
+
 @celery_app.task(bind=True, name="generate_infographic")
 def generate_infographic_task(
     self,

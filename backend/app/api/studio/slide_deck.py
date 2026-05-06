@@ -24,6 +24,7 @@ from app.models.user import User
 from app.schemas.studio import (
     SlideDeckCreate,
     SlideDeckResponse,
+    SlideDeckReviseRequest,
     SlideDeckStatus,
     SlideDeckUpdate,
 )
@@ -44,7 +45,10 @@ from app.services.studio.studio_status_service import (
     reconcile_stale_generations,
 )
 from app.services.task_event_service import publish_task_event
-from app.tasks.studio_tasks import generate_slide_deck_task
+from app.tasks.studio_tasks import (
+    generate_slide_deck_task,
+    revise_slide_deck_task,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["studio"])
@@ -820,6 +824,78 @@ async def regenerate_slide(
         slide.id,
         None,
         None,
+    )
+    return SlideDeckResponse.model_validate(slide)
+
+
+@router.post(
+    "/api/slides/{slide_id}/revise",
+    response_model=SlideDeckResponse,
+    status_code=202,
+)
+async def revise_slide_deck(
+    slide_id: str,
+    body: SlideDeckReviseRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Queue per-slide image edits (qwen-image-edit) and re-merge PDF/PPTX."""
+    slide = await _get_slide(db, slide_id, user.id)
+    if slide.status != SlideDeckStatus.READY.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Slide deck is not ready for revision",
+        )
+    raw = slide.slides_data if isinstance(slide.slides_data, dict) else {}
+    artifacts = raw.get("artifacts") if isinstance(raw, dict) else {}
+    images = artifacts.get("images") if isinstance(artifacts, dict) else None
+    if not isinstance(images, list) or not images:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Slide deck has no images to revise",
+        )
+    n = len(images)
+    for edit in body.edits:
+        if edit.slide_index >= n:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"slide_index {edit.slide_index} is out of range "
+                    f"(valid: 0..{n - 1})"
+                ),
+            )
+
+    rl_redis, acquired, slide_daily, _ = await acquire_generation_rate_limit_slot(
+        db,
+        user_id=user.id,
+        kind=GenerationKind.SLIDE_DECK,
+        notebook_id=slide.notebook_id,
+        source_ids=None,
+        artifact_id=slide.id,
+        user_role=user.role,
+    )
+    try:
+        slide.status = SlideDeckStatus.PROCESSING.value
+        clear_generation_error(slide)
+        await db.flush()
+        await db.refresh(slide)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        await release_generation_rate_limit_on_db_failure(
+            rl_redis,
+            acquired,
+            user_id=user.id,
+            daily_slide_reserved=slide_daily,
+            daily_deep_research_reserved=False,
+        )
+        raise
+    finally:
+        await rl_redis.aclose()
+    await publish_task_event("slide", slide.id, slide.status)
+    revise_slide_deck_task.delay(
+        slide.id,
+        [e.model_dump() for e in body.edits],
     )
     return SlideDeckResponse.model_validate(slide)
 

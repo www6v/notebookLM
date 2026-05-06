@@ -218,6 +218,9 @@ def _flatten_yaml_tree(
             "litellm_model": "litellm_model",
             "litellm_vision_model": "litellm_vision_model",
             "litellm_image_model": "litellm_image_model",
+            "dashscope_slide_image_edit_model": (
+                "dashscope_slide_image_edit_model"
+            ),
             "litellm_chat_router_enabled": "litellm_chat_router_enabled",
             "litellm_router_group_name": "litellm_router_group_name",
             "litellm_router_qwen_model": "litellm_router_qwen_model",
@@ -682,6 +685,13 @@ class Settings(BaseSettings):
             "LITELLM_IMAGE_MODEL",
             "VISION_CREATE_MODEL",
             "litellm_image_model",
+        ),
+    )
+    dashscope_slide_image_edit_model: str = Field(
+        default="qwen-image-edit",
+        validation_alias=AliasChoices(
+            "DASHSCOPE_SLIDE_IMAGE_EDIT_MODEL",
+            "dashscope_slide_image_edit_model",
         ),
     )
 

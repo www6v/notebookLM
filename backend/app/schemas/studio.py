@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.services.security.custom_prompt_safety import (
     validate_custom_prompt_text,
@@ -155,6 +155,33 @@ class SlideDeckUpdate(BaseModel):
             value,
             field_name="slide_custom_prompt",
         )
+
+
+class SlideDeckSlideEdit(BaseModel):
+    """One slide page revision (0-based index, same order as images manifest)."""
+
+    slide_index: int = Field(ge=0)
+    prompt: str = Field(min_length=1, max_length=4000)
+
+
+class SlideDeckReviseRequest(BaseModel):
+    """Batch per-slide image edits; duplicate indices keep the last prompt."""
+
+    edits: list[SlideDeckSlideEdit] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def dedupe_by_slide(self) -> SlideDeckReviseRequest:
+        by_index: dict[int, str] = {}
+        for item in self.edits:
+            stripped = item.prompt.strip()
+            if not stripped:
+                raise ValueError("Prompt cannot be empty or whitespace-only")
+            by_index[item.slide_index] = stripped
+        self.edits = [
+            SlideDeckSlideEdit(slide_index=i, prompt=p)
+            for i, p in sorted(by_index.items())
+        ]
+        return self
 
 
 class SlideDeckResponse(BaseModel):

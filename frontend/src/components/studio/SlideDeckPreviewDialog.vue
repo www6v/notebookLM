@@ -50,6 +50,21 @@
             </v-icon>
             {{ $t('slideOcr.recognize') }}
           </v-btn>
+          <v-btn
+            v-if="canOpenRevisePanel"
+            variant="text"
+            size="small"
+            class="text-none"
+            @click="openRevisePanel"
+          >
+            <v-icon
+              :size="18"
+              class="mr-1"
+            >
+              mdi-pencil-outline
+            </v-icon>
+            修改
+          </v-btn>
           <v-menu
             v-model="downloadMenuOpen"
             location="bottom"
@@ -236,6 +251,98 @@
           </div>
         </div>
       </v-card-text>
+      <div
+        v-if="revisePanelOpen"
+        class="slide-deck-revise-panel"
+      >
+        <div class="slide-deck-revise-panel-inner">
+          <div class="text-subtitle-2 font-weight-medium mb-2">
+            更改幻灯片 {{ selectedIndex + 1 }}
+          </div>
+          <v-textarea
+            v-model="reviseDraft"
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            hide-details="auto"
+            placeholder="例如「将图片置于页面中央」或「缩短标题」"
+            class="slide-deck-revise-textarea mb-2"
+          />
+          <div class="slide-deck-revise-actions">
+            <v-menu location="top">
+              <template #activator="{ props: menuProps }">
+                <v-btn
+                  v-bind="menuProps"
+                  variant="text"
+                  class="text-none"
+                  :disabled="pendingReviseCount < 1"
+                >
+                  <v-icon
+                    :size="18"
+                    class="mr-1"
+                  >
+                    mdi-auto-fix
+                  </v-icon>
+                  待处理的更改 ({{ pendingReviseCount }} 项)
+                  <v-icon
+                    :size="18"
+                    end
+                  >
+                    mdi-chevron-down
+                  </v-icon>
+                </v-btn>
+              </template>
+              <v-list
+                v-if="pendingReviseCount > 0"
+                density="compact"
+                class="py-1"
+                min-width="280"
+              >
+                <v-list-item
+                  v-for="entry in pendingReviseEntries"
+                  :key="entry.index"
+                >
+                  <v-list-item-title>幻灯片 {{ entry.index + 1 }}</v-list-item-title>
+                  <v-list-item-subtitle class="text-truncate">
+                    {{ entry.prompt }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      aria-label="移除"
+                      @click="removePendingEdit(entry.index)"
+                    >
+                      <v-icon :size="18">mdi-close</v-icon>
+                    </v-btn>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+            <v-spacer />
+            <v-btn
+              variant="text"
+              class="text-none"
+              @click="closeRevisePanel"
+            >
+              取消
+            </v-btn>
+            <v-btn
+              color="primary"
+              class="text-none"
+              :loading="reviseSubmitting"
+              :disabled="!canSubmitRevise"
+              @click="submitReviseGeneration"
+            >
+              生成修订后的演示文稿
+            </v-btn>
+          </div>
+          <div class="text-caption text-medium-emphasis mt-1">
+            几分钟内即可生成
+          </div>
+        </div>
+      </div>
     </v-card>
   </v-dialog>
 
@@ -253,6 +360,7 @@ import { postSlideImageLayoutOcr, type SlideOcrRegion } from '@/api/ocrLayout'
 import { shareReadApi } from '@/api/shareRead'
 import { studioApi } from '@/api/studio'
 import { useChatStore } from '@/stores/useChatStore'
+import { useStudioStore } from '@/stores/useStudioStore'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import { triggerBlobDownload } from '@/utils/exportZip'
 import {
@@ -270,6 +378,7 @@ const CLOSE_RESET_MS = 350
 const { t } = useI18n()
 const snackbar = useSnackbarStore()
 const chatStore = useChatStore()
+const studioStore = useStudioStore()
 
 const props = withDefaults(
   defineProps<{
@@ -288,6 +397,7 @@ const slidePdfMode = computed<SlidePdfMode | undefined>(() =>
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   afterLeave: []
+  'deck-refreshed': [deck: SlideDeckData]
 }>()
 
 const dialogOpen = computed({
@@ -312,6 +422,10 @@ const slideFrameRef = ref<HTMLElement | null>(null)
 const ocrRegions = ref<SlideOcrRegion[]>([])
 const ocrBusy = ref(false)
 const hoveredRegionIndex = ref<number | null>(null)
+const revisePanelOpen = ref(false)
+const reviseDraft = ref('')
+const pendingEdits = ref<Record<number, string>>({})
+const reviseSubmitting = ref(false)
 
 let loadGeneration = 0
 let closeResetTimer: ReturnType<typeof setTimeout> | null = null
@@ -381,6 +495,94 @@ const hoveredHighlightStyle = computed((): Record<string, string> => {
     height: `${(region.h / h) * 100}%`,
   }
 })
+
+const canOpenRevisePanel = computed(() => {
+  return (
+    Boolean(props.deck?.id) &&
+    props.deck?.status === 'ready' &&
+    !props.readOnly &&
+    !props.shareToken &&
+    Boolean(manifest.value?.images?.length)
+  )
+})
+
+function mergeReviseEdits(): Record<number, string> {
+  const merged: Record<number, string> = { ...pendingEdits.value }
+  const trimmed = reviseDraft.value.trim()
+  if (trimmed) {
+    merged[selectedIndex.value] = trimmed
+  }
+  return merged
+}
+
+const pendingReviseCount = computed(() => Object.keys(mergeReviseEdits()).length)
+
+const pendingReviseEntries = computed(() => {
+  const merged = mergeReviseEdits()
+  return Object.entries(merged)
+    .map(([k, v]) => ({ index: Number(k), prompt: v }))
+    .sort((a, b) => a.index - b.index)
+})
+
+const canSubmitRevise = computed(() => pendingReviseCount.value > 0)
+
+function openRevisePanel() {
+  if (!canOpenRevisePanel.value) {
+    return
+  }
+  revisePanelOpen.value = true
+  reviseDraft.value = pendingEdits.value[selectedIndex.value] ?? ''
+}
+
+function closeRevisePanel() {
+  revisePanelOpen.value = false
+  reviseDraft.value = ''
+  pendingEdits.value = {}
+}
+
+function removePendingEdit(index: number) {
+  const next = { ...pendingEdits.value }
+  delete next[index]
+  pendingEdits.value = next
+  if (index === selectedIndex.value) {
+    reviseDraft.value = ''
+  }
+}
+
+async function submitReviseGeneration() {
+  const deck = props.deck
+  if (!deck?.id || props.shareToken) {
+    return
+  }
+  const merged = mergeReviseEdits()
+  const edits = Object.entries(merged)
+    .map(([k, v]) => ({ slide_index: Number(k), prompt: v }))
+    .sort((a, b) => a.slide_index - b.slide_index)
+  if (edits.length === 0) {
+    snackbar.info('请先填写至少一项修改说明')
+    return
+  }
+  reviseSubmitting.value = true
+  errorMessage.value = null
+  try {
+    await studioApi.reviseSlideDeck(deck.id, { edits })
+    const updated = await studioStore.pollSlideDeckUntilReady(deck.id)
+    emit('deck-refreshed', updated)
+    revisePanelOpen.value = false
+    reviseDraft.value = ''
+    pendingEdits.value = {}
+    revokeVariantUrls(thumbnailUrls.value)
+    revokeVariantUrls(previewUrls.value)
+    await nextTick()
+    await loadDeckManifest()
+    snackbar.info('修订已完成')
+  } catch (err: unknown) {
+    const ax = err as { message?: string }
+    snackbar.error(ax?.message || '修订演示文稿失败')
+  } finally {
+    reviseSubmitting.value = false
+  }
+}
 
 function clearOcrLayout() {
   ocrRegions.value = []
@@ -488,6 +690,9 @@ function onOcrOverlayDblClick() {
 }
 
 function closeDialog() {
+  revisePanelOpen.value = false
+  reviseDraft.value = ''
+  pendingEdits.value = {}
   emit('update:modelValue', false)
 }
 
@@ -583,6 +788,10 @@ function resetState() {
   zoomLevel.value = 1
   ocrBusy.value = false
   clearOcrLayout()
+  revisePanelOpen.value = false
+  reviseDraft.value = ''
+  pendingEdits.value = {}
+  reviseSubmitting.value = false
 }
 
 function slideTitle(index: number): string {
@@ -962,6 +1171,31 @@ watch(
   }
 )
 
+watch(
+  () => props.deck?.file_path,
+  (next, prev) => {
+    if (!props.modelValue || !props.deck?.id) {
+      return
+    }
+    if (next && prev && next !== prev) {
+      void loadDeckManifest()
+    }
+  }
+)
+
+watch(selectedIndex, (newIdx, oldIdx) => {
+  if (!revisePanelOpen.value) {
+    return
+  }
+  if (typeof oldIdx === 'number' && reviseDraft.value.trim()) {
+    pendingEdits.value = {
+      ...pendingEdits.value,
+      [oldIdx]: reviseDraft.value.trim(),
+    }
+  }
+  reviseDraft.value = pendingEdits.value[newIdx] ?? ''
+})
+
 </script>
 
 <style scoped lang="scss">
@@ -1207,5 +1441,29 @@ watch(
   100% {
     background-position: -200% 0;
   }
+}
+
+.slide-deck-revise-panel {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.slide-deck-revise-panel-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 20px 20px;
+}
+
+.slide-deck-revise-textarea :deep(textarea) {
+  font-size: 0.95rem;
+}
+
+.slide-deck-revise-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

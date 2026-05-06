@@ -653,6 +653,7 @@ export const useStudioStore = defineStore('studio', () => {
     generateSlides,
     updateSlideDeck,
     regenerateSlideDeck,
+    pollSlideDeckUntilReady,
     fetchInfographics,
     generateInfographic,
     updateInfographic,

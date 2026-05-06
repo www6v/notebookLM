@@ -859,6 +859,7 @@
       :share-token="shareToken"
       :read-only="readOnly"
       @after-leave="onSlideDeckPreviewAfterLeave"
+      @deck-refreshed="onSlideDeckPreviewRefreshed"
     />
 
     <InfographicPreviewDialog
@@ -2109,6 +2110,14 @@ function openSlideDeckPreviewDialog(deck: SlideDeckData) {
 
 function onSlideDeckPreviewAfterLeave() {
   slideDeckPreview.value = null
+}
+
+function onSlideDeckPreviewRefreshed(deck: SlideDeckData) {
+  slideDeckPreview.value = deck
+  const idx = studioStore.slideDecks.findIndex((d) => d.id === deck.id)
+  if (idx !== -1) {
+    studioStore.slideDecks.splice(idx, 1, deck)
+  }
 }
 
 function onInfographicPreviewAfterLeave() {

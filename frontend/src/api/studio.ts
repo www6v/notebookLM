@@ -84,6 +84,15 @@ export interface SlideDeckUpdateOptions {
   slide_custom_prompt?: string | null
 }
 
+export interface SlideDeckSlideEditPayload {
+  slide_index: number
+  prompt: string
+}
+
+export interface SlideDeckRevisePayload {
+  edits: SlideDeckSlideEditPayload[]
+}
+
 export interface SlideDeckPdfUrlOptions {
   download?: boolean
   filename?: string
@@ -211,6 +220,14 @@ export const studioApi = {
 
   regenerateSlide: async (slideId: string, data: SlideDeckUpdateOptions): Promise<SlideDeckData> => {
     const res = await client.post(`/slides/${slideId}/regenerate`, data)
+    return res.data
+  },
+
+  reviseSlideDeck: async (
+    slideId: string,
+    data: SlideDeckRevisePayload
+  ): Promise<SlideDeckData> => {
+    const res = await client.post(`/slides/${slideId}/revise`, data)
     return res.data
   },
 
