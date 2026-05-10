@@ -1,0 +1,23 @@
+# Admin backend configuration
+# Copy to config.yaml and fill in values, or use NOTEBOOKLM_CONFIG_PATH env var
+
+database:
+  host: "localhost"
+  port: 3306
+  name: "notebooklm"
+  user: "root"
+  password: "${DB_PASSWORD}"
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout_seconds: 30
+  pool_recycle_seconds: 1800
+
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+
+application:
+  debug: false
+  secret_key: "${SECRET_KEY}"
+  access_token_expire_minutes: 1440
