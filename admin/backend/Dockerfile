@@ -4,16 +4,22 @@ WORKDIR /app
 
 RUN pip install uv
 
-# Copy and install shared package first (for layer caching)
-# Build context must be the repo root so both shared/ and admin/backend/ are accessible
+# Install shared package (for layer caching, copy before source)
 COPY shared /shared
 RUN uv pip install --system /shared
 
-# Install admin backend dependencies
-COPY admin/backend/pyproject.toml .
-RUN uv pip install --system -e .
+# Install admin backend runtime dependencies
+# notebooklm-shared is already installed above; the [tool.uv.sources] path entry
+# is a local-dev hint only — we skip it here by not running `uv pip install -e .`
+COPY admin/backend/pyproject.toml /tmp/pyproject.toml
+RUN uv pip install --system \
+    "fastapi>=0.115.0" \
+    "uvicorn[standard]>=0.32.0" \
+    "pydantic>=2.10.0" \
+    "email-validator>=2.1.0" \
+    "python-multipart>=0.0.18"
 
-# Copy admin backend source
+# Copy admin backend source (uvicorn resolves app.main via WORKDIR in sys.path)
 COPY admin/backend/ .
 
 # Tell config.py where to find config.yaml (mounted by docker-compose)
