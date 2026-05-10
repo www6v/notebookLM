@@ -1,0 +1,35 @@
+"""User settings database model."""
+
+from sqlalchemy import ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from notebooklm_shared.database import Base, TimestampMixin, UUIDMixin
+
+
+class UserSettings(Base, UUIDMixin, TimestampMixin):
+    """Per-user global settings."""
+
+    __tablename__ = "user_settings"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    output_language: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="简体中文"
+    )
+    llm_provider: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="dashscope"
+    )
+    llm_model: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="Qwen3"
+    )
+    theme: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="light"
+    )
+
+    # Relationship back to User
+    user = relationship("User", back_populates="settings")
