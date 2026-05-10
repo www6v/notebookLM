@@ -2191,7 +2191,7 @@ requires-dist = [
     { name = "json-repair", specifier = ">=0.58.7" },
     { name = "langfuse", specifier = ">=2.0.0" },
     { name = "litellm", specifier = ">=1.0.0" },
-    { name = "notebooklm-shared", directory = "../shared" },
+    { name = "notebooklm-shared", editable = "../shared" },
     { name = "numpy", specifier = ">=1.24.0,<3.0.0" },
     { name = "onnxruntime", specifier = ">=1.16.0,<1.24" },
     { name = "opencv-python-headless", specifier = ">=4.8.0,<4.13" },
@@ -2227,7 +2227,7 @@ dev = [
 [[package]]
 name = "notebooklm-shared"
 version = "0.1.0"
-source = { directory = "../shared" }
+source = { editable = "../shared" }
 dependencies = [
     { name = "aiomysql" },
     { name = "bcrypt" },
