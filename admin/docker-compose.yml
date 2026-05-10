@@ -1,0 +1,31 @@
+services:
+  admin-backend:
+    build:
+      # Build context is the repo root so both shared/ and admin/backend/ are accessible
+      context: ..
+      dockerfile: admin/backend/Dockerfile
+    env_file:
+      - backend/.env
+    volumes:
+      # Mount config.yaml; NOTEBOOKLM_CONFIG_PATH in the image points here
+      - ./backend/config.yaml:/app/config.yaml:ro
+    networks:
+      - notebooklm_default
+    restart: unless-stopped
+
+  admin-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - admin-backend
+    networks:
+      - notebooklm_default
+    restart: unless-stopped
+
+networks:
+  # Shared network with the main project (MySQL, Redis, etc. are on this network)
+  notebooklm_default:
+    external: true
