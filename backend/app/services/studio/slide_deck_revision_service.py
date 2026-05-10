@@ -11,7 +11,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.studio import SlideDeck
+from notebooklm_shared.models.studio import SlideDeck
 from app.schemas.studio import SlideDeckStatus
 from app.services.infra.obs_storage import download_file_from_obs
 from app.services.studio.qwen_image_edit import edit_image_with_instruction

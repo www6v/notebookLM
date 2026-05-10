@@ -50,6 +50,7 @@ dependencies = [
     "python-dateutil>=2.9.0",
     "yt-dlp>=2024.1.0",
     "json-repair>=0.58.7",
+    "notebooklm-shared",
 ]
 
 [tool.uv]
@@ -57,6 +58,9 @@ dev-dependencies = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
 ]
+
+[tool.uv.sources]
+notebooklm-shared = { path = "../shared" }
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

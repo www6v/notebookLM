@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.system_setting import SystemSetting
+from notebooklm_shared.models.system_setting import SystemSetting
 
 DESKTOP_BACKEND_URL_KEY = "desktop_backend_url"
 

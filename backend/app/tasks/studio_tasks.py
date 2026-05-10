@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 import httpx
-import app.models  # noqa: F401
+import notebooklm_shared.models  # noqa: F401
 from app.services.studio.studio_status_service import (
     normalize_generation_error_message,
 )
@@ -89,8 +89,8 @@ def generate_mindmap_task(
     source_ids: list[str] | None = None,
 ):
     """Background task to generate a mind map for an existing pending record."""
-    from app.database import async_session
-    from app.models.studio import MindMap
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.studio import MindMap
     from app.services.studio.mindmap_service import (
         run_mindmap_generation_for_existing,
     )
@@ -157,8 +157,8 @@ def generate_slide_deck_task(
     focus_topic: str | None = None,
 ):
     """Background task to generate a slide deck for an existing pending record."""
-    from app.database import async_session
-    from app.models.studio import SlideDeck
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.studio import SlideDeck
     from app.services.studio.slide_service import (
         run_slide_deck_generation_for_existing,
     )
@@ -224,8 +224,8 @@ def generate_slide_deck_task(
 @celery_app.task(bind=True, name="revise_slide_deck")
 def revise_slide_deck_task(self, slide_deck_id: str, edits: list[dict]):
     """Background task: qwen-image-edit per slide, re-merge PDF/PPTX."""
-    from app.database import async_session
-    from app.models.studio import SlideDeck
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.studio import SlideDeck
     from app.services.studio.slide_deck_revision_service import (
         run_slide_deck_prompt_revision,
     )
@@ -314,8 +314,8 @@ def generate_infographic_task(
     source_ids: list[str] | None = None,
 ):
     """Background task to generate an infographic for an existing record."""
-    from app.database import async_session
-    from app.models.studio import Infographic
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.studio import Infographic
     from app.services.studio.infographic_service import (
         run_infographic_generation_for_existing,
     )
@@ -384,8 +384,8 @@ def generate_report_task(
     source_ids: list[str] | None = None,
 ):
     """Background task to generate a report for an existing record."""
-    from app.database import async_session
-    from app.models.studio import Report
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.studio import Report
     from app.services.studio.report_service import (
         run_report_generation_for_existing,
     )
@@ -451,8 +451,8 @@ def generate_podcast_task(
     source_ids: list[str] | None = None,
 ):
     """Background task: podcast-generation skill workflow + Qwen TTS."""
-    from app.database import async_session
-    from app.models.studio import PodcastOverview
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.studio import PodcastOverview
     from app.services.studio.podcast_service import (
         run_podcast_generation_for_existing,
     )

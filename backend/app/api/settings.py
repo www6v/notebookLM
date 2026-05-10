@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
+from notebooklm_shared.database import get_db
 from app.limits import DEFAULT_LLM_MODEL, DEFAULT_LLM_PROVIDER
-from app.models.user import User
+from notebooklm_shared.models.user import User
 from app.schemas.user_settings import UserSettingsResponse, UserSettingsUpdate
 from app.services.settings_service import get_or_create_settings, update_settings
 

@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user_settings import UserSettings
+from notebooklm_shared.models.user_settings import UserSettings
 from app.schemas.user_settings import UserSettingsUpdate
 
 logger = logging.getLogger(__name__)

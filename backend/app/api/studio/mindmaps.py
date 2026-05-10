@@ -7,15 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
-from app.models.notebook import Notebook
+from notebooklm_shared.database import get_db
+from notebooklm_shared.models.notebook import Notebook
 from app.ratelimit import (
     GenerationKind,
     acquire_generation_rate_limit_slot,
     release_generation_rate_limit_on_db_failure,
 )
-from app.models.studio import MindMap
-from app.models.user import User
+from notebooklm_shared.models.studio import MindMap
+from notebooklm_shared.models.user import User
 from app.schemas.studio import MindMapCreate, MindMapResponse, MindMapStatus
 from app.services.studio.studio_status_service import (
     reconcile_stale_generation,

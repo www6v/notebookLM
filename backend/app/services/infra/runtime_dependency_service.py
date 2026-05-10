@@ -9,8 +9,8 @@ import httpx
 from sqlalchemy import text
 
 # from app.ai.milvus_client import ensure_connected
-from app.config import settings
-from app.database import async_session
+from notebooklm_shared.config import settings
+from notebooklm_shared.database import async_session
 from app.services.task_event_service import get_task_event_redis_client
 
 

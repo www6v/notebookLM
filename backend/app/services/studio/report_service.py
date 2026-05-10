@@ -14,8 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_router import chat_completion
-from app.config import settings
-from app.models.studio import Report
+from notebooklm_shared.config import settings
+from notebooklm_shared.models.studio import Report
 from app.schemas.studio import ReportStatus
 from app.services.source.source_service import (
     build_combined_content_from_sources,

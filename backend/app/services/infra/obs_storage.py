@@ -4,7 +4,7 @@ import logging
 import uuid
 from typing import Optional
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

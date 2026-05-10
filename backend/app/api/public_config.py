@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from notebooklm_shared.database import get_db
 from app.schemas.client_config import PublicClientConfigResponse
 from app.schemas.featured_notebook import FeaturedNotebookPublicListResponse
 from app.services import featured_notebook_service as featured_svc

@@ -6,9 +6,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.models.user import User
-from app.services.security.auth_service import (
+from notebooklm_shared.database import get_db
+from notebooklm_shared.models.user import User
+from notebooklm_shared.auth.service import (
     decode_access_token,
     get_user_by_id,
 )

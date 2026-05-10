@@ -5,7 +5,7 @@ import sys
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 
 def _argv_has_celery_worker() -> bool:

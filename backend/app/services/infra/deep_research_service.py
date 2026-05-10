@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.deer_flow_client import run_deep_research
-from app.config import settings
-from app.database import async_session
-from app.models.studio import DeepResearchReport
+from notebooklm_shared.config import settings
+from notebooklm_shared.database import async_session
+from notebooklm_shared.models.studio import DeepResearchReport
 from app.services.studio.studio_status_service import (
     normalize_generation_error_message,
 )

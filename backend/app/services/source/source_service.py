@@ -14,12 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.qwen_asr import transcribe_audio
 from app.ai.qwen3_vl_video import understand_video
 from app.commons.util import get_image_source_content
-from app.config import settings
+from notebooklm_shared.config import settings
 from app.parsers.bilibili_parser import extract_bilibili_transcript
 from app.parsers.web_parser import fetch_web_markdown_via_jina
 from app.parsers.youtube_parser import extract_youtube_transcript
-from app.models.notebook import Notebook
-from app.models.source import Source
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.source import Source
 from app.services.infra.deep_searcher import call_load_files, call_upload
 from app.services.source.source_metadata_skill_service import (
     apply_source_metadata_payload,

@@ -13,7 +13,7 @@ from app.services.security.custom_prompt_safety import (
 )
 
 if TYPE_CHECKING:
-    from app.models.studio import DeepResearchReport
+    from notebooklm_shared.models.studio import DeepResearchReport
 
 VALID_SLIDE_STYLE_VALUES = {
     "blueprint",

@@ -7,23 +7,23 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.config import settings
-from app.database import Base
+from notebooklm_shared.config import settings
+from notebooklm_shared.database import Base
 
 # Import all models so they are registered with Base.metadata
-from app.models.user import User  # noqa: F401
-from app.models.notebook import Notebook  # noqa: F401
-from app.models.source import Source, SourceChunk  # noqa: F401
-from app.models.chat import ChatSession, Message  # noqa: F401
-from app.models.note import Note  # noqa: F401
-from app.models.studio import (  # noqa: F401
+from notebooklm_shared.models.user import User  # noqa: F401
+from notebooklm_shared.models.notebook import Notebook  # noqa: F401
+from notebooklm_shared.models.source import Source, SourceChunk  # noqa: F401
+from notebooklm_shared.models.chat import ChatSession, Message  # noqa: F401
+from notebooklm_shared.models.note import Note  # noqa: F401
+from notebooklm_shared.models.studio import (  # noqa: F401
     DeepResearchReport,
     MindMap,
     Report,
     SlideDeck,
     Infographic,
 )
-from app.models.payment import PaymentOrder  # noqa: F401
+from notebooklm_shared.models.payment import PaymentOrder  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

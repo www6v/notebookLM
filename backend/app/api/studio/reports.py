@@ -7,15 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
-from app.models.notebook import Notebook
+from notebooklm_shared.database import get_db
+from notebooklm_shared.models.notebook import Notebook
 from app.ratelimit import (
     GenerationKind,
     acquire_generation_rate_limit_slot,
     release_generation_rate_limit_on_db_failure,
 )
-from app.models.studio import Report
-from app.models.user import User
+from notebooklm_shared.models.studio import Report
+from notebooklm_shared.models.user import User
 from app.schemas.studio import (
     ReportCreate,
     ReportResponse,

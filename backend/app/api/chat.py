@@ -12,11 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # from app.ai.deep_search import deep_search
 from app.api.deps import get_current_user
-from app.database import get_db
+from notebooklm_shared.database import get_db
 from app.limits import ROLE_LIMITS
-from app.models.chat import ChatSession, Message
-from app.models.notebook import Notebook
-from app.models.user import User
+from notebooklm_shared.models.chat import ChatSession, Message
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.user import User
 from app.schemas.chat import (
     ChatSessionCreate,
     ChatSessionResponse,

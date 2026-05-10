@@ -7,7 +7,7 @@ import os
 import dashscope
 from langfuse import observe, propagate_attributes
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

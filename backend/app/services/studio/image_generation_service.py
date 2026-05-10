@@ -8,7 +8,7 @@ import time
 
 import httpx
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

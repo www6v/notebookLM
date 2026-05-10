@@ -20,8 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.config import settings
-from app.models.studio import SlideDeck
+from notebooklm_shared.config import settings
+from notebooklm_shared.models.studio import SlideDeck
 from app.schemas.studio import SlideDeckStatus
 from app.services.infra.obs_storage import upload_file_to_obs
 from app.services.source.source_service import (

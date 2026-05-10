@@ -33,11 +33,11 @@ from app.api.sources import (
     IMAGE_MEDIA_TYPES,
     VIDEO_MEDIA_TYPES,
 )
-from app.database import get_db
-from app.models.notebook import Notebook
-from app.models.note import Note
-from app.models.source import Source, SourceChunk
-from app.models.studio import (
+from notebooklm_shared.database import get_db
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.note import Note
+from notebooklm_shared.models.source import Source, SourceChunk
+from notebooklm_shared.models.studio import (
     DeepResearchReport,
     Infographic,
     MindMap,

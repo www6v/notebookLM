@@ -17,8 +17,8 @@
 # from app.ai.embeddings import embed_chunks
 # from app.ai.llm_router import chat_completion, iter_chat_completion_text
 # from app.ai.milvus_client import search_vectors
-# from app.config import settings
-# from app.models.source import Source, SourceChunk
+# from notebooklm_shared.config import settings
+# from notebooklm_shared.models.source import Source, SourceChunk
 
 # logger = logging.getLogger(__name__)
 

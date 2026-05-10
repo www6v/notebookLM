@@ -21,7 +21,7 @@ except ImportError:
     HAS_LITELLM = False
     acompletion = None
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

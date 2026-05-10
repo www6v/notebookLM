@@ -5,9 +5,9 @@ from __future__ import annotations
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.featured_notebook_link import FeaturedNotebookLink
-from app.models.notebook import Notebook
-from app.models.source import Source
+from notebooklm_shared.models.featured_notebook_link import FeaturedNotebookLink
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.source import Source
 from app.schemas.featured_notebook import (
     FeaturedNotebookAdminItem,
     FeaturedNotebookEntryInput,

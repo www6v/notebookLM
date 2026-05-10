@@ -2,7 +2,7 @@
 
 import logging
 
-import app.models  # noqa: F401
+import notebooklm_shared.models  # noqa: F401
 from app.tasks.async_runner import run_async_in_worker
 from app.tasks.celery_app import celery_app
 from app.services.task_event_service import publish_task_event
@@ -25,8 +25,8 @@ def process_source_task(source_id: str):
     This runs the async process_source function in a sync context
     for Celery compatibility.
     """
-    from app.database import async_session
-    from app.models.source import Source
+    from notebooklm_shared.database import async_session
+    from notebooklm_shared.models.source import Source
     from app.services.source.source_service import (
         finalize_uploaded_audio,
         finalize_uploaded_image,

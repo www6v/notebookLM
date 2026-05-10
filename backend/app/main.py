@@ -36,8 +36,8 @@ from app.api.studio import (
     reports,
     slide_deck,
 )
-from app.config import settings as config
-from app.database import init_db
+from notebooklm_shared.config import settings as config
+from notebooklm_shared.database import init_db
 from app.services.infra.runtime_dependency_service import collect_dependency_status
 
 

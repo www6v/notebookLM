@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Union
 
 import requests
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@
 import subprocess
 import tempfile
 
-from app.config import settings
+from notebooklm_shared.config import settings
 from app.parsers.subtitle_json3 import first_json3_transcript_in_dir
 from app.parsers.yt_dlp_util import cookies_argv_from_path, resolve_yt_dlp_argv
 

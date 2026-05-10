@@ -7,17 +7,17 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin
-from app.database import get_db
-from app.models.notebook import Notebook
-from app.models.source import Source
-from app.models.studio import (
+from notebooklm_shared.database import get_db
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.source import Source
+from notebooklm_shared.models.studio import (
     Infographic,
     MindMap,
     PodcastOverview,
     Report,
     SlideDeck,
 )
-from app.models.user import User
+from notebooklm_shared.models.user import User
 from app.schemas.client_config import (
     AdminClientConfigUpdate,
     PublicClientConfigResponse,

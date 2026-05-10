@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
-from app.models.user import User
+from notebooklm_shared.database import get_db
+from notebooklm_shared.models.user import User
 from app.schemas.user import Token, UserCreate, UserLogin, UserResponse
-from app.services.security.auth_service import (
+from notebooklm_shared.auth.service import (
     authenticate_user,
     create_access_token,
     create_user,

@@ -9,7 +9,7 @@ from typing import Any
 
 from redis import asyncio as redis_asyncio
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 TERMINAL_TASK_STATUSES = {"ready", "error"}
 logger = logging.getLogger(__name__)

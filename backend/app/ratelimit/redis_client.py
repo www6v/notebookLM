@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 
 from redis import asyncio as redis_asyncio
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 
 def resolve_generation_rate_limit_redis_url() -> str:

@@ -8,10 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.config import settings as config
-from app.database import async_session, get_db
-from app.models.payment import PaymentOrder
-from app.models.user import User
+from notebooklm_shared.config import settings as config
+from notebooklm_shared.database import async_session, get_db
+from notebooklm_shared.models.payment import PaymentOrder
+from notebooklm_shared.models.user import User
 from app.schemas.payment import (
     CreateOrderRequest,
     CreateOrderResponse,

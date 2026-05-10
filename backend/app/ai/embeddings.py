@@ -8,7 +8,7 @@ embedding endpoints.
 import json
 import logging
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

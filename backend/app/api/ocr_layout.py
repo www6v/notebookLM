@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.api.deps import get_current_user
-from app.models.user import User
+from notebooklm_shared.models.user import User
 from app.schemas.ocr_layout import SlideImageLayoutOcrResponse, SlideOcrRegion
 from app.services.ocr.slide_layout_ocr import SlideLayoutOcrError, run_slide_layout_ocr
 

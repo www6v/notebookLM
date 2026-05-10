@@ -9,7 +9,7 @@
 # import os
 # from urllib.parse import urlparse
 
-# from app.config import settings
+# from notebooklm_shared.config import settings
 
 # logger = logging.getLogger(__name__)
 

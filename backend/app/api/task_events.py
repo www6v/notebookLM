@@ -9,10 +9,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from app.api.deps import get_current_user
-from app.database import async_session
-from app.models.notebook import Notebook
-from app.models.source import Source
-from app.models.studio import (
+from notebooklm_shared.database import async_session
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.source import Source
+from notebooklm_shared.models.studio import (
     DeepResearchReport,
     Infographic,
     MindMap,
@@ -20,7 +20,7 @@ from app.models.studio import (
     Report,
     SlideDeck,
 )
-from app.models.user import User
+from notebooklm_shared.models.user import User
 from app.services.task_event_service import (
     TERMINAL_TASK_STATUSES,
     subscribe_task_events,

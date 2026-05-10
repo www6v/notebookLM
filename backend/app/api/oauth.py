@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from notebooklm_shared.database import get_db
 from app.services.security.oauth_service import (
     build_alipay_authorize_url,
     build_google_authorize_url,
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/auth/oauth", tags=["oauth"])
 
 
 def _require_google_config() -> None:
-    from app.config import settings
+    from notebooklm_shared.config import settings
 
     if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
         raise HTTPException(
@@ -39,7 +39,7 @@ def _require_google_config() -> None:
 
 
 def _require_weibo_config() -> None:
-    from app.config import settings
+    from notebooklm_shared.config import settings
 
     if not settings.weibo_oauth_app_key or not settings.weibo_oauth_app_secret:
         raise HTTPException(
@@ -49,7 +49,7 @@ def _require_weibo_config() -> None:
 
 
 def _require_qq_config() -> None:
-    from app.config import settings
+    from notebooklm_shared.config import settings
 
     if not settings.qq_oauth_app_id or not settings.qq_oauth_app_key:
         raise HTTPException(
@@ -59,7 +59,7 @@ def _require_qq_config() -> None:
 
 
 def _require_alipay_oauth_config() -> None:
-    from app.config import settings
+    from notebooklm_shared.config import settings
 
     if (
         not settings.alipay_app_id

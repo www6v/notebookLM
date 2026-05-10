@@ -2,7 +2,7 @@
 
 import logging
 
-import app.models  # noqa: F401
+import notebooklm_shared.models  # noqa: F401
 from app.tasks.async_runner import run_async_in_worker
 from app.tasks.celery_app import celery_app
 from app.services.task_event_service import publish_task_event

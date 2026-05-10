@@ -11,8 +11,8 @@ from json_repair import loads as json_repair_loads
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent.skill_runtime import OpenAISkillExecutor, SkillLoader, SkillPromptBuilder
-from app.config import settings
-from app.models.source import Source
+from notebooklm_shared.config import settings
+from notebooklm_shared.models.source import Source
 
 logger = logging.getLogger(__name__)
 

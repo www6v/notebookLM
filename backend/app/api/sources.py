@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.commons.url_validation import validate_web_source_url
-from app.database import get_db
+from notebooklm_shared.database import get_db
 from app.limits import ROLE_LIMITS
-from app.models.source import Source, SourceChunk
-from app.models.user import User
+from notebooklm_shared.models.source import Source, SourceChunk
+from notebooklm_shared.models.user import User
 from app.schemas.source import (
     ChunkContextResponse,
     SourceCreate,

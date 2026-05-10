@@ -5,8 +5,8 @@ import sys
 from celery import Celery
 from kombu import Queue
 
-import app.models
-from app.config import settings
+import notebooklm_shared.models  # noqa: F401
+from notebooklm_shared.config import settings
 
 
 def _resolve_celery_broker_url() -> str:

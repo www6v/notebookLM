@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from app.config import settings
+from notebooklm_shared.config import settings
 
 logger = logging.getLogger(__name__)
 

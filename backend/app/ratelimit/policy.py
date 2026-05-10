@@ -5,7 +5,7 @@ from __future__ import annotations
 from redis import asyncio as redis_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
+from notebooklm_shared.config import settings
 from app.limits import ROLE_LIMITS
 from app.ratelimit.concurrent import count_inflight_generations
 from app.ratelimit.cooldown import acquire_cooldown_keys, pttl_seconds

@@ -13,9 +13,9 @@ from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.models.user import User
-from app.services.security.auth_service import (
+from notebooklm_shared.config import settings
+from notebooklm_shared.models.user import User
+from notebooklm_shared.auth.service import (
     ALGORITHM,
     create_access_token,
     get_user_by_email,

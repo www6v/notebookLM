@@ -7,11 +7,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database import get_db
+from notebooklm_shared.database import get_db
 from app.limits import ROLE_LIMITS
-from app.models.notebook import Notebook
-from app.models.source import Source
-from app.models.user import User
+from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.source import Source
+from notebooklm_shared.models.user import User
 from app.schemas.notebook import (
     NotebookCreate,
     NotebookListResponse,

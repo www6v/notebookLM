@@ -5,7 +5,7 @@
 # from sqlalchemy.ext.asyncio import AsyncSession
 #
 # from app.ai.rag_pipeline import generate_rag_response
-# from app.models.chat import ChatSession, Message
+# from notebooklm_shared.models.chat import ChatSession, Message
 #
 #
 # async def handle_chat_message(

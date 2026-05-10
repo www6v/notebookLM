@@ -9,9 +9,9 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.models.payment import PaymentOrder
-from app.models.user import User
+from notebooklm_shared.config import settings
+from notebooklm_shared.models.payment import PaymentOrder
+from notebooklm_shared.models.user import User
 
 logger = logging.getLogger(__name__)
 
