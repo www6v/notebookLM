@@ -60,7 +60,7 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
-notebooklm-shared = { path = "../shared" }
+notebooklm-shared = { path = "../shared", editable = true }
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
