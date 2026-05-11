@@ -281,12 +281,12 @@ git commit -m "feat(services): discover publish and subscription logic"
 
 - Modify: `backend/app/api/notebooks.py`
 
-- [ ] **增加路由**
+- [x] **增加路由**
 
 - `POST /api/notebooks/{notebook_id}/discover/publish`，body `DiscoverPublishBody`，`Depends(get_current_user)`，调用 `publish_notebook`。
 - `DELETE /api/notebooks/{notebook_id}/discover/publish`，调用 `unpublish_notebook`。
 
-- [ ] **手动 curl 验证（需有效 JWT）**
+- [ ] **手动 curl 验证（需有效 JWT）**（本地无 DB 时可跳过）
 
 ```bash
 # publish
@@ -297,7 +297,9 @@ curl -sS -X POST "http://localhost:8000/api/notebooks/<NB_ID>/discover/publish" 
 
 Expected: `200` 或 `204`（按你选的响应类型）；重复上架 idempotent。
 
-- [ ] **Commit**
+实现选用 **`204 No Content`**（POST / DELETE 均无 body）。
+
+- [x] **Commit**
 
 ```bash
 git add backend/app/api/notebooks.py
