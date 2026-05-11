@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # 启动 admin/docker-compose.yml（admin-backend + admin-frontend）。
+# 顺序：docker compose down → build → up。
 # 依赖 Docker 与外部网络 notebooklm_default（若不存在则创建）。
 # 用法：在任意目录执行 bash admin/start-admin-docker.sh
-#       附加参数会传给 docker compose up（例如 --build、--force-recreate）。
+#       附加参数会传给 docker compose up（例如 --force-recreate）。
 #       前台运行：bash admin/start-admin-docker.sh --attach
 
 set -e
@@ -51,5 +52,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-echo "在 ${SCRIPT_DIR} 启动 admin 栈：${MODE}"
+echo "在 ${SCRIPT_DIR} 重启 admin 栈：down → build → up（${MODE}）"
+docker compose -f "${COMPOSE_FILE}" down
+docker compose -f "${COMPOSE_FILE}" build
 docker compose -f "${COMPOSE_FILE}" up "${UP_ARGS[@]}" "${EXTRA[@]}"
