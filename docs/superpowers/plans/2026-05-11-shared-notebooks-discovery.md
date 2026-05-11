@@ -353,16 +353,16 @@ git commit -m "feat(api): public discover list and detail"
 - Create: `backend/app/api/discover.py`
 - Modify: `backend/app/main.py`
 
-- [ ] **路由**
+- [x] **路由**
 
 `router = APIRouter(prefix="/api/discover", tags=["discover"])`
 
 - `POST /notebooks/{notebook_id}/subscribe` → `subscribe`
 - `DELETE /notebooks/{notebook_id}/subscribe` → `unsubscribe`
 
-均 `Depends(get_current_user)`。
+均 `Depends(get_current_user)`。成功返回 **`204 No Content`**。
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add backend/app/api/discover.py backend/app/main.py
