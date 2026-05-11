@@ -238,7 +238,7 @@ git commit -m "feat(api): discover pydantic schemas"
 - Create: `backend/app/services/discover_service.py`
 - Modify: `backend/app/api/notebooks.py`（Task 4 调用，可先 stub）
 
-- [ ] **实现函数（签名示例）**
+- [x] **实现函数（签名示例）**
 
 - `async def publish_notebook(db, user_id, notebook_id, body) -> None`  
   - 校验 notebook.owner == user_id。  
@@ -264,12 +264,14 @@ git commit -m "feat(api): discover pydantic schemas"
 - `async def unsubscribe(db, subscriber_id, notebook_id) -> None`  
   - 删除 subscription；`subscriber_count = max(0, count-1)`。
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add backend/app/services/discover_service.py
 git commit -m "feat(services): discover publish and subscription logic"
 ```
+
+（`list_discoverable` / `get_discover_detail` 直接返回 plan 中的 Pydantic DTO；上架路由仍在 Task 4。）
 
 ---
 
