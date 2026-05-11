@@ -518,9 +518,17 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = Field(
-        default="",
+        default="NotebookLM",
         validation_alias=AliasChoices("APP_NAME"),
     )
+
+    @field_validator("app_name")
+    @classmethod
+    def app_name_non_empty(cls, value: str) -> str:
+        """FastAPI OpenAPI requires a non-empty title; blank env/YAML breaks boot."""
+        cleaned = (value or "").strip()
+        return cleaned or "NotebookLM"
+
     debug: bool = False
     secret_key: str = "change-me-to-a-real-secret-key"
     access_token_expire_minutes: int = 60 * 24
