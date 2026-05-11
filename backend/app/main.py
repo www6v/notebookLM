@@ -22,6 +22,7 @@ from app.api import (
     ocr_layout,
     payment,
     public_config,
+    public_discover,
     settings,
     share_read,
     sources,
@@ -75,6 +76,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(oauth.router)
 app.include_router(public_config.router)
+app.include_router(public_discover.router)
 app.include_router(settings.router)
 app.include_router(notebooks.router)
 app.include_router(share_read.router)
