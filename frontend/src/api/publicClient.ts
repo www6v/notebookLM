@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const publicOnly = axios.create({
+export const publicOnly = axios.create({
   baseURL: '/api',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },

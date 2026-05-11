@@ -33,6 +33,12 @@ const localizedChildren: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: 'discover',
+    name: 'Discover',
+    component: () => import('@/views/DiscoverPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: 'notebook/:id',
     name: 'NotebookDetail',
     component: () => import('@/views/NotebookDetail.vue'),

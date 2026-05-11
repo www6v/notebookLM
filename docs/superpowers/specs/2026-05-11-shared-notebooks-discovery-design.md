@@ -1,7 +1,7 @@
 # 共享笔记本、发现与订阅 — 产品设计
 
 **日期：** 2026-05-11  
-**状态：** 待审阅（实现前需书面确认）  
+**状态：** 已批准 — MVP 已实现（见 `docs/superpowers/plans/2026-05-11-shared-notebooks-discovery.md`）  
 **范围：** 主应用 `frontend/` + `backend/` + `shared/notebooklm_shared/`
 
 ---

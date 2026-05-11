@@ -62,3 +62,18 @@ class NotebookListResponse(BaseModel):
 
     notebooks: list[NotebookResponse]
     total: int
+
+
+class NotebookSubscriptionItem(BaseModel):
+    """Subscribed notebook row for the home subscriptions tab."""
+
+    notebook: NotebookResponse
+    read_available: bool
+    share_token: str | None = None
+
+
+class NotebookSubscriptionsListResponse(BaseModel):
+    """List of notebooks the current user subscribed to."""
+
+    items: list[NotebookSubscriptionItem]
+    total: int

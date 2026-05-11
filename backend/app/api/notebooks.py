@@ -10,6 +10,10 @@ from app.api.deps import get_current_user
 from notebooklm_shared.database import get_db
 from app.limits import ROLE_LIMITS
 from notebooklm_shared.models.notebook import Notebook
+from notebooklm_shared.models.notebook_discover_profile import (
+    NotebookDiscoverProfile,
+)
+from notebooklm_shared.models.notebook_subscription import NotebookSubscription
 from notebooklm_shared.models.source import Source
 from notebooklm_shared.models.user import User
 from app.schemas.discover import DiscoverPublishBody
@@ -19,6 +23,8 @@ from app.schemas.notebook import (
     NotebookResponse,
     NotebookShareBody,
     NotebookShareLinkResponse,
+    NotebookSubscriptionItem,
+    NotebookSubscriptionsListResponse,
     NotebookUpdate,
 )
 from app.services import discover_service as discover_svc
@@ -82,6 +88,79 @@ async def list_notebooks(
     notebooks = [_notebook_response(nb, count) for nb, count in rows]
 
     return NotebookListResponse(notebooks=notebooks, total=len(notebooks))
+
+
+@router.get("/published", response_model=NotebookListResponse)
+async def list_published_notebooks(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List current user's notebooks that are on discover."""
+    source_count_sub = (
+        select(
+            Source.notebook_id,
+            func.count(Source.id).label("source_count"),
+        )
+        .group_by(Source.notebook_id)
+        .subquery()
+    )
+    query = (
+        select(Notebook, func.coalesce(source_count_sub.c.source_count, 0))
+        .outerjoin(
+            source_count_sub,
+            Notebook.id == source_count_sub.c.notebook_id,
+        )
+        .join(
+            NotebookDiscoverProfile,
+            NotebookDiscoverProfile.notebook_id == Notebook.id,
+        )
+        .where(Notebook.user_id == user.id)
+        .order_by(Notebook.updated_at.desc())
+    )
+    result = await db.execute(query)
+    rows = result.all()
+    notebooks = [_notebook_response(nb, int(count)) for nb, count in rows]
+    return NotebookListResponse(notebooks=notebooks, total=len(notebooks))
+
+
+@router.get("/subscriptions", response_model=NotebookSubscriptionsListResponse)
+async def list_subscribed_notebooks(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List notebooks the current user subscribed to (read via share_token)."""
+    source_count_sub = (
+        select(
+            Source.notebook_id,
+            func.count(Source.id).label("source_count"),
+        )
+        .group_by(Source.notebook_id)
+        .subquery()
+    )
+    stmt = (
+        select(Notebook, func.coalesce(source_count_sub.c.source_count, 0))
+        .select_from(NotebookSubscription)
+        .join(Notebook, NotebookSubscription.notebook_id == Notebook.id)
+        .outerjoin(
+            source_count_sub,
+            Notebook.id == source_count_sub.c.notebook_id,
+        )
+        .where(NotebookSubscription.subscriber_user_id == user.id)
+        .order_by(NotebookSubscription.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    items: list[NotebookSubscriptionItem] = []
+    for nb, count in rows:
+        read_available = nb.share_token is not None
+        items.append(
+            NotebookSubscriptionItem(
+                notebook=_notebook_response(nb, int(count)),
+                read_available=read_available,
+                share_token=nb.share_token,
+            )
+        )
+    return NotebookSubscriptionsListResponse(items=items, total=len(items))
 
 
 @router.post("", response_model=NotebookResponse, status_code=201)

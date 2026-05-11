@@ -60,6 +60,21 @@
           <v-icon size="18">mdi-share-variant-outline</v-icon>
           <span class="header-share-label">{{ t('notebook.shareNotebook') }}</span>
         </v-btn>
+        <div
+          v-if="!isSharedView && userStore.user && notebookStore.currentNotebook"
+          class="header-discover-wrap"
+        >
+          <v-switch
+            :model-value="discoverListed"
+            hide-details
+            density="compact"
+            color="primary"
+            inset
+            :disabled="discoverPublishBusy"
+            :label="t('notebook.discoverPublishLabel')"
+            @update:model-value="onToggleDiscoverListed"
+          />
+        </div>
         <v-btn
           v-if="!isSharedView"
           icon
@@ -473,6 +488,61 @@ watch(
 const showShareDialog = ref(false)
 const shareActionBusy = ref(false)
 const resolvedShareUrl = ref('')
+const discoverListed = ref(false)
+const discoverPublishBusy = ref(false)
+
+async function syncDiscoverListed() {
+  if (isSharedView.value || !notebookStore.currentNotebook) {
+    discoverListed.value = false
+    return
+  }
+  try {
+    const r = await notebookApi.listPublished()
+    discoverListed.value = r.notebooks.some(
+      (n) => n.id === notebookStore.currentNotebook!.id,
+    )
+  } catch {
+    discoverListed.value = false
+  }
+}
+
+watch(
+  () => [isSharedView.value, notebookStore.currentNotebook?.id] as const,
+  () => {
+    void syncDiscoverListed()
+  },
+)
+
+async function onToggleDiscoverListed(val: boolean | null) {
+  if (val === null) {
+    return
+  }
+  const nb = notebookStore.currentNotebook
+  if (!nb) {
+    return
+  }
+  discoverPublishBusy.value = true
+  const prev = discoverListed.value
+  discoverListed.value = val
+  try {
+    if (val) {
+      await notebookApi.publishToDiscover(nb.id, {})
+      snackbar.success(t('notebook.discoverPublishOn'))
+    } else {
+      await notebookApi.unpublishFromDiscover(nb.id)
+      snackbar.success(t('notebook.discoverPublishOff'))
+    }
+    await syncDiscoverListed()
+    await notebookStore.fetchNotebook(nb.id)
+  } catch (err: unknown) {
+    discoverListed.value = prev
+    snackbar.error(
+      extractErrorDetail(err) || t('notebook.discoverPublishFailed'),
+    )
+  } finally {
+    discoverPublishBusy.value = false
+  }
+}
 
 async function refreshResolvedShareUrl() {
   const nb = notebookStore.currentNotebook
@@ -908,6 +978,15 @@ const handleAddSourcePaste = async () => {
   margin-left: 4px;
   font-size: 13px;
   font-weight: 500;
+}
+
+.header-discover-wrap {
+  max-width: 200px;
+}
+
+.header-discover-wrap :deep(.v-label) {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .share-dialog-desc {

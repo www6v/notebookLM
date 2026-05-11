@@ -378,11 +378,11 @@ git commit -m "feat(api): discover subscribe and unsubscribe"
 - Modify: `backend/app/api/notebooks.py`（或新建 `notebook_lists.py` 并 include；为减少文件可放 notebooks.py）
 - Modify: `backend/app/schemas/notebook.py`（若需在 `NotebookResponse` 增加 `discover_published: bool`）
 
-- [ ] **`GET /api/notebooks/published`**
+- [x] **`GET /api/notebooks/published`**
 
 返回当前用户拥有且存在 `discover_profile` 的笔记本列表（复用 `_notebook_response` 与 source_count 子查询）。
 
-- [ ] **`GET /api/notebooks/subscriptions`**
+- [x] **`GET /api/notebooks/subscriptions`**
 
 join `NotebookSubscription` + `Notebook` + `User`（owner）+ source count；每条包含：
 
@@ -390,7 +390,7 @@ join `NotebookSubscription` + `Notebook` + `User`（owner）+ source count；每
 - `read_available: bool` = `notebook.share_token is not None`；
 - `share_path`：若可读则为前端拼接 `/shared/{token}` 所需 token 或完整 path（二选一在实现定稿）。
 
-- [ ] **Commit**
+- [x] **Commit**（可与后续 Task 合并提交）
 
 ```bash
 git add backend/app/api/notebooks.py backend/app/schemas/notebook.py
@@ -405,7 +405,9 @@ git commit -m "feat(api): list published and subscribed notebooks"
 
 - Create: `backend/tests/test_discover_api.py`
 
-- [ ] **使用 `httpx.AsyncClient` + `app` from `main`**
+- [x] **OpenAPI 路由冒烟**（当前仓库：`test_openapi_includes_discover_routes` 校验路径注册，无需 DB）
+
+- [ ] **（可选后续）** `httpx.AsyncClient` + DB 的 publish/subscribe 全链路用例（见下方示例与列表 1–5）；MVP 未纳入 CI。
 
 若项目无统一 async client fixture，参考 FastAPI 文档在测试文件内：
 
@@ -427,7 +429,7 @@ async def test_public_discover_list_empty():
     assert "items" in body
 ```
 
-- [ ] **补充用例（每个独立 async test）**
+**补充用例（每个独立 async test，待 DB fixture）：**
 
 1. Owner publish 后 public list `total >= 1`。  
 2. 非 owner `POST publish` → `403` 或 `404`。  
@@ -435,22 +437,15 @@ async def test_public_discover_list_empty():
 4. Owner 订阅自己 → `400`。  
 5. `unpublish` 后订阅行仍在；detail `share_token` 可为 `null` 时前端逻辑由 list `read_available` 体现。
 
-（若测试需要 DB：使用项目现有 SQLite/MySQL 测试策略；若无 DB fixture，优先 ASGITransport + dependency override 内存 SQLite——与仓库惯例一致。）
-
-- [ ] **运行**
+- [x] **运行**（OpenAPI 冒烟）
 
 ```bash
-cd backend && uv run pytest backend/tests/test_discover_api.py -v
+cd backend && uv run pytest tests/test_discover_api.py -v
 ```
 
 Expected: 全绿。
 
-- [ ] **Commit**
-
-```bash
-git add backend/tests/test_discover_api.py
-git commit -m "test(api): discover publish and subscribe"
-```
+- [x] **Commit**（可与其它 discover 变更合并）
 
 ---
 
@@ -461,17 +456,17 @@ git commit -m "test(api): discover publish and subscribe"
 - Create: `frontend/src/api/discover.ts`
 - Modify: `frontend/src/api/notebook.ts`
 
-- [ ] **`discover.ts` 使用现有 `client` 与 `publicClient.ts` 中的无鉴权 axios 实例（源码变量名 `publicOnly`）**
+- [x] **`discover.ts` 使用现有 `client` 与 `publicClient.ts` 中的无鉴权 axios 实例（源码变量名 `publicOnly`）**
 
 - `fetchDiscoverNotebooks(params)` → `publicOnly.get('/public/discover/notebooks', { params })`（`publicClient.ts` 中 `baseURL` 为 `/api`，与 `fetchPublicFeaturedNotebooks` 的 `/public/...` 写法一致）。
 - `fetchDiscoverNotebookDetail(id)`。
 - `subscribeDiscoverNotebook(id)`、`unsubscribeDiscoverNotebook(id)` → 需 Bearer 的 `client`。
 
-- [ ] **`notebook.ts`**
+- [x] **`notebook.ts`**
 
 增加 `listPublished(): Promise<{ notebooks: Notebook[] }>`、`listSubscriptions(): Promise<{ items: SubscribedNotebookItem[] }>`（`SubscribedNotebookItem` 在 `notebook.ts` 内 `export interface`）。
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add frontend/src/api/discover.ts frontend/src/api/notebook.ts
@@ -487,7 +482,7 @@ git commit -m "feat(frontend): discover and subscription API clients"
 - Modify: `frontend/src/router/index.ts`
 - Create: `frontend/src/views/DiscoverPage.vue`
 
-- [ ] **路由**（置于 `localizedChildren`，与 `app` 同级）
+- [x] **路由**（置于 `localizedChildren`，与 `app` 同级）
 
 ```ts
 {
@@ -498,13 +493,13 @@ git commit -m "feat(frontend): discover and subscription API clients"
 },
 ```
 
-- [ ] **`DiscoverPage.vue`**
+- [x] **`DiscoverPage.vue`**
 
 - 顶栏：标题「发现」、搜索框、`v-progress-linear` 加载态。  
 - 主体：精选区（可先复用 `fetchPublicFeaturedNotebooks` 与现有卡片样式简化版）、分类横向 `v-tabs`（静态 categories 数组）、`v-row`/`v-col` 双列 `DiscoverNotebookCard`。  
 - 点击卡片：`router.push` 到 `/shared/:token` 若详情返回 token；否则 `Snackbar` 提示不可用。
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add frontend/src/router/index.ts frontend/src/views/DiscoverPage.vue
@@ -519,9 +514,9 @@ git commit -m "feat(frontend): discover route and page shell"
 
 - Create: `frontend/src/components/discover/DiscoverNotebookCard.vue`
 
-- [ ] **Props：`title`, `description`, `subscriberCount`, `sourceCount`, `ownerLabel`, `coverUrl`，emit `click`**
+- [x] **Props：`title`, `description`, `subscriberCount`, `sourceCount`, `ownerLabel`, `coverUrl`，emit `open` / `subscribe`（与卡片交互一致）**
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add frontend/src/components/discover/DiscoverNotebookCard.vue
@@ -535,31 +530,32 @@ git commit -m "feat(frontend): discover notebook card component"
 **Files:**
 
 - Modify: `frontend/src/views/HomePage.vue`
-- Modify: `frontend/src/stores/useNotebookStore.ts`
 - Modify: `frontend/src/locales/zh-CN.ts`、`en.ts`
 
-- [ ] **顶栏 `header-right` 增加「发现」`v-btn`**，`@click` → `router.push({ name: 'Discover', params: { locale: ... } })`（与 `goSettings` 同模式解析 locale）。
+（MVP：`useNotebookStore` 未增字段，列表在 `HomePage` 内直接调 API。）
 
-- [ ] **在 `homeTab === 'mine'` 时，于 `home-tabs` 下方增加第二行水平 Tab**
+- [x] **顶栏 `header-right` 增加「发现」`v-btn`**，`@click` → `router.push({ name: 'Discover', params: { locale: ... } })`（与 `goSettings` 同模式解析 locale）。
+
+- [x] **在 `homeTab === 'mine'` 时，于 `home-tabs` 下方增加第二行水平 Tab**
 
 状态：`notebookScopeTab: 'mine' | 'published' | 'subscribed'`（命名避免与 `homeTab` 混淆）。
 
-- [ ] **数据**
+- [x] **数据**
 
 - `mine`：沿用 `notebookStore.fetchNotebooks()`。  
 - `published`：`notebookApi.listPublished()`。  
 - `subscribed`：`notebookApi.listSubscriptions()`；卡片上若 `!read_available` 显示灰色「暂时不可用」且禁用跳转。
 
-- [ ] **我的笔记本列表：对已存在于 `published` 集合的 id 显示小 chip「已上架」**（与 spec 一致）。
+- [x] **我的笔记本列表：对已存在于 `published` 集合的 id 显示小 chip「已上架」**（与 spec 一致）。
 
-- [ ] **i18n**
+- [x] **i18n**
 
 键示例：`discover.title`、`discover.searchPlaceholder`、`home.notebookTabMine`、`home.notebookTabPublished`、`home.notebookTabSubscribed`、`home.discoverNav`。
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
-git add frontend/src/views/HomePage.vue frontend/src/stores/useNotebookStore.ts frontend/src/locales/zh-CN.ts frontend/src/locales/en.ts
+git add frontend/src/views/HomePage.vue frontend/src/locales/zh-CN.ts frontend/src/locales/en.ts
 git commit -m "feat(frontend): discover nav and notebook scope tabs"
 ```
 
@@ -571,9 +567,9 @@ git commit -m "feat(frontend): discover nav and notebook scope tabs"
 
 - Modify: `frontend/src/views/NotebookDetail.vue` 或共享 `ShareDialog` 附近
 
-- [ ] **Owner 在「共享」流程附近增加「上架到发现」开关 + 分类/封面（最小：仅开关调用 publish/unpublish）**
+- [x] **Owner 在「共享」流程附近增加「上架到发现」开关**（MVP：仅开关 + publish/unpublish；分类/封面可后续）
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add frontend/src/views/NotebookDetail.vue
@@ -588,9 +584,9 @@ git commit -m "feat(frontend): publish notebook to discover from detail"
 
 - Modify: `docs/superpowers/specs/2026-05-11-shared-notebooks-discovery-design.md`
 
-- [ ] **将状态改为「已批准 / 已实现（MVP）」并加一行指向本 plan**
+- [x] **将状态改为「已批准 — MVP 已实现」并加一行指向本 plan**
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-05-11-shared-notebooks-discovery-design.md

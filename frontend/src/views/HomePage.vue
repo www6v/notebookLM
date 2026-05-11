@@ -7,6 +7,13 @@
       <div class="header-right">
         <v-btn
           variant="text"
+          @click="goDiscover"
+        >
+          <v-icon size="20">mdi-compass-outline</v-icon>
+          <span class="header-btn-label">{{ t('home.discoverNav') }}</span>
+        </v-btn>
+        <v-btn
+          variant="text"
           @click="goPricing"
         >
           <span class="header-btn-label">{{ t('home.pricing') }}</span>
@@ -118,7 +125,25 @@
           v-show="homeTab === 'mine'"
           class="home-tab-panel"
         >
-          <div v-if="notebookStore.loading" class="loading-state">
+          <div
+            class="notebook-scope-tabs"
+            role="tablist"
+          >
+            <button
+              v-for="scopeOpt of notebookScopeOptions"
+              :key="scopeOpt.value"
+              type="button"
+              class="notebook-scope-tab"
+              :class="{ active: notebookScopeTab === scopeOpt.value }"
+              role="tab"
+              :aria-selected="notebookScopeTab === scopeOpt.value"
+              @click="setNotebookScopeTab(scopeOpt.value)"
+            >
+              {{ scopeOpt.label }}
+            </button>
+          </div>
+
+          <div v-if="scopeLoading" class="loading-state">
             <v-skeleton-loader
               type="list-item-three-line"
               class="mb-2"
@@ -130,7 +155,82 @@
             <v-skeleton-loader type="list-item-three-line" />
           </div>
 
-          <div v-else-if="notebookStore.notebooks.length === 0" class="empty-state">
+          <template v-else-if="notebookScopeTab === 'subscribed'">
+            <div
+              v-if="subscribedRows.length === 0"
+              class="empty-state"
+            >
+              <v-alert
+                type="info"
+                variant="tonal"
+                class="text-center"
+              >
+                {{ t('home.subscribedEmpty') }}
+              </v-alert>
+            </div>
+            <template v-else>
+              <div
+                v-show="viewMode === 'grid'"
+                class="notebook-grid"
+              >
+                <div
+                  v-for="row of subscribedRows"
+                  :key="row.notebook.id"
+                  class="notebook-card"
+                  :class="{ 'is-disabled': !row.read_available }"
+                  @click="onSubscribedCardClick(row)"
+                >
+                  <div class="card-emoji">{{ getCardEmoji(row.notebook) }}</div>
+                  <h3 class="card-title">{{ row.notebook.title }}</h3>
+                  <div class="card-meta">
+                    <span>{{ formatNotebookDate(row.notebook.updated_at) }}</span>
+                    <span>{{ t('chat.sourceCount', { count: row.notebook.source_count }) }}</span>
+                  </div>
+                  <div
+                    v-if="!row.read_available"
+                    class="card-unavailable"
+                  >
+                    {{ t('home.subscribedUnavailable') }}
+                  </div>
+                </div>
+              </div>
+              <div
+                v-show="viewMode === 'list'"
+                class="notebook-list-wrap"
+              >
+                <div class="notebook-list-header">
+                  <div class="col-title">{{ t('home.colTitle') }}</div>
+                  <div class="col-sources">{{ t('home.colSources') }}</div>
+                  <div class="col-date">{{ t('home.colDate') }}</div>
+                  <div class="col-role">{{ t('home.subscribedReader') }}</div>
+                  <div class="col-actions" />
+                </div>
+                <div
+                  v-for="row of subscribedRows"
+                  :key="row.notebook.id"
+                  class="notebook-list-row"
+                  :class="{ 'is-disabled': !row.read_available }"
+                  @click="onSubscribedCardClick(row)"
+                >
+                  <div class="col-title">
+                    <span class="row-emoji">{{ getCardEmoji(row.notebook) }}</span>
+                    <span class="row-title-text">{{ row.notebook.title }}</span>
+                  </div>
+                  <div class="col-sources">{{ t('chat.sourceCount', { count: row.notebook.source_count }) }}</div>
+                  <div class="col-date">{{ formatNotebookDate(row.notebook.created_at) }}</div>
+                  <div class="col-role">
+                    {{ row.read_available ? t('home.subscribedReader') : t('home.subscribedUnavailable') }}
+                  </div>
+                  <div class="col-actions" />
+                </div>
+              </div>
+            </template>
+          </template>
+
+          <div
+            v-else-if="displayedNotebookList.length === 0"
+            class="empty-state"
+          >
             <v-alert
               type="info"
               variant="tonal"
@@ -152,13 +252,24 @@
                 <span class="card-new-label">{{ t('home.newNotebookCard') }}</span>
               </div>
               <div
-                v-for="nb of sortedNotebooks"
+                v-for="nb of displayedNotebookList"
                 :key="nb.id"
                 class="notebook-card"
                 @click="goNotebook(nb.id)"
               >
                 <div class="card-emoji">{{ getCardEmoji(nb) }}</div>
-                <h3 class="card-title">{{ nb.title }}</h3>
+                <h3 class="card-title">
+                  {{ nb.title }}
+                  <v-chip
+                    v-if="notebookScopeTab === 'mine' && publishedIdSet.has(nb.id)"
+                    size="x-small"
+                    class="ml-2"
+                    color="primary"
+                    variant="tonal"
+                  >
+                    {{ t('home.discoverPublishedBadge') }}
+                  </v-chip>
+                </h3>
                 <div class="card-meta">
                   <span>{{ formatNotebookDate(nb.updated_at) }}</span>
                   <span>{{ t('chat.sourceCount', { count: nb.source_count }) }}</span>
@@ -205,7 +316,7 @@
                 <div class="col-actions" />
               </div>
               <div
-                v-for="nb of sortedNotebooks"
+                v-for="nb of displayedNotebookList"
                 :key="nb.id"
                 class="notebook-list-row"
                 @click="goNotebook(nb.id)"
@@ -213,6 +324,15 @@
                 <div class="col-title">
                   <span class="row-emoji">{{ getCardEmoji(nb) }}</span>
                   <span class="row-title-text">{{ nb.title }}</span>
+                  <v-chip
+                    v-if="notebookScopeTab === 'mine' && publishedIdSet.has(nb.id)"
+                    size="x-small"
+                    class="ml-2"
+                    color="primary"
+                    variant="tonal"
+                  >
+                    {{ t('home.discoverPublishedBadge') }}
+                  </v-chip>
                 </div>
                 <div class="col-sources">{{ t('chat.sourceCount', { count: nb.source_count }) }}</div>
                 <div class="col-date">{{ formatNotebookDate(nb.created_at) }}</div>
@@ -379,7 +499,11 @@ import { useNotebookStore } from '@/stores/useNotebookStore'
 import { useUserStore } from '@/stores/useUserStore'
 import { useSnackbarStore } from '@/stores/useSnackbarStore'
 import { useConfirmStore } from '@/stores/useConfirmStore'
-import type { Notebook as NotebookType } from '@/api/notebook'
+import {
+  notebookApi,
+  type Notebook as NotebookType,
+  type SubscribedNotebookItem,
+} from '@/api/notebook'
 import {
   fetchPublicFeaturedNotebooks,
   type PublicFeaturedNotebookItem,
@@ -389,6 +513,8 @@ const VIEW_MODE_KEY = 'notebook-list-view'
 const HOME_TAB_KEY = 'notebook-home-tab'
 
 type HomeMainTab = 'mine' | 'featured'
+
+type NotebookScopeTab = 'mine' | 'published' | 'subscribed'
 
 const { t, locale: i18nLocale } = useI18n()
 const router = useRouter()
@@ -404,12 +530,23 @@ const editNotebook = reactive({ id: '', title: '', description: '' })
 
 const viewMode = ref<'grid' | 'list'>('grid')
 const homeTab = ref<HomeMainTab>('mine')
+const notebookScopeTab = ref<NotebookScopeTab>('mine')
 const sortBy = ref<'recent' | 'created' | 'title'>('recent')
+const scopeLoading = ref(false)
+const publishedList = ref<NotebookType[]>([])
+const subscribedRows = ref<SubscribedNotebookItem[]>([])
+const publishedIdSet = ref<Set<string>>(new Set())
 
 const sortSelectItems = computed(() => [
   { title: t('home.sortRecent'), value: 'recent' as const },
   { title: t('home.sortCreated'), value: 'created' as const },
   { title: t('home.sortTitle'), value: 'title' as const },
+])
+
+const notebookScopeOptions = computed(() => [
+  { value: 'mine' as const, label: t('home.notebookTabMine') },
+  { value: 'published' as const, label: t('home.notebookTabPublished') },
+  { value: 'subscribed' as const, label: t('home.notebookTabSubscribed') },
 ])
 
 function loadViewMode() {
@@ -430,6 +567,47 @@ function setHomeTab(tab: HomeMainTab) {
   homeTab.value = tab
   if (tab === 'featured') {
     void loadFeaturedNotebooks()
+  }
+  if (tab === 'mine') {
+    void loadNotebookScope()
+  }
+}
+
+function setNotebookScopeTab(tab: NotebookScopeTab) {
+  notebookScopeTab.value = tab
+  void loadNotebookScope()
+}
+
+async function loadNotebookScope() {
+  if (homeTab.value !== 'mine') {
+    return
+  }
+  scopeLoading.value = true
+  try {
+    if (notebookScopeTab.value === 'mine') {
+      await notebookStore.fetchNotebooks()
+      try {
+        const r = await notebookApi.listPublished()
+        publishedIdSet.value = new Set(r.notebooks.map((n) => n.id))
+      } catch {
+        publishedIdSet.value = new Set()
+      }
+    } else if (notebookScopeTab.value === 'published') {
+      const r = await notebookApi.listPublished()
+      publishedList.value = r.notebooks
+    } else {
+      const r = await notebookApi.listSubscriptions()
+      subscribedRows.value = r.items
+    }
+  } catch {
+    if (notebookScopeTab.value === 'published') {
+      publishedList.value = []
+    }
+    if (notebookScopeTab.value === 'subscribed') {
+      subscribedRows.value = []
+    }
+  } finally {
+    scopeLoading.value = false
   }
 }
 
@@ -469,32 +647,48 @@ async function loadFeaturedNotebooks() {
 onMounted(() => {
   loadViewMode()
   loadHomeTab()
-  notebookStore.fetchNotebooks()
   void loadFeaturedNotebooks()
+  void loadNotebookScope()
 })
 
-const sortedNotebooks = computed(() => {
-  const list = [...notebookStore.notebooks]
+function applyNotebookSort(list: NotebookType[]): NotebookType[] {
+  const arr = [...list]
   if (sortBy.value === 'recent') {
-    list.sort(
+    arr.sort(
       (a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
     )
   } else if (sortBy.value === 'created') {
-    list.sort(
+    arr.sort(
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     )
   } else {
-    list.sort((a, b) =>
+    arr.sort((a, b) =>
       a.title.localeCompare(
         b.title,
         i18nLocale.value === 'zh-CN' ? 'zh-CN' : 'en',
       ),
     )
   }
-  return list
+  return arr
+}
+
+const sortedNotebooks = computed(() => applyNotebookSort(notebookStore.notebooks))
+
+const displayedNotebookList = computed(() => {
+  if (notebookScopeTab.value === 'mine') {
+    return sortedNotebooks.value
+  }
+  if (notebookScopeTab.value === 'published') {
+    return applyNotebookSort(publishedList.value)
+  }
+  return []
 })
+
+function goDiscover() {
+  router.push({ name: 'Discover', params: { locale: routeLocale.value } })
+}
 
 function goPricing() {
   router.push({ name: 'Pricing', params: { locale: routeLocale.value } })
@@ -572,6 +766,7 @@ const handleDelete = async (id: string) => {
     if (!ok) return
     await notebookStore.deleteNotebook(id)
     snackbar.success(t('home.deleteSuccess'))
+    void loadNotebookScope()
   } catch {
     // cancelled
   }
@@ -597,6 +792,14 @@ function goSharedNotebook(shareToken: string) {
     name: 'SharedNotebook',
     params: { locale: routeLocale.value, shareToken },
   })
+}
+
+function onSubscribedCardClick(row: SubscribedNotebookItem) {
+  if (!row.read_available || !row.share_token) {
+    snackbar.error(t('home.subscribedUnavailable'))
+    return
+  }
+  goSharedNotebook(row.share_token)
 }
 
 function getFeaturedEmoji(shareToken: string) {
@@ -984,6 +1187,43 @@ const extractErrorDetail = (err: unknown): string | null => {
   min-height: 32px;
   height: 32px;
   width: 32px;
+}
+
+.notebook-scope-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--home-border);
+}
+
+.notebook-scope-tab {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--home-text-secondary);
+}
+
+.notebook-scope-tab.active {
+  color: var(--home-text);
+  background: rgba(13, 148, 136, 0.12);
+}
+
+.notebook-card.is-disabled,
+.notebook-list-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.card-unavailable {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--home-text-secondary);
 }
 
 .loading-state,
