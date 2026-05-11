@@ -58,4 +58,13 @@ class Notebook(Base, UUIDMixin, TimestampMixin):
         back_populates="notebook",
         uselist=False,
         cascade="all, delete-orphan",
+        primaryjoin="Notebook.id == NotebookDiscoverProfile.notebook_id",
+        foreign_keys="NotebookDiscoverProfile.notebook_id",
+    )
+    subscriptions = relationship(
+        "NotebookSubscription",
+        back_populates="notebook",
+        cascade="all, delete-orphan",
+        primaryjoin="Notebook.id == NotebookSubscription.notebook_id",
+        foreign_keys="NotebookSubscription.notebook_id",
     )

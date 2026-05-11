@@ -23,6 +23,7 @@ venv.bak/
 # IDE
 .vscode/
 .idea/
+.superpowers/
 *.swp
 *.swo
 *~

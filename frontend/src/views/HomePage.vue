@@ -38,30 +38,24 @@
     <main class="home-main">
       <div class="home-content-card">
         <div class="home-title-row">
-          <div
-            class="home-tabs"
-            role="tablist"
-          >
-            <button
-              type="button"
-              class="home-tab-btn"
-              :class="{ active: homeTab === 'mine' }"
-              role="tab"
-              :aria-selected="homeTab === 'mine'"
-              @click="setHomeTab('mine')"
+          <div class="home-tabs-cluster">
+            <div
+              class="home-tabs"
+              role="tablist"
             >
-              {{ t('home.myNotebooks') }}
-            </button>
-            <button
-              type="button"
-              class="home-tab-btn"
-              :class="{ active: homeTab === 'featured' }"
-              role="tab"
-              :aria-selected="homeTab === 'featured'"
-              @click="setHomeTab('featured')"
-            >
-              {{ t('home.featuredNotebooks') }}
-            </button>
+              <button
+                v-for="scopeOpt of notebookScopeOptions"
+                :key="scopeOpt.value"
+                type="button"
+                class="home-tab-btn"
+                :class="{ active: notebookScopeTab === scopeOpt.value }"
+                role="tab"
+                :aria-selected="notebookScopeTab === scopeOpt.value"
+                @click="setNotebookScopeTab(scopeOpt.value)"
+              >
+                {{ scopeOpt.label }}
+              </button>
+            </div>
           </div>
           <div class="home-actions">
             <div class="view-toggle">
@@ -99,7 +93,6 @@
               </button>
             </div>
             <v-select
-              v-show="homeTab === 'mine'"
               v-model="sortBy"
               class="sort-select action-bar-select"
               :placeholder="t('home.sortPlaceholder')"
@@ -110,7 +103,6 @@
               item-value="value"
             />
             <v-btn
-              v-show="homeTab === 'mine'"
               class="action-bar-primary-btn"
               :loading="creating"
               @click="handleQuickCreate"
@@ -121,28 +113,7 @@
           </div>
         </div>
 
-        <div
-          v-show="homeTab === 'mine'"
-          class="home-tab-panel"
-        >
-          <div
-            class="notebook-scope-tabs"
-            role="tablist"
-          >
-            <button
-              v-for="scopeOpt of notebookScopeOptions"
-              :key="scopeOpt.value"
-              type="button"
-              class="notebook-scope-tab"
-              :class="{ active: notebookScopeTab === scopeOpt.value }"
-              role="tab"
-              :aria-selected="notebookScopeTab === scopeOpt.value"
-              @click="setNotebookScopeTab(scopeOpt.value)"
-            >
-              {{ scopeOpt.label }}
-            </button>
-          </div>
-
+        <div class="home-tab-panel">
           <div v-if="scopeLoading" class="loading-state">
             <v-skeleton-loader
               type="list-item-three-line"
@@ -367,86 +338,6 @@
             </div>
           </template>
         </div>
-
-        <div
-          v-show="homeTab === 'featured'"
-          class="home-tab-panel"
-        >
-          <div
-            v-if="featuredLoading"
-            class="loading-state"
-          >
-            <v-skeleton-loader
-              type="list-item-three-line"
-              class="mb-2"
-            />
-            <v-skeleton-loader type="list-item-three-line" />
-          </div>
-          <div
-            v-else-if="featuredLoadFailed"
-            class="empty-state"
-          >
-            {{ t('home.featuredLoadFailed') }}
-          </div>
-          <div
-            v-else-if="featuredNotebookItems.length === 0"
-            class="empty-state"
-          >
-            {{ t('home.featuredEmpty') }}
-          </div>
-          <div
-            v-else
-            class="featured-listed"
-          >
-            <div
-              v-show="viewMode === 'grid'"
-              class="notebook-grid"
-            >
-              <div
-                v-for="item of featuredNotebookItems"
-                :key="item.share_token"
-                class="notebook-card"
-                @click="goSharedNotebook(item.share_token)"
-              >
-                <div class="card-emoji">{{ getFeaturedEmoji(item.share_token) }}</div>
-                <h3 class="card-title">{{ item.title }}</h3>
-                <div class="card-meta">
-                  <span>{{ formatNotebookDate(item.created_at) }}</span>
-                  <span>{{ featuredSourceCountLabel(item.source_count) }}</span>
-                </div>
-              </div>
-            </div>
-            <div
-              v-show="viewMode === 'list'"
-              class="notebook-list-wrap"
-            >
-              <div class="notebook-list-header">
-                <div class="col-title">{{ t('home.colTitle') }}</div>
-                <div class="col-sources">{{ t('home.colSources') }}</div>
-                <div class="col-date">{{ t('home.colDate') }}</div>
-                <div class="col-role">{{ t('home.colRole') }}</div>
-                <div class="col-actions" />
-              </div>
-              <div
-                v-for="item of featuredNotebookItems"
-                :key="item.share_token"
-                class="notebook-list-row"
-                @click="goSharedNotebook(item.share_token)"
-              >
-                <div class="col-title">
-                  <span class="row-emoji">{{ getFeaturedEmoji(item.share_token) }}</span>
-                  <span class="row-title-text">{{ item.title }}</span>
-                </div>
-                <div class="col-sources">
-                  {{ featuredSourceCountLabel(item.source_count) }}
-                </div>
-                <div class="col-date">{{ formatNotebookDate(item.created_at) }}</div>
-                <div class="col-role">{{ t('home.featuredReader') }}</div>
-                <div class="col-actions" />
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </main>
 
@@ -504,15 +395,7 @@ import {
   type Notebook as NotebookType,
   type SubscribedNotebookItem,
 } from '@/api/notebook'
-import {
-  fetchPublicFeaturedNotebooks,
-  type PublicFeaturedNotebookItem,
-} from '@/api/publicClient'
-
 const VIEW_MODE_KEY = 'notebook-list-view'
-const HOME_TAB_KEY = 'notebook-home-tab'
-
-type HomeMainTab = 'mine' | 'featured'
 
 type NotebookScopeTab = 'mine' | 'published' | 'subscribed'
 
@@ -529,7 +412,6 @@ const creating = ref(false)
 const editNotebook = reactive({ id: '', title: '', description: '' })
 
 const viewMode = ref<'grid' | 'list'>('grid')
-const homeTab = ref<HomeMainTab>('mine')
 const notebookScopeTab = ref<NotebookScopeTab>('mine')
 const sortBy = ref<'recent' | 'created' | 'title'>('recent')
 const scopeLoading = ref(false)
@@ -556,32 +438,12 @@ function loadViewMode() {
   }
 }
 
-function loadHomeTab() {
-  const saved = localStorage.getItem(HOME_TAB_KEY) as HomeMainTab | null
-  if (saved === 'mine' || saved === 'featured') {
-    homeTab.value = saved
-  }
-}
-
-function setHomeTab(tab: HomeMainTab) {
-  homeTab.value = tab
-  if (tab === 'featured') {
-    void loadFeaturedNotebooks()
-  }
-  if (tab === 'mine') {
-    void loadNotebookScope()
-  }
-}
-
 function setNotebookScopeTab(tab: NotebookScopeTab) {
   notebookScopeTab.value = tab
   void loadNotebookScope()
 }
 
 async function loadNotebookScope() {
-  if (homeTab.value !== 'mine') {
-    return
-  }
   scopeLoading.value = true
   try {
     if (notebookScopeTab.value === 'mine') {
@@ -619,35 +481,8 @@ watch(
   { immediate: false },
 )
 
-watch(
-  homeTab,
-  (val) => {
-    localStorage.setItem(HOME_TAB_KEY, val)
-  },
-  { immediate: false },
-)
-
-const featuredNotebookItems = ref<PublicFeaturedNotebookItem[]>([])
-const featuredLoading = ref(false)
-const featuredLoadFailed = ref(false)
-
-async function loadFeaturedNotebooks() {
-  featuredLoading.value = true
-  featuredLoadFailed.value = false
-  try {
-    featuredNotebookItems.value = await fetchPublicFeaturedNotebooks()
-  } catch {
-    featuredNotebookItems.value = []
-    featuredLoadFailed.value = true
-  } finally {
-    featuredLoading.value = false
-  }
-}
-
 onMounted(() => {
   loadViewMode()
-  loadHomeTab()
-  void loadFeaturedNotebooks()
   void loadNotebookScope()
 })
 
@@ -802,15 +637,6 @@ function onSubscribedCardClick(row: SubscribedNotebookItem) {
   goSharedNotebook(row.share_token)
 }
 
-function getFeaturedEmoji(shareToken: string) {
-  const idx = Math.abs(hashCode(shareToken)) % EMOJI_LIST.length
-  return EMOJI_LIST[idx]
-}
-
-function featuredSourceCountLabel(sourceCount: number) {
-  return t('chat.sourceCount', { count: sourceCount })
-}
-
 const extractErrorDetail = (err: unknown): string | null => {
   if (
     err &&
@@ -881,12 +707,23 @@ const extractErrorDetail = (err: unknown): string | null => {
   margin-bottom: 24px;
 }
 
+.home-tabs-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 1px solid var(--home-border);
+  padding-bottom: 0;
+}
+
 .home-tabs {
   display: inline-flex;
   align-items: flex-end;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   min-width: 0;
-  border-bottom: 1px solid var(--home-border);
   padding-bottom: 0;
 }
 
@@ -1187,31 +1024,6 @@ const extractErrorDetail = (err: unknown): string | null => {
   min-height: 32px;
   height: 32px;
   width: 32px;
-}
-
-.notebook-scope-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 20px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--home-border);
-}
-
-.notebook-scope-tab {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px 8px 0 0;
-  background: transparent;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--home-text-secondary);
-}
-
-.notebook-scope-tab.active {
-  color: var(--home-text);
-  background: rgba(13, 148, 136, 0.12);
 }
 
 .notebook-card.is-disabled,

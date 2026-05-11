@@ -25,11 +25,6 @@ def upgrade() -> None:
         sa.Column("subscriber_count", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"],
-            ["notebooks.id"],
-            ondelete="CASCADE",
-        ),
         sa.PrimaryKeyConstraint("notebook_id"),
     )
     op.create_table(
@@ -39,16 +34,6 @@ def upgrade() -> None:
         sa.Column("notebook_id", sa.String(length=36), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"],
-            ["notebooks.id"],
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["subscriber_user_id"],
-            ["users.id"],
-            ondelete="CASCADE",
-        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "subscriber_user_id",
