@@ -70,6 +70,13 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8001
 ```
 
+From `admin/`, `./start-admin-backend.sh` uses port **8001** by default (or `ADMIN_PORT` from `admin/backend/.env`). If the port is busy, use another port:
+
+```bash
+./start-admin-backend.sh 8020
+# or: ADMIN_PORT=8020 ./start-admin-backend.sh
+```
+
 ### Frontend
 
 ```bash
