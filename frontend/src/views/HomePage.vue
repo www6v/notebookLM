@@ -6,14 +6,6 @@
       </div>
       <div class="header-right">
         <v-btn
-          v-if="userStore.isAdmin"
-          variant="text"
-          @click="goAdmin"
-        >
-          <v-icon size="20">mdi-shield-account</v-icon>
-          <span class="header-btn-label">{{ t('home.admin') }}</span>
-        </v-btn>
-        <v-btn
           variant="text"
           @click="goPricing"
         >
@@ -503,10 +495,6 @@ const sortedNotebooks = computed(() => {
   }
   return list
 })
-
-function goAdmin() {
-  router.push({ name: 'AdminUserList', params: { locale: routeLocale.value } })
-}
 
 function goPricing() {
   router.push({ name: 'Pricing', params: { locale: routeLocale.value } })

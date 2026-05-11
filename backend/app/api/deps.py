@@ -52,15 +52,3 @@ async def get_current_user(
         await db.flush()
 
     return user
-
-
-async def get_current_admin(
-    user: User = Depends(get_current_user),
-) -> User:
-    """Require the current user to be an admin."""
-    if user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required",
-        )
-    return user

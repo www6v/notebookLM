@@ -13,7 +13,6 @@ from app.logging_setup import configure_logging
 configure_logging()
 
 from app.api import (
-    admin,
     auth,
     chat,
     deep_research,
@@ -91,7 +90,6 @@ app.include_router(podcasts.router)
 app.include_router(deep_research.router)
 app.include_router(studio.router)
 app.include_router(payment.router)
-app.include_router(admin.router)
 app.include_router(task_events.router)
 
 

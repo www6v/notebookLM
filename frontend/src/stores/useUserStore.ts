@@ -19,7 +19,6 @@ export const useUserStore = defineStore('user', () => {
   const user = ref<UserInfo | null>(null)
 
   const isLoggedIn = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'admin')
   const isPaid = computed(() => user.value?.role === 'paid')
   const isFree = computed(() => !user.value || user.value.role === 'free')
   const subscriptionActive = computed(() => {
@@ -89,7 +88,6 @@ export const useUserStore = defineStore('user', () => {
     token,
     user,
     isLoggedIn,
-    isAdmin,
     isPaid,
     isFree,
     subscriptionActive,

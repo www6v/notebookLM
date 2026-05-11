@@ -32,14 +32,12 @@ Bundled macOS/Windows/Linux artifacts appear under `src-tauri/target/release/bun
 
 **Note:** The loopback server currently resolves `frontend/dist` via the project layout at build time; adjust `dist_dir_for_release` in `src-tauri/src/lib.rs` if you need packaged-app resource paths.
 
-## Admin: fleet-wide desktop API URL
+## Fleet-wide desktop API URL
 
-Sign in as **admin**, open **Admin** → **Desktop API** (or `/:locale/admin/desktop`). The UI uses **`GET /api/public/client-config`** and **`PUT /api/admin/client-config`** (HTTP, same as a browser).
+Use the standalone **admin** app (`admin/` in this repo): sign in as an admin user, open **Desktop API** (`/admin/desktop`). It calls **`GET /api/public/client-config`** and **`PUT /api/admin/client-config`** on the admin backend (same HTTP API as a browser).
 
 - **Server:** `desktop_backend_url` is stored in **`system_settings`** (shared DB).
 - **Desktop (release):** On startup, the shell requests `{bootstrap}/api/public/client-config` where **bootstrap** is `backend_url` in local `settings.json` (default `http://127.0.0.1:8000`). If the JSON includes a non-empty `desktop_backend_url`, that value becomes the reverse-proxy upstream. **Restart** each desktop app after a change.
-
-Tauri detection in the Vue app uses `window.__TAURI_INTERNALS__` so the admin entry appears in `cargo tauri dev` without `@tauri-apps/vite-plugin`.
 
 **Bootstrap file:** App config directory / `settings.json` — only affects where to fetch `client-config`, not the fleet URL itself.
 

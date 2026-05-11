@@ -56,30 +56,6 @@ const localizedChildren: RouteRecordRaw[] = [
     component: () => import('@/views/PricingPage.vue'),
     meta: { requiresAuth: false },
   },
-  {
-    path: 'admin/desktop',
-    name: 'AdminDesktop',
-    component: () => import('@/views/admin/AdminDesktopPage.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: 'admin',
-    name: 'AdminUserList',
-    component: () => import('@/views/admin/AdminUserList.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: 'admin/featured',
-    name: 'AdminFeaturedNotebooks',
-    component: () => import('@/views/admin/AdminFeaturedNotebooksPage.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: 'admin/users/:id',
-    name: 'AdminUserDetail',
-    component: () => import('@/views/admin/AdminUserDetail.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
 ]
 
 const routes: RouteRecordRaw[] = [
@@ -150,12 +126,6 @@ router.beforeEach(async (to) => {
     }
     if (!userStore.user && userStore.token) {
       await userStore.fetchUser()
-    }
-  }
-  if (to.meta.requiresAdmin && !userStore.isAdmin) {
-    return {
-      name: 'Home',
-      params: { locale: localeForGuard(to) },
     }
   }
 })
