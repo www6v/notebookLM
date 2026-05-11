@@ -13,6 +13,12 @@ from notebooklm_shared.database import Base
 # Import all models so they are registered with Base.metadata
 from notebooklm_shared.models.user import User  # noqa: F401
 from notebooklm_shared.models.notebook import Notebook  # noqa: F401
+from notebooklm_shared.models.notebook_discover_profile import (  # noqa: F401
+    NotebookDiscoverProfile,
+)
+from notebooklm_shared.models.notebook_subscription import (  # noqa: F401
+    NotebookSubscription,
+)
 from notebooklm_shared.models.source import Source, SourceChunk  # noqa: F401
 from notebooklm_shared.models.chat import ChatSession, Message  # noqa: F401
 from notebooklm_shared.models.note import Note  # noqa: F401

@@ -53,3 +53,9 @@ class Notebook(Base, UUIDMixin, TimestampMixin):
         back_populates="notebook",
         cascade="all, delete-orphan",
     )
+    discover_profile = relationship(
+        "NotebookDiscoverProfile",
+        back_populates="notebook",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )

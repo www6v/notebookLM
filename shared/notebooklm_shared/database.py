@@ -94,6 +94,8 @@ async def init_db():
     from notebooklm_shared.models import (  # noqa: F401
         user,
         notebook,
+        notebook_discover_profile,
+        notebook_subscription,
         source,
         chat,
         note,
