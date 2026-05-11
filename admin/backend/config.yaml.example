@@ -1,23 +1,28 @@
-# Admin backend configuration
+# Admin backend configuration (see NOTEBOOKLM_CONFIG_PATH, shared notebooklm_shared.config).
 # Copy to config.yaml and fill in values, or use NOTEBOOKLM_CONFIG_PATH env var
 
+# =============================================================================
+# Database (MySQL)
+# =============================================================================
 database:
-  host: "localhost"
-  port: 3306
-  name: "notebooklm"
-  user: "root"
-  password: "${DB_PASSWORD}"
+  url: $DATABASE_URL
   pool_size: 5
   max_overflow: 10
   pool_timeout_seconds: 30
   pool_recycle_seconds: 1800
 
+# =============================================================================
+# Redis / Celery / cache
+# =============================================================================
 redis:
-  host: "localhost"
-  port: 6379
-  db: 0
+  redis_url: $REDIS_URL
 
+
+# =============================================================================
+# Application
+# =============================================================================
 application:
+  app_name: NoteWorks
   debug: false
   secret_key: "${SECRET_KEY}"
   access_token_expire_minutes: 1440

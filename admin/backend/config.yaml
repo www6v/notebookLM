@@ -5,24 +5,17 @@
 # =============================================================================
 database:
   url: $DATABASE_URL
-  pool_size: 20
-  max_overflow: 20
+  pool_size: 5
+  max_overflow: 10
   pool_timeout_seconds: 30
-  pool_recycle_seconds: 300
+  pool_recycle_seconds: 1800
 
 # =============================================================================
 # Redis / Celery / cache
 # =============================================================================
 redis:
   redis_url: $REDIS_URL
-  celery_broker_url: $CELERY_BROKER_URL
-  celery_result_backend_url: $CELERY_RESULT_BACKEND_URL
-  cache_redis_url: $CACHE_REDIS_URL
-  task_event_redis_url: $TASK_EVENT_REDIS_URL
-  task_event_channel_prefix: task-events
-  generation_rate_limit_redis_url: $GENERATION_RATE_LIMIT_REDIS_URL
-  generation_cooldown_seconds: 300
-  generation_max_concurrent: 5
+
 
 # =============================================================================
 # Application
@@ -30,5 +23,5 @@ redis:
 application:
   app_name: NoteWorks
   debug: false
-  secret_key: $SECRET_KEY
+  secret_key: "${SECRET_KEY}"
   access_token_expire_minutes: 1440
