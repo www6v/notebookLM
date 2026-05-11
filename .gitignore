@@ -46,6 +46,9 @@ backend-env.sh
 
 # App YAML config (copy from config.yaml.example)
 /config.yaml
+# Admin backend (copy from .env.example / config.yaml.example)
+admin/backend/.env
+admin/backend/config.yaml
 .env.local
 .env.development.local
 .env.test.local
