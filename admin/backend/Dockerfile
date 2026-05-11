@@ -1,8 +1,23 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install uv
+ARG UV_HTTP_TIMEOUT=180
+ARG UV_HTTP_RETRIES=5
+ARG UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple
+
+# Align with backend/Dockerfile: PyPI mirror + timeouts (pip compatibility + uv).
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=${UV_HTTP_TIMEOUT} \
+    PIP_INDEX_URL=${UV_DEFAULT_INDEX} \
+    UV_DEFAULT_INDEX=${UV_DEFAULT_INDEX} \
+    UV_HTTP_TIMEOUT=${UV_HTTP_TIMEOUT} \
+    UV_HTTP_RETRIES=${UV_HTTP_RETRIES}
+
+# Install uv from official image (avoids `pip install uv` when PyPI is unreachable).
+COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /bin/
 
 # Install shared package (for layer caching, copy before source)
 COPY shared /shared
