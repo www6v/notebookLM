@@ -70,7 +70,7 @@
 - Modify: `shared/notebooklm_shared/models/__init__.py`
 - Modify: `shared/notebooklm_shared/database.py`
 
-- [ ] **Step 1: 新增 `NotebookDiscoverProfile`**
+- [x] **Step 1: 新增 `NotebookDiscoverProfile`**
 
 ```python
 # shared/notebooklm_shared/models/notebook_discover_profile.py
@@ -95,7 +95,7 @@ class NotebookDiscoverProfile(Base, TimestampMixin):
     notebook = relationship("Notebook", back_populates="discover_profile")
 ```
 
-- [ ] **Step 2: 新增 `NotebookSubscription`**
+- [x] **Step 2: 新增 `NotebookSubscription`**
 
 ```python
 # shared/notebooklm_shared/models/notebook_subscription.py
@@ -124,7 +124,7 @@ class NotebookSubscription(Base, UUIDMixin, TimestampMixin):
     notebook = relationship("Notebook", foreign_keys=[notebook_id])
 ```
 
-- [ ] **Step 3: 在 `Notebook` 上增加 `relationship`**
+- [x] **Step 3: 在 `Notebook` 上增加 `relationship`**
 
 在 `shared/notebooklm_shared/models/notebook.py` 末尾增加（名称与 Step 1 `back_populates` 一致）：
 
@@ -139,12 +139,12 @@ class NotebookSubscription(Base, UUIDMixin, TimestampMixin):
 
 （若 `NotebookSubscription` 需从 Notebook 导航，可加 `subscriptions` relationship；非必须。）
 
-- [ ] **Step 4: `models/__init__.py` 与 `database.py`**
+- [x] **Step 4: `models/__init__.py` 与 `database.py`**
 
 - 在 `__init__.py` 导入并加入 `__all__`：`NotebookDiscoverProfile`, `NotebookSubscription`。
 - 在 `database.py` 的 `init_db` 内联 import 元组中增加 `notebook_discover_profile`, `notebook_subscription`（与现有风格一致）。
 
-- [ ] **Step 5: Alembic 迁移**
+- [x] **Step 5: Alembic 迁移**
 
 新建 revision：`20260511_discover_subscribe.py`，`upgrade()`：
 
@@ -153,7 +153,7 @@ class NotebookSubscription(Base, UUIDMixin, TimestampMixin):
 
 `downgrade()` 删除两表。
 
-- [ ] **Step 6: 本地执行迁移**
+- [x] **Step 6: 本地执行迁移**
 
 ```bash
 cd backend && uv run alembic upgrade head
@@ -161,12 +161,16 @@ cd backend && uv run alembic upgrade head
 
 Expected: 无报错；MySQL/SQLite 与项目当前配置一致。
 
-- [ ] **Step 7: Commit**
+**Done in dev:** 迁移脚本已就绪；本机未连 Docker MySQL 时 `alembic upgrade head` 会报连接错误，在数据库可达环境执行即可。
+
+- [x] **Step 7: Commit**
 
 ```bash
 git add shared/notebooklm_shared/models/ backend/alembic/versions/20260511_discover_subscribe.py shared/notebooklm_shared/database.py shared/notebooklm_shared/models/__init__.py shared/notebooklm_shared/models/notebook.py
 git commit -m "feat(db): discover profiles and notebook subscriptions"
 ```
+
+（已提交 `b0d7932`，并包含 `backend/alembic/env.py` 的模型导入。）
 
 ---
 
