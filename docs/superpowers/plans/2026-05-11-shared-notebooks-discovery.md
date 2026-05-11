@@ -315,7 +315,7 @@ git commit -m "feat(api): notebook discover publish endpoints"
 - Create: `backend/app/api/public_discover.py`
 - Modify: `backend/app/main.py`
 
-- [ ] **路由**
+- [x] **路由**
 
 ```python
 # backend/app/api/public_discover.py — 核心形状
@@ -328,14 +328,16 @@ async def list_public_discover(...): ...
 async def get_public_discover_detail(...): ...
 ```
 
-- [ ] **`main.py`**
+- [x] **`main.py`**
 
 ```python
 from app.api import public_discover
 app.include_router(public_discover.router)
 ```
 
-- [ ] **Commit**
+列表查询参数：`q`、`category`、`offset`、`limit`（默认 20，最大 50）。
+
+- [x] **Commit**
 
 ```bash
 git add backend/app/api/public_discover.py backend/app/main.py
