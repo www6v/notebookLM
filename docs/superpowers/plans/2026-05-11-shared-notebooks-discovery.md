@@ -451,7 +451,7 @@ git commit -m "test(api): discover publish and subscribe"
 - Create: `frontend/src/api/discover.ts`
 - Modify: `frontend/src/api/notebook.ts`
 
-- [ ] **`discover.ts` 使用现有 `client` 与 `publicClient`**
+- [ ] **`discover.ts` 使用现有 `client` 与 `publicClient.ts` 中的无鉴权 axios 实例（源码变量名 `publicOnly`）**
 
 - `fetchDiscoverNotebooks(params)` → `publicOnly.get('/public/discover/notebooks', { params })`（`publicClient.ts` 中 `baseURL` 为 `/api`，与 `fetchPublicFeaturedNotebooks` 的 `/public/...` 写法一致）。
 - `fetchDiscoverNotebookDetail(id)`。
