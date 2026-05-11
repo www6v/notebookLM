@@ -988,18 +988,21 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Langfuse（本地或自托管时用于 @observe 等监控）
+    # Langfuse（本地或自托管时用于 @observe 等监控；留空则关闭，便于仅跑 Admin 等场景）
     langfuse_public_key: str = Field(
+        default="",
         validation_alias=AliasChoices(
             "LANGFUSE_PUBLIC_KEY", "langfuse_public_key"
         ),
     )
     langfuse_secret_key: str = Field(
+        default="",
         validation_alias=AliasChoices(
             "LANGFUSE_SECRET_KEY", "langfuse_secret_key"
         ),
     )
     langfuse_host: str = Field(
+        default="",
         validation_alias=AliasChoices(
             "LANGFUSE_HOST", "LANGFUSE_BASE_URL", "langfuse_host"
         ),

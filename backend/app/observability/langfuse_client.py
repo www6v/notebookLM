@@ -26,7 +26,7 @@ def get_langfuse_client() -> Any:
         _LANGFUSE_CLIENT = Langfuse(
             public_key=settings.langfuse_public_key,
             secret_key=settings.langfuse_secret_key,
-            base_url=settings.langfuse_base_url,
+            base_url=settings.langfuse_host or None,
         )
         return _LANGFUSE_CLIENT
     except Exception as e:
