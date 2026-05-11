@@ -180,7 +180,7 @@ git commit -m "feat(db): discover profiles and notebook subscriptions"
 
 - Create: `backend/app/schemas/discover.py`
 
-- [ ] **定义 DTO**（字段名与前端对齐，示例）
+- [x] **定义 DTO**（字段名与前端对齐，示例）
 
 ```python
 # backend/app/schemas/discover.py
@@ -222,7 +222,7 @@ class DiscoverNotebookDetail(BaseModel):
 
 （`owner_display_name` 从 `User` 昵称/email 派生；实现服务层拼接。）
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add backend/app/schemas/discover.py
