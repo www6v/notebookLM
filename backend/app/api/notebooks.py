@@ -12,6 +12,7 @@ from app.limits import ROLE_LIMITS
 from notebooklm_shared.models.notebook import Notebook
 from notebooklm_shared.models.source import Source
 from notebooklm_shared.models.user import User
+from app.schemas.discover import DiscoverPublishBody
 from app.schemas.notebook import (
     NotebookCreate,
     NotebookListResponse,
@@ -20,6 +21,7 @@ from app.schemas.notebook import (
     NotebookShareLinkResponse,
     NotebookUpdate,
 )
+from app.services import discover_service as discover_svc
 
 router = APIRouter(prefix="/api/notebooks", tags=["notebooks"])
 
@@ -160,6 +162,33 @@ async def disable_notebook_share(
     notebook = await _get_user_notebook(db, notebook_id, user.id)
     notebook.share_token = None
     await db.flush()
+
+
+@router.post(
+    "/{notebook_id}/discover/publish",
+    status_code=204,
+)
+async def publish_notebook_to_discover(
+    notebook_id: str,
+    body: DiscoverPublishBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Publish this notebook to the discover catalog (owner only)."""
+    await discover_svc.publish_notebook(db, user.id, notebook_id, body)
+
+
+@router.delete(
+    "/{notebook_id}/discover/publish",
+    status_code=204,
+)
+async def unpublish_notebook_from_discover(
+    notebook_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Remove this notebook from discover; subscriptions are kept."""
+    await discover_svc.unpublish_notebook(db, user.id, notebook_id)
 
 
 @router.put("/{notebook_id}", response_model=NotebookResponse)
