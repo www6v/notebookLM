@@ -28,14 +28,19 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY pyproject.toml ./
-RUN python -c "from pathlib import Path; import tomllib; pyproject = tomllib.loads(Path('pyproject.toml').read_text()); dependencies = pyproject['project']['dependencies']; Path('requirements.docker.txt').write_text('\\n'.join(dependencies) + '\\n')"
+# Build context is the repo root (see docker-compose) so shared/ is available.
+COPY backend/pyproject.toml ./pyproject.toml
+COPY shared ./shared
+# notebooklm-shared is a local path dependency (tool.uv.sources); omit from
+# generated requirements and install the copied tree instead.
+RUN python -c "from pathlib import Path; import tomllib; pyproject = tomllib.loads(Path('pyproject.toml').read_text()); dependencies = [d for d in pyproject['project']['dependencies'] if not d.split(';', 1)[0].strip().startswith('notebooklm-shared')]; Path('requirements.docker.txt').write_text('\\n'.join(dependencies) + '\\n')"
 # rapidocr declares opencv-python; keep a single headless install for smaller
 # wheels and no GUI stack. Uninstall then force-reinstall headless restores cv2.
 RUN python -m pip install --retries ${UV_HTTP_RETRIES} -r requirements.docker.txt \
     && (python -m pip uninstall -y opencv-python || true) \
     && python -m pip install --no-cache-dir --force-reinstall \
-        'opencv-python-headless>=4.8.0,<4.13'
+        'opencv-python-headless>=4.8.0,<4.13' \
+    && python -m pip install --no-cache-dir ./shared
 
 
 FROM python:3.11-slim
@@ -66,7 +71,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --from=bun_upstream /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -sf bun /usr/local/bin/bunx
 
-COPY . .
+COPY backend/ /app/
 
 RUN mkdir -p /app/uploads
 
