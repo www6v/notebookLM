@@ -130,6 +130,17 @@ oss:
   oss_path_prefix: txt2imgcn
 
 # =============================================================================
+# Tencent Cloud COS (preferred; OSS used when COS is unavailable)
+# =============================================================================
+cos:
+  cos_secret_id: $COS_SECRET_ID
+  cos_secret_key: $COS_SECRET_KEY
+  cos_region: ap-shanghai
+  cos_bucket_name: notebooklm-1300396013
+  cos_path_prefix: notebooks
+  cos_public_base_url: https://notebooklm-1300396013.cos.ap-shanghai.myqcloud.com
+
+# =============================================================================
 # Milvus / Deep Searcher (disabled)
 # =============================================================================
 # milvus:

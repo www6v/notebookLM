@@ -42,6 +42,7 @@ dependencies = [
     "deepsearcher>=0.0.2",
     "firecrawl-py>=2.5.3,<3.0.0",
     "oss2>=2.18.0",
+    "cos-python-sdk-v5>=1.9.30",
     "litellm>=1.0.0",
     "langfuse>=2.0.0",
     "pymilvus>=2.5.0",

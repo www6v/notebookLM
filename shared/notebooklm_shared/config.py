@@ -93,6 +93,7 @@ _NESTED_BLOCK_KEYS = frozenset(
         "file_storage",
         "ytdlp",
         "oss",
+        "cos",
         "llm",
         "asr",
         "embedding",
@@ -215,6 +216,18 @@ def _flatten_yaml_tree(
             "oss_endpoint": "oss_endpoint",
             "oss_bucket_name": "oss_bucket_name",
             "oss_path_prefix": "oss_path_prefix",
+        },
+    )
+    _merge_yaml_map(
+        out,
+        _yaml_section(raw, "cos"),
+        {
+            "cos_secret_id": "cos_secret_id",
+            "cos_secret_key": "cos_secret_key",
+            "cos_region": "cos_region",
+            "cos_bucket_name": "cos_bucket_name",
+            "cos_path_prefix": "cos_path_prefix",
+            "cos_public_base_url": "cos_public_base_url",
         },
     )
     _merge_yaml_map(
@@ -645,7 +658,7 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Alibaba Cloud OSS (primary object storage)
+    # Alibaba Cloud OSS (fallback when COS is unavailable)
     oss_access_key_id: str = Field(
         default="",
         validation_alias=AliasChoices("OSS_ACCESS_KEY_ID", "oss_access_key_id"),
@@ -663,6 +676,51 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "OSS_PATH_PREFIX",
             "oss_path_prefix",
+        ),
+    )
+
+    # Tencent Cloud COS (preferred object storage)
+    cos_secret_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "COS_SECRET_ID",
+            "TENCENTCLOUD_SECRET_ID",
+            "cos_secret_id",
+        ),
+    )
+    cos_secret_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "COS_SECRET_KEY",
+            "TENCENTCLOUD_SECRET_KEY",
+            "cos_secret_key",
+        ),
+    )
+    cos_region: str = Field(
+        default="ap-shanghai",
+        validation_alias=AliasChoices("COS_REGION", "cos_region"),
+    )
+    cos_bucket_name: str = Field(
+        default="notebooklm-1300396013",
+        validation_alias=AliasChoices(
+            "COS_BUCKET_NAME",
+            "cos_bucket_name",
+        ),
+    )
+    cos_path_prefix: str = Field(
+        default="notebooks",
+        validation_alias=AliasChoices(
+            "COS_PATH_PREFIX",
+            "cos_path_prefix",
+        ),
+    )
+    cos_public_base_url: str = Field(
+        default=(
+            "https://notebooklm-1300396013.cos.ap-shanghai.myqcloud.com"
+        ),
+        validation_alias=AliasChoices(
+            "COS_PUBLIC_BASE_URL",
+            "cos_public_base_url",
         ),
     )
 
