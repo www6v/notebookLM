@@ -708,7 +708,7 @@ class Settings(BaseSettings):
         ),
     )
     cos_path_prefix: str = Field(
-        default="notebooks",
+        default="txt2imgcn",
         validation_alias=AliasChoices(
             "COS_PATH_PREFIX",
             "cos_path_prefix",

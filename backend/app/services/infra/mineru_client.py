@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
 import mimetypes
 import re
@@ -422,9 +423,151 @@ def apply_asset_urls_to_markdown(
     for rel, public_url in ordered:
         for variant in _relative_path_variants(rel):
             out = _replace_asset_path_occurrences(out, variant, public_url)
-        for variant in _relative_path_variants(rel):
-            out = out.replace(variant, public_url)
     return out
+
+
+_V1_VISUAL_TYPES = frozenset({'image', 'table', 'chart', 'equation'})
+_V2_VISUAL_TYPES = frozenset({
+    'image',
+    'table',
+    'chart',
+    'seal',
+    'equation_interline',
+})
+
+
+def _pick_content_list_bytes_pair(
+    files: list[tuple[str, bytes]],
+) -> tuple[bytes | None, bytes | None]:
+    """Return ``(content_list.json, content_list_v2.json)`` payloads if present."""
+    v1: bytes | None = None
+    v2: bytes | None = None
+    for rel, data in files:
+        norm = rel.replace('\\', '/').lstrip('/')
+        low = norm.lower()
+        if low.endswith('content_list_v2.json'):
+            v2 = data
+        elif low.endswith('content_list.json'):
+            v1 = data
+    return v1, v2
+
+
+def _image_paths_from_content_list_v1(items: Any) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    out: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get('type') not in _V1_VISUAL_TYPES:
+            continue
+        raw = (item.get('img_path') or '').strip()
+        if raw:
+            out.append(raw)
+    return out
+
+
+def _image_path_from_v2_block(block: dict[str, Any]) -> str | None:
+    btype = block.get('type')
+    if not isinstance(btype, str) or btype not in _V2_VISUAL_TYPES:
+        return None
+    cont = block.get('content')
+    if not isinstance(cont, dict):
+        return None
+    src = cont.get('image_source')
+    if not isinstance(src, dict):
+        return None
+    path = (src.get('path') or '').strip()
+    return path or None
+
+
+def _image_paths_from_content_list_v2(pages: Any) -> list[str]:
+    if not isinstance(pages, list):
+        return []
+    out: list[str] = []
+    for page in pages:
+        if not isinstance(page, list):
+            continue
+        for blk in page:
+            if not isinstance(blk, dict):
+                continue
+            pth = _image_path_from_v2_block(blk)
+            if pth:
+                out.append(pth)
+    return out
+
+
+def _markdown_already_references_asset(markdown: str, rel: str) -> bool:
+    """True when markdown or HTML already references this relative path."""
+    norm = _normalize_rel_path(rel)
+    if norm is None:
+        return True
+    for variant in _relative_path_variants(norm):
+        if variant in markdown:
+            return True
+    return False
+
+
+def _dedupe_preserve_order(paths: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in paths:
+        n = _normalize_rel_path(p)
+        if not n or n in seen:
+            continue
+        seen.add(n)
+        out.append(n)
+    return out
+
+
+def enrich_markdown_with_content_list_images(
+    markdown: str,
+    files: list[tuple[str, bytes]],
+) -> str:
+    """Append missing figure/table links using MinerU ``content_list*.json``.
+
+    Official ``full.md`` may be NLP-style (text only) while the ZIP still
+    contains ``images/*`` and structured JSON. Without ``![](...)`` lines,
+    :func:`apply_asset_urls_to_markdown` cannot attach COS URLs, so the UI
+    shows no figures. We read image paths from the content list (v2 preferred)
+    and append trailing markdown image lines for any path not already cited.
+    """
+    v1_bytes, v2_bytes = _pick_content_list_bytes_pair(files)
+    ordered: list[str] = []
+
+    for raw, use_v2 in ((v2_bytes, True), (v1_bytes, False)):
+        if not raw:
+            continue
+        try:
+            payload = json.loads(raw.decode('utf-8'))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            logger.warning('content_list JSON decode failed: %s', exc)
+            continue
+        if use_v2:
+            paths = _image_paths_from_content_list_v2(payload)
+        else:
+            paths = _image_paths_from_content_list_v1(payload)
+        candidate = _dedupe_preserve_order(paths)
+        if candidate:
+            ordered = candidate
+            break
+
+    if not ordered:
+        return markdown
+
+    missing = [
+        p for p in ordered
+        if not _markdown_already_references_asset(markdown, p)
+    ]
+    if not missing:
+        return markdown
+
+    parts = ['', '---', '']
+    for rel in missing:
+        parts.append(f'![]({rel})')
+        parts.append('')
+    suffix = '\n'.join(parts).rstrip() + '\n'
+    return markdown.rstrip() + '\n' + suffix
 
 
 def guess_content_type(relative_path: str) -> str:

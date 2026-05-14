@@ -29,6 +29,7 @@ from app.services.infra.mineru_client import (
     MinerUClientError,
     apply_asset_urls_to_markdown,
     call_mineru_parse,
+    enrich_markdown_with_content_list_images,
     guess_content_type,
     mineru_official_extract_api_configured,
 )
@@ -390,7 +391,11 @@ def _build_pdf_markdown_via_mineru(source: Source) -> str:
         total_s,
     )
 
-    return apply_asset_urls_to_markdown(result.markdown, path_to_url)
+    md_with_figures = enrich_markdown_with_content_list_images(
+        result.markdown,
+        result.files,
+    )
+    return apply_asset_urls_to_markdown(md_with_figures, path_to_url)
 
 
 async def process_source_v2(db: AsyncSession, source_id: str) -> str | None:

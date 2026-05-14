@@ -73,7 +73,7 @@ def call_upload(oss_url: str, notebook_id: str) -> str | None:
     payload = {
         "url": oss_url,
         "notebookid": notebook_id,
-        "use_aliyun_oss_sdk": True,
+        "use_cos_sdk": True,
     }
     response = requests.post(endpoint, json=payload, timeout=120)
     logger.info("deep upload status_code=%s", response.status_code)
