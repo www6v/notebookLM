@@ -21,16 +21,16 @@ def _normalize_prefix(prefix: str) -> str:
 
 def _cos_configured() -> bool:
     return bool(
-        settings.cos_secret_id.strip()
-        and settings.cos_secret_key.strip()
-        and settings.cos_bucket_name.strip()
+        settings.config_cos_secret_id.strip()
+        and settings.config_cos_secret_key.strip()
+        and settings.config_cos_bucket_name.strip()
     )
 
 
 def _primary_path_prefix() -> str:
     """Logical key prefix for new uploads (COS layout when COS is configured)."""
     if _cos_configured():
-        return _normalize_prefix(settings.cos_path_prefix)
+        return _normalize_prefix(settings.config_cos_path_prefix)
     return _normalize_prefix(settings.oss_path_prefix)
 
 
@@ -40,7 +40,7 @@ def _key_variants(object_key: str) -> list[str]:
     if not raw:
         return []
     oss_p = _normalize_prefix(settings.oss_path_prefix)
-    cos_p = _normalize_prefix(settings.cos_path_prefix)
+    cos_p = _normalize_prefix(settings.config_cos_path_prefix)
     keys: list[str] = [raw]
     if oss_p and cos_p and oss_p != cos_p:
         if raw.startswith(f"{oss_p}/") or raw == oss_p:
@@ -66,7 +66,7 @@ def _preferred_public_object_key(object_key: str) -> str:
     variants = _key_variants(stripped)
     if not variants:
         return stripped
-    cos_p = _normalize_prefix(settings.cos_path_prefix)
+    cos_p = _normalize_prefix(settings.config_cos_path_prefix)
     if cos_p:
         for key in variants:
             if key.startswith(f"{cos_p}/") or key == cos_p:
@@ -80,7 +80,7 @@ def _cos_head_exists(object_key: str) -> bool:
         return False
     try:
         client.head_object(
-            Bucket=settings.cos_bucket_name.strip(),
+            Bucket=settings.config_cos_bucket_name.strip(),
             Key=object_key,
         )
         return True
@@ -110,7 +110,7 @@ def _parsed_prefix_roots() -> list[str]:
     roots: list[str] = []
     for root in (
         _normalize_prefix(settings.oss_path_prefix),
-        _normalize_prefix(settings.cos_path_prefix),
+        _normalize_prefix(settings.config_cos_path_prefix),
     ):
         if root and root not in roots:
             roots.append(root)
@@ -177,15 +177,15 @@ def _get_cos_client():
     try:
         from qcloud_cos import CosConfig, CosS3Client
 
-        region = settings.cos_region.strip() or "ap-shanghai"
+        region = settings.config_cos_region.strip() or "ap-shanghai"
         conf = CosConfig(
             Region=region,
-            SecretId=settings.cos_secret_id.strip(),
-            SecretKey=settings.cos_secret_key.strip(),
+            SecretId=settings.config_cos_secret_id.strip(),
+            SecretKey=settings.config_cos_secret_key.strip(),
             Scheme="https",
         )
         client = CosS3Client(conf)
-        client.head_bucket(Bucket=settings.cos_bucket_name.strip())
+        client.head_bucket(Bucket=settings.config_cos_bucket_name.strip())
         _cos_client = client
         _cos_available = True
         logger.info("Tencent Cloud COS initialized successfully")
@@ -201,7 +201,8 @@ def _require_cos_client():
     if client is None:
         raise RuntimeError(
             "Tencent Cloud COS is not configured or unavailable. "
-            "Set COS_SECRET_ID, COS_SECRET_KEY, COS_BUCKET_NAME, and COS_REGION."
+            "Configure the ``cos`` section in config.yaml "
+            "(secret_id, secret_key, bucket_name, region)."
         )
     return client
 
@@ -235,7 +236,7 @@ def _cos_put_object(
 ) -> None:
     client = _require_cos_client()
     kwargs: dict[str, Any] = {
-        "Bucket": settings.cos_bucket_name.strip(),
+        "Bucket": settings.config_cos_bucket_name.strip(),
         "Body": body,
         "Key": object_key,
         "EnableMD5": False,
@@ -263,7 +264,7 @@ def _oss_put_object(
 def _cos_get_object(object_key: str) -> bytes:
     client = _require_cos_client()
     resp = client.get_object(
-        Bucket=settings.cos_bucket_name.strip(),
+        Bucket=settings.config_cos_bucket_name.strip(),
         Key=object_key,
     )
     body = resp["Body"]
@@ -281,7 +282,7 @@ def _oss_get_object(object_key: str) -> bytes:
 def _cos_delete_object(object_key: str) -> None:
     client = _require_cos_client()
     client.delete_object(
-        Bucket=settings.cos_bucket_name.strip(),
+        Bucket=settings.config_cos_bucket_name.strip(),
         Key=object_key,
     )
 
@@ -293,7 +294,7 @@ def _oss_delete_object(object_key: str) -> None:
 
 def _cos_delete_prefix(prefix: str) -> int:
     client = _require_cos_client()
-    bucket = settings.cos_bucket_name.strip()
+    bucket = settings.config_cos_bucket_name.strip()
     marker = ""
     deleted = 0
     while True:
@@ -384,8 +385,8 @@ def upload_file_to_obs(
 
 def get_file_url(object_key: str) -> str:
     """Build a public HTTPS URL for the object (COS when configured)."""
-    if _cos_configured() and settings.cos_public_base_url.strip():
-        base = settings.cos_public_base_url.rstrip("/")
+    if _cos_configured() and settings.config_cos_public_base_url.strip():
+        base = settings.config_cos_public_base_url.rstrip("/")
         pub_key = _preferred_public_object_key(object_key)
         return f"{base}/{pub_key}"
     key = object_key.strip().lstrip("/")
@@ -415,7 +416,7 @@ def generate_presigned_url(
             try:
                 return cos_client.get_presigned_url(
                     Method="GET",
-                    Bucket=settings.cos_bucket_name.strip(),
+                    Bucket=settings.config_cos_bucket_name.strip(),
                     Key=key,
                     Expired=expiration,
                     Params=params or {},

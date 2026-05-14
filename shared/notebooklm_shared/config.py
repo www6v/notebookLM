@@ -3,7 +3,10 @@
 The repository ``.env`` (if present) is loaded into ``os.environ`` only so that
 ``config.yaml`` string values can use ``$VAR`` / ``${VAR}`` substitution. It is
 not read as a pydantic-settings source; configure the app in ``config.yaml``.
-Process environment variables still override values when set (e.g. Docker).
+Process environment variables still override values when set (e.g. Docker),
+except Tencent COS: those values are taken only from the ``cos`` block in
+``config.yaml`` (after ``$VAR`` expansion); ``COS_*`` in the process environment
+are not applied as settings overrides.
 """
 
 import os
@@ -222,12 +225,12 @@ def _flatten_yaml_tree(
         out,
         _yaml_section(raw, "cos"),
         {
-            "cos_secret_id": "cos_secret_id",
-            "cos_secret_key": "cos_secret_key",
-            "cos_region": "cos_region",
-            "cos_bucket_name": "cos_bucket_name",
-            "cos_path_prefix": "cos_path_prefix",
-            "cos_public_base_url": "cos_public_base_url",
+            "cos_secret_id": "config_cos_secret_id",
+            "cos_secret_key": "config_cos_secret_key",
+            "cos_region": "config_cos_region",
+            "cos_bucket_name": "config_cos_bucket_name",
+            "cos_path_prefix": "config_cos_path_prefix",
+            "cos_public_base_url": "config_cos_public_base_url",
         },
     )
     _merge_yaml_map(
@@ -679,49 +682,16 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Tencent Cloud COS (preferred object storage)
-    cos_secret_id: str = Field(
-        default="",
-        validation_alias=AliasChoices(
-            "COS_SECRET_ID",
-            "TENCENTCLOUD_SECRET_ID",
-            "cos_secret_id",
-        ),
-    )
-    cos_secret_key: str = Field(
-        default="",
-        validation_alias=AliasChoices(
-            "COS_SECRET_KEY",
-            "TENCENTCLOUD_SECRET_KEY",
-            "cos_secret_key",
-        ),
-    )
-    cos_region: str = Field(
-        default="ap-shanghai",
-        validation_alias=AliasChoices("COS_REGION", "cos_region"),
-    )
-    cos_bucket_name: str = Field(
-        default="notebooklm-1300396013",
-        validation_alias=AliasChoices(
-            "COS_BUCKET_NAME",
-            "cos_bucket_name",
-        ),
-    )
-    cos_path_prefix: str = Field(
-        default="txt2imgcn",
-        validation_alias=AliasChoices(
-            "COS_PATH_PREFIX",
-            "cos_path_prefix",
-        ),
-    )
-    cos_public_base_url: str = Field(
-        default=(
-            "https://notebooklm-1300396013.cos.ap-shanghai.myqcloud.com"
-        ),
-        validation_alias=AliasChoices(
-            "COS_PUBLIC_BASE_URL",
-            "cos_public_base_url",
-        ),
+    # Tencent Cloud COS (preferred object storage). Values come only from the
+    # ``cos`` block in ``config.yaml`` (after ``$VAR`` expansion). Process env
+    # keys ``COS_*`` are intentionally not bound so they do not override YAML.
+    config_cos_secret_id: str = ""
+    config_cos_secret_key: str = ""
+    config_cos_region: str = "ap-shanghai"
+    config_cos_bucket_name: str = "notebooklm-1300396013"
+    config_cos_path_prefix: str = "txt2imgcn"
+    config_cos_public_base_url: str = (
+        "https://notebooklm-1300396013.cos.ap-shanghai.myqcloud.com"
     )
 
     # LiteLLM：统一通过 SDK 调用大模型（Chat / Vision / Embedding）

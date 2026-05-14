@@ -77,7 +77,7 @@ def main() -> int:
     )
 
     oss_prefix = _strip_slash(settings.oss_path_prefix)
-    cos_prefix = _strip_slash(settings.cos_path_prefix)
+    cos_prefix = _strip_slash(settings.config_cos_path_prefix)
     list_prefix = f"{oss_prefix}/" if oss_prefix else ""
 
     if not (
@@ -87,9 +87,9 @@ def main() -> int:
         logger.error("OSS credentials are not configured.")
         return 1
     if not (
-        settings.cos_secret_id.strip()
-        and settings.cos_secret_key.strip()
-        and settings.cos_bucket_name.strip()
+        settings.config_cos_secret_id.strip()
+        and settings.config_cos_secret_key.strip()
+        and settings.config_cos_bucket_name.strip()
     ):
         logger.error("COS credentials / bucket are not configured.")
         return 1
@@ -107,15 +107,15 @@ def main() -> int:
         settings.oss_bucket_name,
     )
 
-    region = settings.cos_region.strip() or "ap-shanghai"
+    region = settings.config_cos_region.strip() or "ap-shanghai"
     cos_conf = CosConfig(
         Region=region,
-        SecretId=settings.cos_secret_id.strip(),
-        SecretKey=settings.cos_secret_key.strip(),
+        SecretId=settings.config_cos_secret_id.strip(),
+        SecretKey=settings.config_cos_secret_key.strip(),
         Scheme="https",
     )
     cos_client = CosS3Client(cos_conf)
-    cos_bucket = settings.cos_bucket_name.strip()
+    cos_bucket = settings.config_cos_bucket_name.strip()
 
     copied = 0
     for oss_key in _iter_oss_keys(oss_bucket, list_prefix):
