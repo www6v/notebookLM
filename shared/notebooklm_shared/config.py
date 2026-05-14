@@ -31,6 +31,12 @@ def _repo_root() -> Path:
 
     In Docker (admin/backend), set NOTEBOOKLM_CONFIG_PATH=/app/config.yaml
     to bypass this discovery logic.
+
+    When the package is installed as a wheel, ``_repo_root()`` may resolve to
+    site-packages (no ``config.yaml``). In that case ``_config_yaml_path()``
+    falls back to ``Path.cwd() / "config.yaml"`` so a file mounted at the
+    process working directory (e.g. ``WORKDIR /app`` in the backend image) is
+    picked up without extra env.
     """
     here = Path(__file__).resolve()
     backend_app = here.parent        # notebooklm_shared/
@@ -56,7 +62,15 @@ def _config_yaml_path() -> Path:
         if not resolved.is_absolute():
             resolved = Path.cwd() / resolved
         return resolved
-    return _repo_root() / "config.yaml"
+    # Installed wheel: ``_repo_root()`` may be site-packages (no config.yaml).
+    # Docker images use WORKDIR /app and mount ``./config.yaml:/app/config.yaml``.
+    repo_yaml = _repo_root() / "config.yaml"
+    if repo_yaml.is_file():
+        return repo_yaml
+    cwd_yaml = Path.cwd() / "config.yaml"
+    if cwd_yaml.is_file():
+        return cwd_yaml
+    return repo_yaml
 
 
 _ENV_VAR_REF = re.compile(
