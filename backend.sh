@@ -14,12 +14,6 @@ else
     exit 1
 fi
 
-# Legacy local overrides from repo root (optional).
-if [ -f "$SCRIPT_DIR/backend-env.sh" ]; then
-    # shellcheck source=backend-env.sh
-    source "$SCRIPT_DIR/backend-env.sh"
-fi
-
 # Preferred runtime environment source.
 if [ -f "$PWD/.env" ]; then
     set -a
