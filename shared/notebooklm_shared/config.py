@@ -210,16 +210,12 @@ def _flatten_yaml_tree(
             ),
         },
     )
+    # Aliyun OSS API is disabled; optional ``oss`` YAML block may only set
+    # ``oss_path_prefix`` for legacy object_key layout on COS after migration.
     _merge_yaml_map(
         out,
         _yaml_section(raw, "oss"),
-        {
-            "oss_access_key_id": "oss_access_key_id",
-            "oss_access_key_secret": "oss_access_key_secret",
-            "oss_endpoint": "oss_endpoint",
-            "oss_bucket_name": "oss_bucket_name",
-            "oss_path_prefix": "oss_path_prefix",
-        },
+        {"oss_path_prefix": "oss_path_prefix"},
     )
     _merge_yaml_map(
         out,
@@ -661,19 +657,8 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Alibaba Cloud OSS (fallback when COS is unavailable)
-    oss_access_key_id: str = Field(
-        default="",
-        validation_alias=AliasChoices("OSS_ACCESS_KEY_ID", "oss_access_key_id"),
-    )
-    oss_access_key_secret: str = Field(
-        default="",
-        validation_alias=AliasChoices(
-            "OSS_ACCESS_KEY_SECRET", "oss_access_key_secret"
-        ),
-    )
-    oss_endpoint: str = "https://oss-cn-shanghai.aliyuncs.com"
-    oss_bucket_name: str = "notebookllm"
+    # Legacy object key path prefix (former Aliyun OSS layout). Used only to
+    # resolve historical object_key variants on COS; OSS SDK is not used.
     oss_path_prefix: str = Field(
         default="txt2imgcn",
         validation_alias=AliasChoices(

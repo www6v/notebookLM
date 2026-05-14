@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """Copy objects from Aliyun OSS to Tencent COS with path-prefix remap.
 
-Each OSS key under ``oss_path_prefix`` is written to COS under
+Each OSS key under ``OSS_PATH_PREFIX`` is written to COS under
 ``cos_path_prefix`` (the segment after the OSS prefix is preserved).
 
-Run from repo root with ``config.yaml`` / credentials configured::
+OSS credentials are read from the environment only (not from
+``notebooklm_shared`` Settings); COS still uses ``config.yaml`` as in the app.
+
+Run from repo root::
+
+    export OSS_ACCESS_KEY_ID=...
+    export OSS_ACCESS_KEY_SECRET=...
+    export OSS_ENDPOINT=https://oss-cn-shanghai.aliyuncs.com
+    export OSS_BUCKET_NAME=...
+    export OSS_PATH_PREFIX=txt2imgcn   # optional
 
     python scripts/migrate_oss_to_cos.py --dry-run
     python scripts/migrate_oss_to_cos.py
@@ -16,6 +25,7 @@ After verifying objects in COS, apply the printed SQL (or adjust
 import argparse
 import logging
 import mimetypes
+import os
 import sys
 from pathlib import Path
 
@@ -76,15 +86,23 @@ def main() -> int:
         format="%(levelname)s %(message)s",
     )
 
-    oss_prefix = _strip_slash(settings.oss_path_prefix)
+    oss_prefix = _strip_slash(os.environ.get("OSS_PATH_PREFIX", ""))
+    if not oss_prefix:
+        oss_prefix = _strip_slash(settings.oss_path_prefix)
     cos_prefix = _strip_slash(settings.config_cos_path_prefix)
     list_prefix = f"{oss_prefix}/" if oss_prefix else ""
 
-    if not (
-        settings.oss_access_key_id.strip()
-        and settings.oss_access_key_secret.strip()
-    ):
-        logger.error("OSS credentials are not configured.")
+    oss_key_id = os.environ.get("OSS_ACCESS_KEY_ID", "").strip()
+    oss_key_secret = os.environ.get("OSS_ACCESS_KEY_SECRET", "").strip()
+    oss_endpoint = os.environ.get(
+        "OSS_ENDPOINT", "https://oss-cn-shanghai.aliyuncs.com"
+    ).strip()
+    oss_bucket = os.environ.get("OSS_BUCKET_NAME", "").strip()
+    if not (oss_key_id and oss_key_secret and oss_bucket):
+        logger.error(
+            "Set OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, and OSS_BUCKET_NAME "
+            "in the environment."
+        )
         return 1
     if not (
         settings.config_cos_secret_id.strip()
@@ -97,15 +115,8 @@ def main() -> int:
     import oss2
     from qcloud_cos import CosConfig, CosS3Client
 
-    auth = oss2.Auth(
-        settings.oss_access_key_id,
-        settings.oss_access_key_secret,
-    )
-    oss_bucket = oss2.Bucket(
-        auth,
-        settings.oss_endpoint,
-        settings.oss_bucket_name,
-    )
+    auth = oss2.Auth(oss_key_id, oss_key_secret)
+    oss_bucket_obj = oss2.Bucket(auth, oss_endpoint, oss_bucket)
 
     region = settings.config_cos_region.strip() or "ap-shanghai"
     cos_conf = CosConfig(
@@ -118,7 +129,7 @@ def main() -> int:
     cos_bucket = settings.config_cos_bucket_name.strip()
 
     copied = 0
-    for oss_key in _iter_oss_keys(oss_bucket, list_prefix):
+    for oss_key in _iter_oss_keys(oss_bucket_obj, list_prefix):
         try:
             cos_key = _map_oss_key_to_cos(oss_key, oss_prefix, cos_prefix)
         except ValueError as exc:
@@ -127,7 +138,7 @@ def main() -> int:
         if args.dry_run:
             logger.info("DRY-RUN %s -> %s", oss_key, cos_key)
         else:
-            body = oss_bucket.get_object(oss_key).read()
+            body = oss_bucket_obj.get_object(oss_key).read()
             ctype, _ = mimetypes.guess_type(oss_key)
             kwargs = {
                 "Bucket": cos_bucket,

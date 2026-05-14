@@ -120,17 +120,13 @@ ytdlp:
   ytdlp_subprocess_timeout_seconds: 300
 
 # =============================================================================
-# Alibaba Cloud OSS
+# Legacy object key prefix (optional; former Aliyun OSS path layout on COS)
 # =============================================================================
-oss:
-  oss_access_key_id: $OSS_ACCESS_KEY_ID
-  oss_access_key_secret: $OSS_ACCESS_KEY_SECRET
-  oss_endpoint: https://oss-cn-shanghai.aliyuncs.com
-  oss_bucket_name: notebookllm
-  oss_path_prefix: txt2imgcn
+# oss:
+#   oss_path_prefix: txt2imgcn
 
 # =============================================================================
-# Tencent Cloud COS（优先；见 shared 配置：仅本段生效，进程环境 COS_* 不覆盖）
+# Tencent Cloud COS（唯一对象存储；见 shared 配置：仅本段生效，进程环境 COS_* 不覆盖）
 # =============================================================================
 cos:
   cos_secret_id: $COS_SECRET_ID
