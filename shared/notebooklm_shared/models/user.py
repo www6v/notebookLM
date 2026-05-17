@@ -54,3 +54,11 @@ class User(Base, UUIDMixin, TimestampMixin):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    open_api_credential = relationship(
+        "OpenApiCredential",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        primaryjoin="User.id == OpenApiCredential.user_id",
+        foreign_keys="OpenApiCredential.user_id",
+    )

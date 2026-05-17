@@ -18,12 +18,12 @@ Content-Type: application/json
 
 ## API Key 管理（Web JWT，非 skill 调用）
 
-| 方法 | 路径 | 说明 |
-| ---- | ---- | ---- |
-| GET | `/api/open-api/credential` | 查看 Client ID、状态、有效期 |
-| POST | `/api/open-api/credential` | 首次生成（返回 api_key 一次） |
-| DELETE | `/api/open-api/credential` | 删除 API Key |
-| POST | `/api/open-api/credential/regenerate` | 重新获取 |
+| 方法 | 路径 | UI | 说明 |
+| ---- | ---- | --- | ---- |
+| GET | `/api/open-api/credential` | 图2/图3 | `has_credential=false` 空态；`true` 时返回 client_id、status_label（有效）、expires_at，**不含 api_key** |
+| POST | `/api/open-api/credential` | 图2→图1 | 首次「获取 API Key」；返回 `api_key`（仅展示一次）+ client_id；已存在则 409 |
+| DELETE | `/api/open-api/credential` | 图4→图2 | 删除并使 Key 失效；返回 `{has_credential:false}` |
+| POST | `/api/open-api/credential/regenerate` | 图3→图1 | 「重新获取」；返回新 `api_key`（仅一次）；无 Key 时 404 |
 
 ## OpenAPI 端点（POST）
 

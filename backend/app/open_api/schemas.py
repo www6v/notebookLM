@@ -5,22 +5,31 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class OpenApiCredentialView(BaseModel):
-    """Credential metadata exposed to the agent-interface UI."""
+class OpenApiCredentialStatusResponse(BaseModel):
+    """Agent-interface credential state (图2 空态 / 图3 已生成)."""
 
-    client_id: str
-    status: str
-    expires_at: datetime
-    has_api_key: bool = True
+    has_credential: bool
+    client_id: str | None = None
+    status: str | None = None
+    status_label: str | None = None
+    expires_at: datetime | None = None
 
 
-class OpenApiCredentialCreateResponse(BaseModel):
-    """Returned once when a credential is created or regenerated."""
+class OpenApiCredentialRevealResponse(BaseModel):
+    """Shown once in modal after create or regenerate (图1)."""
 
     client_id: str
     api_key: str
     status: str
+    status_label: str
     expires_at: datetime
+    reveal_once: bool = True
+
+
+class OpenApiCredentialDeleteResponse(BaseModel):
+    """After delete confirmation (图4 -> 回到图2)."""
+
+    has_credential: bool = False
 
 
 class OpenApiEnvelope(BaseModel):

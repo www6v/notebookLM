@@ -57,6 +57,12 @@ const localizedChildren: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: 'agent-interface',
+    name: 'AgentInterface',
+    component: () => import('@/views/AgentInterfacePage.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: 'pricing',
     name: 'Pricing',
     component: () => import('@/views/PricingPage.vue'),

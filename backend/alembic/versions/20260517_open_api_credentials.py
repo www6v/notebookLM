@@ -19,13 +19,7 @@ def upgrade() -> None:
     op.create_table(
         "open_api_credentials",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column(
-            "user_id",
-            sa.String(36),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-            unique=True,
-        ),
+        sa.Column("user_id", sa.String(36), nullable=False, unique=True),
         sa.Column("client_id", sa.String(64), nullable=False, unique=True),
         sa.Column("api_key_hash", sa.String(255), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="active"),

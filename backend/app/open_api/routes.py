@@ -1,20 +1,16 @@
 """OpenAPI POST endpoints for notebooks, sources, and notes."""
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.limits import ROLE_LIMITS
 from app.open_api.deps import get_open_api_user
 from app.open_api.errors import (
-    AUTH_FAILED,
     FORBIDDEN,
     NOT_FOUND,
-    RATE_LIMIT,
     OpenApiBizError,
     PARAM_ERROR,
-    fail,
     success,
 )
 from app.open_api.schemas import (
@@ -44,23 +40,6 @@ from app.services.task_event_service import publish_task_event
 router = APIRouter(prefix="/openapi/notebook/v1", tags=["open-api"])
 
 LATEST_SKILL_VERSION = "1.0.0"
-
-
-@router.exception_handler(OpenApiBizError)
-async def _open_api_biz_handler(_request, exc: OpenApiBizError):
-    status = 400
-    if exc.code == AUTH_FAILED:
-        status = 401
-    elif exc.code == NOT_FOUND:
-        status = 404
-    elif exc.code == FORBIDDEN:
-        status = 403
-    elif exc.code == RATE_LIMIT:
-        status = 429
-    return JSONResponse(
-        status_code=status,
-        content=fail(exc.code, exc.msg, exc.data),
-    )
 
 
 @router.post("/check_skill_update")

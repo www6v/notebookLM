@@ -2,6 +2,9 @@
 
 from typing import Any
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
 
 class OpenApiBizError(Exception):
     """Business error returned as code/msg in JSON body."""
@@ -30,3 +33,22 @@ def success(data: Any = None, msg: str = "ok") -> dict[str, Any]:
 def fail(code: int, msg: str, data: Any = None) -> dict[str, Any]:
     """Build a failed OpenAPI envelope."""
     return {"code": code, "msg": msg, "data": data or {}}
+
+
+async def open_api_biz_exception_handler(
+    _request: Request, exc: OpenApiBizError
+) -> JSONResponse:
+    """Map OpenApiBizError to IMA-style JSON with HTTP status."""
+    status = 400
+    if exc.code == AUTH_FAILED:
+        status = 401
+    elif exc.code == NOT_FOUND:
+        status = 404
+    elif exc.code == FORBIDDEN:
+        status = 403
+    elif exc.code == RATE_LIMIT:
+        status = 429
+    return JSONResponse(
+        status_code=status,
+        content=fail(exc.code, exc.msg, exc.data),
+    )
