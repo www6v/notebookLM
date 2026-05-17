@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "required_binaries": [
+    {
+      "name": "node",
+      "min_version": "18.0.0",
+      "reason": "Runs notebooklm_api.cjs for OpenAPI calls"
+    }
+  ]
+}

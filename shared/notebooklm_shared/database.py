@@ -104,6 +104,7 @@ async def init_db():
         payment,
         system_setting,
         featured_notebook_link,
+        open_api_credential,
     )
 
     try:

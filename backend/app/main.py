@@ -30,6 +30,7 @@ from app.api import (
     studio,
     task_events,
 )
+from app.open_api import router as open_api_router
 from app.api.studio import (
     infographics,
     mindmaps,
@@ -95,6 +96,7 @@ app.include_router(deep_research.router)
 app.include_router(studio.router)
 app.include_router(payment.router)
 app.include_router(task_events.router)
+app.include_router(open_api_router)
 
 
 @app.get("/api/health/live")

@@ -12,11 +12,12 @@ from notebooklm_shared.models.notebook_discover_profile import (
     NotebookDiscoverProfile,
 )
 from notebooklm_shared.models.notebook_subscription import NotebookSubscription
+from notebooklm_shared.models.open_api_credential import OpenApiCredential
 
 __all__ = [
     "User", "Notebook", "Source", "ChatSession", "Message", "Note",
     "MindMap", "SlideDeck", "Infographic", "Report", "PodcastOverview", "DeepResearchReport",
     "UserSettings", "PaymentOrder", "SystemSetting", "FeaturedNotebookLink",
-    "NotebookDiscoverProfile", "NotebookSubscription",
+    "NotebookDiscoverProfile", "NotebookSubscription", "OpenApiCredential",
 ]
 
