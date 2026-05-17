@@ -70,4 +70,4 @@ Base: `{NOTEBOOKLM_BASE_URL}/openapi/notebook/v1/`
 
 | 路径 | Body |
 | ---- | ---- |
-| `check_skill_update` | `{"version":"1.0.0"}` |
+| `check_skill_update` | `{"version":"1.1.0"}` |

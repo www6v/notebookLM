@@ -304,7 +304,7 @@ const router = useRouter()
 const routeLocale = useRouteLocale()
 const snackbar = useSnackbarStore()
 
-const SKILL_VERSION = '1.0.0'
+const SKILL_VERSION = '1.1.0'
 const loading = ref(true)
 const creating = ref(false)
 const regenerating = ref(false)
