@@ -15,10 +15,15 @@ metadata:
   security:
     credentials_usage: |
       需要用户在 NotebookLM 控制台获取 Client ID 与 API Key，仅作为 HTTP Header 发送至 NotebookLM 后端。
-      凭证不会写入日志或第三方域名。
+      文件上传会向 COS（*.myqcloud.com）发送 PUT，使用 create_media 返回的短期 presigned URL；
+      用户的 Client ID / API Key 不会发往 COS。
+      凭证不会写入日志或其它第三方域名。
     allowed_domains:
+      - www.notebooklm.studio
+      - notebooklm.studio
       - localhost
       - '127.0.0.1'
+      - '*.myqcloud.com'
 ---
 
 # notebooklm-skill
@@ -54,7 +59,7 @@ export NOTEBOOKLM_BASE_URL="https://your-notebooklm-host"
 ```bash
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 OPTS=$(printf '{"clientId":"%s","apiKey":"%s","baseUrl":"%s"}' \
-  "$NOTEBOOKLM_OPENAPI_CLIENTID" "$NOTEBOOKLM_OPENAPI_APIKEY" "${NOTEBOOKLM_BASE_URL:-http://localhost:8000}")
+  "$NOTEBOOKLM_OPENAPI_CLIENTID" "$NOTEBOOKLM_OPENAPI_APIKEY" "${NOTEBOOKLM_BASE_URL:-http://www.notebooklm.studio}")
 
 node "$SKILL_DIR/notebooklm_api.cjs" "openapi/notebook/v1/list_notebooks" '{}' "$OPTS"
 ```
@@ -69,6 +74,7 @@ node "$SKILL_DIR/notebooklm_api.cjs" "openapi/notebook/v1/list_notebooks" '{}' "
 | 列出/搜索笔记本 | `list_notebooks` |
 | 查看单个笔记本 | `get_notebook` |
 | 新建/改/删笔记本 | `create_notebook` / `update_notebook` / `delete_notebook` |
+| 上传 PDF 等文件到笔记本 | `check_repeated_names` → `create_media` → COS → `confirm_source_upload` |
 | 列出资料、读正文、添加网页来源 | `list_sources` / `get_source_content` / `add_source` |
 | 列出/读/写/追加笔记 | `list_notes` / `get_note_content` / `create_note` / `update_note` / `append_note` |
 

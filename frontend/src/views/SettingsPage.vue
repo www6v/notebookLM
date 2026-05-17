@@ -76,24 +76,6 @@
 
       <v-card class="settings-card">
         <v-card-title class="text-subtitle-1 font-weight-medium">
-          {{ t('settings.openClawLink') }}
-        </v-card-title>
-        <v-card-text>
-          <p class="text-body-2 text-medium-emphasis mb-3">
-            {{ t('agentInterface.subtitle') }}
-          </p>
-          <v-btn
-            color="primary"
-            variant="outlined"
-            @click="goAgentInterface"
-          >
-            {{ t('settings.openClawLink') }}
-          </v-btn>
-        </v-card-text>
-      </v-card>
-
-      <v-card class="settings-card">
-        <v-card-title class="text-subtitle-1 font-weight-medium">
           {{ t('settings.appearance') }}
         </v-card-title>
         <v-card-text>
@@ -204,10 +186,6 @@ const saving = ref(false)
 
 function goHome() {
   router.push({ name: 'Home', params: { locale: routeLocale.value } })
-}
-
-function goAgentInterface() {
-  router.push({ name: 'AgentInterface', params: { locale: routeLocale.value } })
 }
 
 const themeSelectItems = computed(() => [

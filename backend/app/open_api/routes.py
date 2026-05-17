@@ -14,6 +14,9 @@ from app.open_api.errors import (
     success,
 )
 from app.open_api.schemas import (
+    CheckRepeatedNamesBody,
+    ConfirmSourceUploadBody,
+    CreateMediaBody,
     NoteAppendBody,
     NoteCreateBody,
     NoteIdBody,
@@ -27,6 +30,17 @@ from app.open_api.schemas import (
     SourceIdBody,
     SourceListBody,
 )
+from app.open_api.source_upload import (
+    assert_source_quota,
+    build_cos_credential,
+    check_title_repeated,
+    get_owned_pending_source,
+    initial_raw_content,
+    parse_upload_file,
+    require_cos_for_upload,
+    verify_cos_object_uploaded,
+)
+from app.services.infra.obs_storage import build_upload_object_key, get_file_url
 from app.commons.url_validation import validate_web_source_url
 from app.services.source.source_service import verify_notebook_access
 from app.tasks.source_tasks import process_source_task
@@ -39,7 +53,7 @@ from app.services.task_event_service import publish_task_event
 
 router = APIRouter(prefix="/openapi/notebook/v1", tags=["open-api"])
 
-LATEST_SKILL_VERSION = "1.0.0"
+LATEST_SKILL_VERSION = "1.1.0"
 
 
 @router.post("/check_skill_update")
@@ -234,6 +248,104 @@ async def get_source_content(
             "chunk_count": chunk_count_result.scalar_one(),
         }
     )
+
+
+@router.post("/check_repeated_names")
+async def check_repeated_names(
+    body: CheckRepeatedNamesBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_open_api_user),
+):
+    """Check duplicate source titles in a notebook (IMA-aligned)."""
+    await verify_notebook_access(db, body.notebook_id, user.id)
+    names = [p.name for p in body.params]
+    results = await check_title_repeated(db, body.notebook_id, names)
+    return success({"results": results})
+
+
+@router.post("/create_media")
+async def create_media(
+    body: CreateMediaBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_open_api_user),
+):
+    """Reserve a source and return COS upload credentials (presigned PUT)."""
+    await verify_notebook_access(db, body.notebook_id, user.id)
+    require_cos_for_upload()
+    await assert_source_quota(db, body.notebook_id, user)
+
+    parsed = parse_upload_file(
+        body.file_name,
+        body.file_size,
+        body.content_type,
+        body.file_ext,
+    )
+    object_key = build_upload_object_key(parsed.file_name)
+    cos_credential = build_cos_credential(object_key, parsed.content_type)
+
+    source = Source(
+        notebook_id=body.notebook_id,
+        title=parsed.file_name,
+        type=parsed.source_type,
+        file_path=object_key,
+        file_size_bytes=parsed.file_size,
+        original_url="",
+        raw_content=initial_raw_content(parsed.source_type),
+        status="pending",
+    )
+    db.add(source)
+    await db.flush()
+    await db.refresh(source)
+    await db.commit()
+
+    return success(
+        {
+            "media_id": source.id,
+            "source_id": source.id,
+            "url": get_file_url(object_key),
+            "cos_credential": cos_credential,
+        }
+    )
+
+
+@router.post("/confirm_source_upload")
+async def confirm_source_upload(
+    body: ConfirmSourceUploadBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_open_api_user),
+):
+    """Finalize OpenAPI file upload after COS PUT (IMA add_knowledge equivalent)."""
+    source = await get_owned_pending_source(
+        db, body.source_id, body.notebook_id, user.id
+    )
+    file_name = (body.file_info.file_name or "").strip()
+    title = (body.title or "").strip()
+    if not file_name:
+        raise OpenApiBizError(PARAM_ERROR, "file_info.file_name 不能为空")
+    if title != file_name:
+        raise OpenApiBizError(
+            PARAM_ERROR,
+            "title 必须与 file_name（含扩展名）一致",
+        )
+    cos_key = (body.file_info.cos_key or "").strip()
+    if cos_key != source.file_path:
+        raise OpenApiBizError(PARAM_ERROR, "cos_key 与 create_media 返回不一致")
+    verify_cos_object_uploaded(cos_key)
+
+    source.title = title
+    source.file_size_bytes = body.file_info.file_size
+    source.original_url = get_file_url(cos_key)
+    await db.flush()
+    await db.commit()
+    await db.refresh(source)
+
+    if source.type in ("video", "image", "audio", "pdf") or (
+        source.raw_content and str(source.raw_content).strip()
+    ):
+        await publish_task_event("source", source.id, source.status)
+        process_source_task.delay(source.id)
+
+    return success({"source_id": source.id, "media_id": source.id})
 
 
 @router.post("/add_source")

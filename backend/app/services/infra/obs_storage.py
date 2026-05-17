@@ -223,7 +223,7 @@ def _cos_delete_prefix(prefix: str) -> int:
     return deleted
 
 
-def _build_object_key(filename: str) -> str:
+def build_upload_object_key(filename: str) -> str:
     """Build the full object key with prefix and unique suffix.
 
     Format: {path_prefix}/sources/{uuid}_{filename}
@@ -233,6 +233,49 @@ def _build_object_key(filename: str) -> str:
     prefix = _primary_path_prefix()
     base = f"sources/{unique_id}_{safe_name}"
     return f"{prefix}/{base}" if prefix else base
+
+
+def _build_object_key(filename: str) -> str:
+    return build_upload_object_key(filename)
+
+
+def cos_bucket_region() -> tuple[str, str]:
+    """Return (bucket_name, region) for OpenAPI COS credential payloads."""
+    bucket = settings.config_cos_bucket_name.strip()
+    region = settings.config_cos_region.strip() or "ap-shanghai"
+    return bucket, region
+
+
+def generate_presigned_put_url(
+    object_key: str,
+    content_type: str,
+    expiration: int = 3600,
+) -> str:
+    """Presigned PUT URL for agent-side direct upload to COS."""
+    client = _require_cos_client()
+    key = _preferred_public_object_key(object_key.strip().lstrip("/"))
+    try:
+        return client.get_presigned_url(
+            Method="PUT",
+            Bucket=settings.config_cos_bucket_name.strip(),
+            Key=key,
+            Expired=expiration,
+            Headers={"Content-Type": content_type},
+        )
+    except Exception as exc:
+        logger.error("Failed to generate COS presigned PUT URL: %s", exc)
+        raise RuntimeError(
+            f"Presigned PUT URL generation failed: {exc}"
+        ) from exc
+
+
+def cos_object_exists(object_key: str) -> bool:
+    """True if the object exists (tries key prefix variants)."""
+    stripped = object_key.strip().lstrip("/")
+    for key in _key_variants(stripped) or [stripped]:
+        if _cos_head_exists(key):
+            return True
+    return False
 
 
 def upload_file_to_obs(

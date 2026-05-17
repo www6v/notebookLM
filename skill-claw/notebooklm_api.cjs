@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DEFAULT_BASE_URL = 'http://localhost:8000';
+const DEFAULT_BASE_URL = 'http://www.notebooklm.studio';
 const DEFAULT_LAST_CHECK_FILE = path.join(
   os.homedir(),
   '.config/notebooklm/last_update_check'

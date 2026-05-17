@@ -97,3 +97,33 @@ class NoteAppendBody(BaseModel):
 
 class SkillUpdateCheckBody(BaseModel):
     version: str
+
+
+class CheckRepeatedNameParam(BaseModel):
+    name: str
+
+
+class CheckRepeatedNamesBody(BaseModel):
+    notebook_id: str
+    params: list[CheckRepeatedNameParam] = Field(min_length=1, max_length=2000)
+
+
+class CreateMediaBody(BaseModel):
+    notebook_id: str
+    file_name: str
+    file_size: int = Field(gt=0)
+    content_type: str
+    file_ext: str = ""
+
+
+class SourceFileInfoBody(BaseModel):
+    cos_key: str
+    file_size: int = Field(gt=0)
+    file_name: str
+
+
+class ConfirmSourceUploadBody(BaseModel):
+    notebook_id: str
+    source_id: str
+    title: str
+    file_info: SourceFileInfoBody

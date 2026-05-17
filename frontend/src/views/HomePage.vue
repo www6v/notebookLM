@@ -7,6 +7,13 @@
       <div class="header-right">
         <v-btn
           variant="text"
+          @click="goAgentInterface"
+        >
+          <v-icon size="20">mdi-robot-outline</v-icon>
+          <span class="header-btn-label">{{ t('settings.openClawLink') }}</span>
+        </v-btn>
+        <v-btn
+          variant="text"
           @click="goDiscover"
         >
           <v-icon size="20">mdi-compass-outline</v-icon>
@@ -520,6 +527,10 @@ const displayedNotebookList = computed(() => {
   }
   return []
 })
+
+function goAgentInterface() {
+  router.push({ name: 'AgentInterface', params: { locale: routeLocale.value } })
+}
 
 function goDiscover() {
   router.push({ name: 'Discover', params: { locale: routeLocale.value } })

@@ -46,8 +46,15 @@ Base: `{NOTEBOOKLM_BASE_URL}/openapi/notebook/v1/`
 | `list_sources` | `{"notebook_id":"..."}` | 列表 |
 | `get_source_content` | `{"source_id":"..."}` | 正文 |
 | `add_source` | `{"notebook_id":"...","type":"web","url":"https://..."}` | 添加网页 |
+| `check_repeated_names` | `{"notebook_id":"...","params":[{"name":"a.pdf"}]}` | 上传前重名检查 |
+| `create_media` | `{"notebook_id":"...","file_name":"a.pdf","file_size":123,"content_type":"application/pdf","file_ext":"pdf"}` | 获取 COS 上传凭证 |
+| `confirm_source_upload` | `{"notebook_id":"...","source_id":"...","title":"a.pdf","file_info":{...}}` | COS 上传完成后确认 |
 
-`type` 支持：`web`, `youtube`, `bilibili` 等（与 Web 端一致）。
+**文件上传流程**（与 IMA 对齐）：`check_repeated_names` → `create_media` → `cos-upload.cjs`（`--presigned-url`）→ `confirm_source_upload`。
+
+`create_media` 返回 `cos_credential`：`presigned_put_url`、`cos_key`、`bucket_name`、`region` 等。Agent 仅将文件 PUT 到预签名 URL，不向 COS 发送 API Key。
+
+`type` 支持（`add_source`）：`web`, `youtube`, `bilibili` 等（与 Web 端一致）。
 
 ### 笔记
 

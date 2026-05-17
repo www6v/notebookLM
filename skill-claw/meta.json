@@ -1,10 +1,10 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "required_binaries": [
     {
       "name": "node",
       "min_version": "18.0.0",
-      "reason": "Runs notebooklm_api.cjs for OpenAPI calls"
+      "reason": "Runs notebooklm_api.cjs, preflight-check.cjs, cos-upload.cjs"
     }
   ]
 }
